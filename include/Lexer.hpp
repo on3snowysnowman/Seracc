@@ -6,51 +6,7 @@
 #include <cstdint>
 #include <fstream>
 
-
-enum TokenType
-{
-    END_OF_FILE,
-    IDENTIFIER,
-    INT_LITERAL,
-    KW_FN,
-    KW_COMPONENT,
-    KW_NAMESPACE,
-    KW_PUB,
-    KW_MUT,
-    KW_REF,
-    KW_IF,
-    KW_ELSE,
-    KW_WHILE,
-    LPAREN,
-    RPAREN,
-    LBRACE,
-    RBRACE,
-    LBRACKET,
-    RBRACKET,
-    COMMA,
-    SEMICOLON,
-    DOT,
-    COLON,
-    ARROW, // '->'
-    ASSIGN, // '='
-    PLUS,
-    MINUS,
-    ASTERISK,
-    FORW_SLASH,
-    EQUAL_EQUAL // '=='
-};
-
-
-struct Token
-{
-    TokenType type;
-    uint32_t line; 
-    uint32_t col;
-    uint32_t len;
-    // uint32_t end_col;
-    std::string text; // Ident/Literal identifier
-};
-
+#include "Token.hpp"
 
 class Lexer
 {
@@ -59,7 +15,9 @@ public:
 
     Lexer();
 
-    void open(const char *file_path);
+    void load(const char *file_path);
+
+    Token next_token();
 
 private:
 
@@ -72,8 +30,6 @@ private:
     uint32_t current_col = 0;
 
     // Method
-
-    Token next_token();
 
     Token make_token(TokenType type, uint32_t start_idx, uint32_t start_line,
         uint32_t start_col, const std::string &text) const;
@@ -92,7 +48,9 @@ private:
 
     bool match(char expected);
 
-    char peek(int offset = 0);
+    char peek(int offset = 0) const;
 
     char advance();
+
+    std::string get_span(uint64_t start_idx, uint64_t end_idx) const;
 };

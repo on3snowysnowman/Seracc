@@ -64,6 +64,13 @@ static constexpr const char* token_to_readable[]
     "EQUAL_EQUAL" // '=='
 };
 
+void output_invalid_char(char c, uint32_t line, uint32_t col)
+{
+    std::cerr << "Invalid character: " << c << " @ line: " << line << 
+        " col: " << col << '\n';
+}
+
+
 // Ctors / Dtor
 
 Lexer::Lexer() {}
@@ -71,7 +78,7 @@ Lexer::Lexer() {}
 
 // Public
 
-void Lexer::open(const char *file_path)
+void Lexer::load(const char *file_path)
 {
     std::ifstream in_stream(file_path);
 
@@ -107,15 +114,6 @@ void Lexer::open(const char *file_path)
     }
 
     std::cout << "EOF reached\n";
-}
-
-
-// Private
-
-void output_invalid_char(char c, uint32_t line, uint32_t col)
-{
-    std::cerr << "Invalid character: " << c << " @ line: " << line << 
-        " col: " << col << '\n';
 }
 
 Token Lexer::next_token() 
@@ -164,12 +162,15 @@ Token Lexer::next_token()
     exit(1);
 }
 
+// Private
+
 Token Lexer::make_token(TokenType type, uint32_t start_idx, uint32_t start_line,
     uint32_t start_col, const std::string &text) const
 {
     return Token
     {
         .type = type,
+        .start_idx = start_idx,
         .line = start_line,
         .col = start_col,
         .len = (uint32_t)(current_idx - start_idx),
@@ -405,7 +406,7 @@ bool Lexer::at_eof() const
     return current_idx >= source.size();
 }
 
-char Lexer::peek(int offset) 
+char Lexer::peek(int offset) const
 {
     if(current_idx + offset >= source.size()) return '\0';
 
@@ -427,3 +428,7 @@ char Lexer::advance()
     return c;
 }
 
+std::string Lexer::get_span(uint64_t start_idx, uint64_t end_idx) const
+{
+    return source.substr(start_idx, end_idx - start_idx);
+}

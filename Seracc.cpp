@@ -2,13 +2,12 @@
 #include <iostream>
 
 #include "Lexer.hpp"
+#include "Parser.hpp"
 
 
 int main()
 {
-    Lexer lexer;
-
-    lexer.open("main.sr");
+    Parser p;
 
     return 0;
 }
