@@ -1,0 +1,18 @@
+
+// Test Serac file
+
+// This is some more comments.
+// Comments.
+
+fn some_func(int var) -> int
+{
+    int a = var + 1;
+    ret a;
+}
+
+
+fn main() -> int
+{
+    // Comment here
+    ret 0;
+}
