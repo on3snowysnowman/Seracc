@@ -17,6 +17,8 @@ public:
 
     void load(const char *file_path);
 
+    bool at_eof() const;
+
     Token next_token();
 
 private:
@@ -43,8 +45,6 @@ private:
     void skip_till_newline();
 
     void skip_trivia();
-
-    bool at_eof() const;
 
     bool match(char expected);
 

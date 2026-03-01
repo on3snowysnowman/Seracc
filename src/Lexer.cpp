@@ -31,39 +31,6 @@ static const std::unordered_map<std::string, TokenType> readable_to_tok_type
     {"while", KW_WHILE}
 };
 
-static constexpr const char* token_to_readable[]
-{
-    "END_OF_FILE",
-    "IDENTIFIER",
-    "INT_LITERAL",
-    "KW_FN",
-    "KW_COMPONENT",
-    "KW_NAMESPACE",
-    "KW_PUB",
-    "KW_MUT",
-    "KW_REF",
-    "KW_IF",
-    "KW_ELSE",
-    "KW_WHILE",
-    "LPAREN",
-    "RPAREN",
-    "LBRACE",
-    "RBRACE",
-    "LBRACKET",
-    "RBRACKET",
-    "COMMA",
-    "SEMICOLON",
-    "DOT",
-    "COLON",
-    "ARROW", // '->'
-    "ASSIGN", // '='
-    "PLUS",
-    "MINUS",
-    "ASTERISK",
-    "FORW_SLASH",
-    "EQUAL_EQUAL" // '=='
-};
-
 void output_invalid_char(char c, uint32_t line, uint32_t col)
 {
     std::cerr << "Invalid character: " << c << " @ line: " << line << 
@@ -100,20 +67,6 @@ void Lexer::load(const char *file_path)
     current_idx = 0;
     current_line = 1;
     current_col = 1;
-
-    while(!at_eof())
-    {
-        Token tok = next_token();
-
-        if(tok.type == END_OF_FILE) break;
-
-        std::cout << "-- Got token -- \ntype: " << 
-            token_to_readable[tok.type] << "\nline: " << tok.line << "\ncol: "
-            << tok.col << "\nlen: " << tok.len << "\ntext: " << tok.text
-            << "\n\n";
-    }
-
-    std::cout << "EOF reached\n";
 }
 
 Token Lexer::next_token() 
@@ -157,7 +110,7 @@ Token Lexer::next_token()
     {
         return lex_op_or_punct();
     }
-
+ 
     output_invalid_char(c, current_line, current_col);
     exit(1);
 }

@@ -11,11 +11,11 @@
 #include "Token.hpp"
 
 
-enum class RefType
+enum class ReferenceType
 {
     NONE,
     REF,
-    MUTREF
+    REFMUT
 };
 
 
@@ -23,10 +23,14 @@ struct TypeRef
 {
     std::string name;
 
-    // Bit mask for storing pointee mutability at each depth.
+    // Bool list for storing pointee mutability at each depth. The first bool 
+    // would denote the mutability of the first pointed to object. So if the 
+    // first (zeroth) bool is set, we would have a type like *mut T. If ptr_depth
+    // is 2, and both flags were set in this boolset, we would have *mut *mut T.
+    // If first bool was set and second was low: *mut * T. "* T" is mutable in
+    // this context, while "T" is not. 
     std::vector<bool> ptr_pointee_mut; 
-    RefType ref_type;
-    uint32_t ptr_depth;
+    ReferenceType ref_type;
 };
 
 struct ReceiverMeta
@@ -46,12 +50,16 @@ struct Decl
 
 struct Field
 {
+    bool is_mut;
+    std::optional<bool> is_pub;
     TypeRef t;
     std::string name;
 };
 
 struct Param 
 {
+    bool is_mut;
+    bool is_unqual_param;
     TypeRef t;
     std::string name;
 };
@@ -74,8 +82,9 @@ struct StructDecl : Decl
 
 struct FunctionDecl : Decl 
 {
-    std::optional<ReceiverMeta> receiver;
+    std::optional<ReceiverMeta> receiver_meta;
     std::vector<Param> parameters;
+    std::vector<BlockStub> stubs;
     TypeRef return_type;
     BlockStub body;
     bool is_pub;

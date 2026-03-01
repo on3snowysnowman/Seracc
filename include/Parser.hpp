@@ -24,7 +24,7 @@ public:
 
     Parser();
 
-    void parse_program(const char *in_file);
+    Program parse_program(const char *file_path);
 
 private:
 
@@ -34,19 +34,34 @@ private:
 
     Lexer lexer;
 
+
     // Methods
 
-    void handle_error(const Token &t);
+    void handle_tok_mismatch(const Token &got_token, TokenType expected);
 
     std::unique_ptr<Decl> parse_top_level();
 
-    std::unique_ptr<Decl> parse_function();
+    std::unique_ptr<NamespaceDecl> parse_namespace();
 
-    std::unique_ptr<Decl> parse_struct();
+    std::unique_ptr<FunctionDecl> parse_function();
 
-    std::unique_ptr<Decl> parse_component();
+    std::unique_ptr<StructDecl> parse_struct();
 
-    void expect(TokenType t_type);
+    std::unique_ptr<ComponentDecl> parse_component();
+
+    Field parse_field();
+
+    Param parse_param();
+
+    void parse_block_stub(BlockStub &stub);
+
+    TypeRef parse_type_ref();
+
+    bool check(TokenType t) const;
+
+    bool consume_if(TokenType t);
+
+    Token expect(TokenType t);
 
     const Token& peek() const; 
     

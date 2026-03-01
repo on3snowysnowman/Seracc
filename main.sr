@@ -4,15 +4,23 @@
 // This is some more comments.
 // Comments.
 
-fn some_func(int var) -> int
-{
-    int a = var + 1;
-    ret a;
-}
-
-
 fn main() -> int
 {
     // Comment here
+
+    int x; 
+    * int x; // Immutable pointer, immutable pointee 
+    mut * int x; // Mutable pointer, immutable pointee
+    *mut int x; // Immutable pointer, mutable pointee
+    mut *mut int x; // Mutable pointer, mutable pointee
+
+    ref mut int y = x; // Reference to a mutable int
+    ref int y = x; // Reference to immutable int
+    
+    ref * int y = x; // Reference to immutable pointer with immutable pointee
+    ref mut * int y = x; // Reference to mutable pointer with immutable pointee
+    ref *mut int y = x; // Reference to immutable pointer with mutable pointee
+    ref mut *mut int y = x; // Reference to mutable pointer with mutable pointee
+
     ret 0;
 }
