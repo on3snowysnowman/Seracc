@@ -8,28 +8,6 @@
 #include <unordered_map>
 #include <cctype>
 
-/**
- * while not EOF:
- * skip whitespace + comments
- * look at current char
- * decide which token rule applies
- * consume characters
- * emit token
- */
-
-
-static const std::unordered_map<std::string, TokenType> readable_to_tok_type
-{
-    {"fn", KW_FN},
-    {"component", KW_COMPONENT},
-    {"namespace", KW_NAMESPACE},
-    {"pub", KW_PUB},
-    {"mut", KW_MUT},
-    {"ref", KW_REF},
-    {"if", KW_IF},
-    {"else", KW_ELSE},
-    {"while", KW_WHILE}
-};
 
 void output_invalid_char(char c, uint32_t line, uint32_t col)
 {

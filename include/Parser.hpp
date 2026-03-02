@@ -39,6 +39,8 @@ private:
 
     void handle_tok_mismatch(const Token &got_token, TokenType expected);
 
+    void expect_scope();
+
     std::unique_ptr<Decl> parse_top_level();
 
     std::unique_ptr<NamespaceDecl> parse_namespace();
@@ -50,10 +52,6 @@ private:
     std::unique_ptr<ComponentDecl> parse_component();
 
     Field parse_field();
-
-    Param parse_param();
-
-    void parse_block_stub(BlockStub &stub);
 
     TypeRef parse_type_ref();
 

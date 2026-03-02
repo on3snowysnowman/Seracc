@@ -1,0 +1,20 @@
+
+
+
+fn main() -> int
+{
+    type Struct thing
+    {
+
+    };
+
+    ret 0;
+}
+
+type struct MyStruct
+{
+    mut int x;
+    ref mut int y;
+    ref int z;
+    mut *mut int ptr;
+}

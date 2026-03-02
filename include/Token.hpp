@@ -4,6 +4,7 @@
 
 #include <string>
 #include <cstdint>
+#include <unordered_map>
 
 enum TokenType
 {
@@ -77,6 +78,23 @@ static constexpr const char* token_to_readable[]
     "EQUAL_EQUAL" // '=='
 };
 
+static inline 
+    const std::unordered_map<std::string, TokenType> readable_to_tok_type
+{
+    {"fn", KW_FN},
+    {"type", KW_TYPE},
+    {"struct", KW_STRUCT},
+    {"component", KW_COMPONENT},
+    {"namespace", KW_NAMESPACE},
+    {"pub", KW_PUB},
+    {"mut", KW_MUT},
+    {"ref", KW_REF},
+    {"if", KW_IF},
+    {"else", KW_ELSE},
+    {"while", KW_WHILE},
+    {"ret", KW_RET}
+};
+
 
 struct Token
 {
@@ -92,6 +110,6 @@ static inline std::ostream& operator<<(std::ostream &os, const Token &t)
 {
     os << "Type: " << token_to_readable[t.type] << 
         "\nLine: " << t.line << "\nColumn: " << t.col << '\n' << 
-        "\nText: " << t.text;
+        "Text: " << t.text;
     return os;
 }

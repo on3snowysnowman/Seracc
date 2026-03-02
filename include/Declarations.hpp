@@ -51,7 +51,7 @@ struct Decl
 struct Field
 {
     bool is_mut;
-    std::optional<bool> is_pub;
+    bool is_pub;
     TypeRef t;
     std::string name;
 };
@@ -84,9 +84,14 @@ struct FunctionDecl : Decl
 {
     std::optional<ReceiverMeta> receiver_meta;
     std::vector<Param> parameters;
-    std::vector<BlockStub> stubs;
     TypeRef return_type;
     BlockStub body;
+    bool is_pub;
+};
+
+struct NestedContainer
+{
+    std::unique_ptr<Decl> decl;
     bool is_pub;
 };
 
@@ -94,4 +99,5 @@ struct ComponentDecl : Decl
 {
     std::vector<Field> fields;
     std::vector<std::unique_ptr<FunctionDecl>> functions;
+    std::vector<NestedContainer> nested_cnts;
 };
