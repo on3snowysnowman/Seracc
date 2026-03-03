@@ -11,11 +11,13 @@ Parser::Parser() {}
 
 // Public
 
-Program Parser::parse_program(const char *file_path)
+Program Parser::parse_program(const char *_file_path)
 {
+    file_path = _file_path;
+
     Program prog;
 
-    lexer.load(file_path);
+    lexer.load(_file_path);
     advance(); // Get first token.
 
     // std::unique_ptr<Decl> decl;
@@ -33,16 +35,16 @@ Program Parser::parse_program(const char *file_path)
 
 // Private
 
-static void print_line_and_col(uint32_t line, uint32_t col)
+void Parser::print_error_location(uint32_t line, uint32_t col) const
 {
-    std::cout << "Line: " << line << "\nCol: " << col << '\n';
+    std::cout << file_path << ":" << line << ':' << col;
 }
 
 void Parser::handle_tok_mismatch(const Token &got_token, TokenType expected) 
 {
-    std::cerr << "Expect token of type: " << 
+    print_error_location(got_token.line, got_token.col);
+    std::cerr << ": Expect token of type: " << 
         token_to_readable[expected] << " but got token:\n" << got_token << '\n';
-    print_line_and_col(got_token.line, got_token.col);
     exit(1);
 }
 
@@ -67,9 +69,9 @@ std::unique_ptr<Decl> Parser::parse_top_level()
         if(check(KW_STRUCT)) return parse_struct();
         if(check(KW_COMPONENT)) return parse_component();
     
-        std::cerr << "\"type\" not followed by a declaration of a struct or "
+        print_error_location(peek().line, peek().col);
+        std::cerr << ": \"type\" not followed by a declaration of a struct or "
             "component.\n";
-        print_line_and_col(peek().line, peek().col);
         exit(1);
     }
 
@@ -126,12 +128,12 @@ std::unique_ptr<FunctionDecl> Parser::parse_function()
 
         if(!check(KW_REF))
         {
-            std::cerr << "Invalid function syntax. After 'fn', either write:\n"
-            << "  fn <name>(...) -> <type> { ... }\n"
+            print_error_location(peek().line, peek().col);
+            std::cerr << ": Invalid function syntax. After 'fn', either write:"
+            << "\n  fn <name>(...) -> <type> { ... }\n"
             << "or for a component receiver function:\n"
             << "  fn (ref [mut] <Type> <selfName>) <name>(...) -> <type> "
                 "{ ... }\n";
-            print_line_and_col(peek().line, peek().col);
             exit(1);
         }
 
@@ -150,9 +152,9 @@ std::unique_ptr<FunctionDecl> Parser::parse_function()
 
         if (check(ASTERISK))
         {
-            std::cerr << "Pointer receiver types are not allowed. Use "
+            print_error_location(peek().line, peek().col);
+            std::cerr << ": Pointer receiver types are not allowed. Use "
                 "obj_ptr->method(), which desugars to (*obj_ptr).method().\n";
-            print_line_and_col(peek().line, peek().col);
             exit(1);
         }
 
@@ -310,9 +312,9 @@ std::unique_ptr<ComponentDecl> Parser::parse_component()
 
             else
             {
-                std::cerr << "\"type\" not followed by a declaration of a "
+                print_error_location(peek().line, peek().col);
+                std::cerr << ": \"type\" not followed by a declaration of a "
                     "struct or component.\n";
-                print_line_and_col(peek().line, peek().col);
                 exit(1);
             }
 
@@ -321,7 +323,9 @@ std::unique_ptr<ComponentDecl> Parser::parse_component()
 
         else
         {
-            std::cerr << "Invalid token in component body: " << peek() << '\n';
+            print_error_location(peek().line, peek().col);
+            std::cerr << ": Invalid token in component body: \n" << peek() 
+                << "\n";
             exit(1);
         }
     }
@@ -337,7 +341,17 @@ Field Parser::parse_field()
 
     TypeRef t = parse_type_ref();
 
-    std::string name = expect(IDENTIFIER).text;
+    Token tok = expect(IDENTIFIER);
+
+    std::string name = tok.text;
+
+    if(!check(SEMICOLON))
+    {
+        print_error_location(tok.line, tok.col + 1);
+        std::cerr << ": Missing ';'\n";
+        exit(1);
+    }
+
     expect(SEMICOLON);
 
     Field f;

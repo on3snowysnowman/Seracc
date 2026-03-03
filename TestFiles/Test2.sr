@@ -1,20 +1,57 @@
 
-
-
-fn main() -> int
-{
-    type Struct thing
-    {
-
-    };
-
-    ret 0;
-}
-
 type struct MyStruct
 {
     mut int x;
     ref mut int y;
     ref int z;
     mut *mut int ptr;
+
+    int x;
+}
+
+type component MyComponent 
+{
+    pub mut *mut int x;
+
+    pub fn (ref MyComponent self) some_func() -> ref mut int 
+    {
+        ret *self.x;
+    }
+
+    type struct SomeStruct
+    {
+        float pi;
+    }
+}
+
+namespace Serac
+{
+
+type struct NamespaceStruct
+{
+    mut int some_num;
+}
+
+namespace Internal
+{
+
+namespace AnotherInternal
+{
+    fn some_internal_func() -> Serac::NamespaceStruct
+    {
+
+    }
+}
+
+}
+
+}
+
+
+
+fn main() -> int
+{
+
+
+
 }

@@ -30,12 +30,16 @@ private:
 
     // Members
 
+    const char *file_path;
+
     Token current_token;
 
     Lexer lexer;
 
 
     // Methods
+
+    void print_error_location(uint32_t line, uint32_t col) const;
 
     void handle_tok_mismatch(const Token &got_token, TokenType expected);
 
@@ -64,4 +68,4 @@ private:
     const Token& peek() const; 
     
     Token advance();
-};
+}; 
