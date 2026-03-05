@@ -236,7 +236,7 @@ void print_decl(const std::unique_ptr<Decl> &decl)
     }
 }
 
-int main()
+int main(int argc, char **argv)
 {
     // Lexer l;
     // l.load("TestFiles/Test2.sr");
@@ -249,8 +249,14 @@ int main()
     //     t = l.next_token();
     // }
 
+    if(argc != 2)
+    {
+        std::cerr << "Usage: ./Seracc <input_file>\n";
+        exit(0);
+    }
+
     Parser parser;
-    Program prog = parser.parse_program("TestFiles/Test2.sr");
+    Program prog = parser.parse_program(argv[1]);
 
     for(const std::unique_ptr<Decl> &decl : prog.decls)
     {

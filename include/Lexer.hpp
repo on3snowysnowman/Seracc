@@ -25,6 +25,8 @@ private:
 
     // Members
 
+    const char *file_path;
+
     std::string source;
 
     uint64_t current_idx = 0;
@@ -32,6 +34,8 @@ private:
     uint32_t current_col = 0;
 
     // Method
+
+    void output_invalid_char(char c, uint32_t line, uint32_t col) const;
 
     Token make_token(TokenType type, uint32_t start_idx, uint32_t start_line,
         uint32_t start_col, const std::string &text) const;

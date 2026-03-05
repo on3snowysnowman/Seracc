@@ -9,13 +9,6 @@
 #include <cctype>
 
 
-void output_invalid_char(char c, uint32_t line, uint32_t col)
-{
-    std::cerr << "Invalid character: " << c << " @ line: " << line << 
-        " col: " << col << '\n';
-}
-
-
 // Ctors / Dtor
 
 Lexer::Lexer() {}
@@ -23,13 +16,15 @@ Lexer::Lexer() {}
 
 // Public
 
-void Lexer::load(const char *file_path)
+void Lexer::load(const char *_file_path)
 {
-    std::ifstream in_stream(file_path);
+    file_path = _file_path;
+
+    std::ifstream in_stream(_file_path);
 
     if(!in_stream)
     {
-        std::cerr << "Lexer failed to open file: " << file_path << '\n';
+        std::cerr << "Lexer failed to open file: " << _file_path << '\n';
         exit(1);
     }
 
@@ -94,6 +89,13 @@ Token Lexer::next_token()
 }
 
 // Private
+
+void Lexer::output_invalid_char(char c, uint32_t line, uint32_t col) const
+{
+    std::cerr << file_path << ":" << line << ":" << col;
+    std::cerr << ": Invalid character: " << c << '\n';
+}
+
 
 Token Lexer::make_token(TokenType type, uint32_t start_idx, uint32_t start_line,
     uint32_t start_col, const std::string &text) const
