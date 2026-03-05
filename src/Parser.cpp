@@ -16,6 +16,7 @@ Program Parser::parse_program(const char *_file_path)
     file_path = _file_path;
 
     Program prog;
+    prog.file_path = file_path;
 
     lexer.load(_file_path);
     advance(); // Get first token.

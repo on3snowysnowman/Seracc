@@ -5,6 +5,7 @@
 #include <string>
 #include <cstdint>
 #include <fstream>
+#include <iostream>
 
 #include "Token.hpp"
 
@@ -58,3 +59,24 @@ private:
 
     std::string get_span(uint64_t start_idx, uint64_t end_idx) const;
 };
+
+namespace LexerPrinter
+{
+
+static inline void print_lexer_results(const char *file_path)
+{
+    Lexer lex;
+    lex.load(file_path);
+
+    Token t;
+
+    do
+    {
+        t = lex.next_token();
+
+        std::cout << t << "\n\n";
+
+    } while(t.type != END_OF_FILE);
+}
+
+}
