@@ -22,6 +22,7 @@ struct TypeSymbol
     const Decl *decl_ptr;
 };
 
+
 struct NamespaceSymbol
 {
     std::string name;

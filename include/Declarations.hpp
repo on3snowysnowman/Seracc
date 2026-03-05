@@ -5,10 +5,6 @@
 #include <string>
 #include <cstdint>
 #include <vector>
-#include <memory>
-#include <optional>
-
-#include "Token.hpp"
 
 
 enum class ReferenceType
@@ -18,86 +14,72 @@ enum class ReferenceType
     REFMUT
 };
 
-
-struct TypeRef
+struct TypeDecl
 {
-    std::string name;
-
-    // Bool list for storing pointee mutability at each depth. The first bool 
-    // would denote the mutability of the first pointed to object. So if the 
-    // first (zeroth) bool is set, we would have a type like *mut T. If ptr_depth
-    // is 2, and both flags were set in this boolset, we would have *mut *mut T.
-    // If first bool was set and second was low: *mut * T. "* T" is mutable in
-    // this context, while "T" is not. 
-    std::vector<bool> ptr_pointee_mut; 
-    ReferenceType ref_type;
-};
-
-struct ReceiverMeta
-{
-    TypeRef receiver_type;
-    std::string receiver_name;
-};
-
-struct Decl
-{
-    virtual ~Decl() = default;
-    std::string name;
-
     uint32_t line;
     uint32_t col;
+    std::string name;
+    ReferenceType ref_type;
+    std::vector<bool> ptr_depth_mutability;
 };
 
-struct Field
+struct FieldDecl
 {
-    bool is_mut;
-    bool is_pub;
-    TypeRef t;
+    uint32_t line;
+    uint32_t col;
+    std::string name;
+    bool binding_mutable;
+    TypeDecl type_decl;
+};
+
+struct ExpressionDecl
+{
+    uint32_t line;
+    uint32_t col;
+
+};
+
+struct ScopeDecl
+{
+    uint32_t line;
+    uint32_t col;
+
+
+};
+
+struct ParameterDecl
+{
+    uint32_t line;
+    uint32_t col;
+    std::string name;
+    bool binding_mutable;
+    TypeDecl type_decl;
+};
+
+struct FunctionDecl
+{
+    uint32_t line;
+    uint32_t col;
+    std::string name;
+    
+    TypeDecl ret_type_decl;
+};
+
+
+struct StructDecl
+{
+    uint32_t line;
+    uint32_t col;
     std::string name;
 };
 
-struct Param 
+struct NamespaceDecl
 {
-    bool is_mut;
-    bool is_unqual_param;
-    TypeRef t;
+    uint32_t line;
+    uint32_t col;
     std::string name;
+    std::vector<NamespaceDecl> namespace_decls;
+    std::vector<StructDecl> structs_decls;
+    std::vector<FunctionDecl> function_decls;
 };
 
-struct BlockStub
-{
-    uint32_t start_idx; // Source start idx 
-    uint32_t end_idx; // Source end idx
-};
-
-struct NamespaceDecl : Decl 
-{
-    std::vector<std::unique_ptr<Decl>> decls;
-};
-
-struct StructDecl : Decl 
-{
-    std::vector<Field> fields;
-};
-
-struct FunctionDecl : Decl 
-{
-    std::optional<ReceiverMeta> receiver_meta;
-    std::vector<Param> parameters;
-    TypeRef return_type;
-    BlockStub body;
-    bool is_pub;
-};
-
-struct NestedContainer
-{
-    std::unique_ptr<Decl> decl;
-    bool is_pub;
-};
-
-struct ComponentDecl : Decl 
-{
-    std::vector<Field> fields;
-    std::vector<std::unique_ptr<FunctionDecl>> functions;
-    std::vector<NestedContainer> nested_cnts;
-};

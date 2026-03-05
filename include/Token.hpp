@@ -4,113 +4,155 @@
 
 #include <string>
 #include <cstdint>
+#include <iostream>
 #include <unordered_map>
-#include <ostream>
 
-enum TokenType
+
+enum class TokenID
 {
     END_OF_FILE,
     IDENTIFIER,
-    INT_LITERAL,
+    NUM_LITERAL,
+
+    // Keywords
     KW_FN,
+    KW_NAMESPACE,
     KW_TYPE,
     KW_STRUCT,
     KW_COMPONENT,
-    KW_NAMESPACE,
     KW_PUB,
     KW_MUT,
     KW_REF,
+    KW_VAL, 
+    KW_RET,
     KW_IF,
     KW_ELSE,
     KW_WHILE,
-    KW_RET,
+    KW_FOR,
+    KW_BREAK,
+    KW_CONTINUE,
+
+    // Brackets
     LPAREN,
     RPAREN,
     LBRACE,
     RBRACE,
     LBRACKET,
     RBRACKET,
+
+    // Punctuation
     COMMA,
     SEMICOLON,
     DOT,
     COLON,
+
+    // Special Characters
+    AMPERSAND,
+    AT,
+
+    // Operators
     ARROW, // '->'
     ASSIGN, // '='
     PLUS,
     MINUS,
     ASTERISK,
     FORW_SLASH,
-    EQUAL_EQUAL // '=='
+    BACK_SLASH,
+    EQUAL_EQUAL, // '==',
+    LESS_THAN,
+    GREATER_THAN,
 };
 
-static constexpr const char* token_to_readable[]
+const char * const tokID_readable[]
 {
     "END_OF_FILE",
     "IDENTIFIER",
-    "INT_LITERAL",
+    "NUM_LITERAL",
+
+    // Keywords
     "KW_FN",
+    "KW_NAMESPACE",
     "KW_TYPE",
     "KW_STRUCT",
     "KW_COMPONENT",
-    "KW_NAMESPACE",
     "KW_PUB",
     "KW_MUT",
     "KW_REF",
+    "KW_VAL", 
+    "KW_RET",
     "KW_IF",
     "KW_ELSE",
     "KW_WHILE",
-    "KW_RET",
+    "KW_FOR",
+    "KW_BREAK",
+    "KW_CONTINUE",
+
+    // Brackets
     "LPAREN",
     "RPAREN",
     "LBRACE",
     "RBRACE",
     "LBRACKET",
     "RBRACKET",
+
+    // Punctuation
     "COMMA",
     "SEMICOLON",
     "DOT",
     "COLON",
+
+    // Special Characters
+    "AMPERSAND",
+    "AT",
+
+    // Operators
     "ARROW", // '->'
     "ASSIGN", // '='
     "PLUS",
     "MINUS",
     "ASTERISK",
     "FORW_SLASH",
-    "EQUAL_EQUAL" // '=='
+    "BACK_SLASH",
+    "EQUAL_EQUAL", // '=='
+    "LESS_THAN",
+    "GREATER_THAN"
 };
 
-static inline 
-    const std::unordered_map<std::string, TokenType> readable_to_tok_type
+const std::unordered_map<std::string, TokenID> rdbl_kw_to_id
 {
-    {"fn", KW_FN},
-    {"type", KW_TYPE},
-    {"struct", KW_STRUCT},
-    {"component", KW_COMPONENT},
-    {"namespace", KW_NAMESPACE},
-    {"pub", KW_PUB},
-    {"mut", KW_MUT},
-    {"ref", KW_REF},
-    {"if", KW_IF},
-    {"else", KW_ELSE},
-    {"while", KW_WHILE},
-    {"ret", KW_RET}
+    {"fn", TokenID::KW_FN},
+    {"namespace", TokenID::KW_NAMESPACE},
+    {"type", TokenID::KW_TYPE},
+    {"struct", TokenID::KW_STRUCT},
+    {"component", TokenID::KW_COMPONENT},
+    {"pub", TokenID::KW_PUB},
+    {"mut", TokenID::KW_MUT},
+    {"ref", TokenID::KW_REF},
+    {"val", TokenID::KW_VAL},
+    {"ret", TokenID::KW_RET},
+    {"if", TokenID::KW_IF},
+    {"else", TokenID::KW_ELSE},
+    {"while", TokenID::KW_WHILE},
+    {"for", TokenID::KW_FOR},
+    {"break", TokenID::KW_BREAK},
+    {"continue", TokenID::KW_CONTINUE}
 };
+
+
 
 
 struct Token
 {
-    TokenType type;
-    uint64_t start_idx; // Starting idx in source string.
-    uint32_t line; 
+    TokenID id;
+    uint32_t line;
     uint32_t col;
-    uint32_t len;
-    std::string text; // Ident/Literal identifier
+    std::string text;
 };
 
-static inline std::ostream& operator<<(std::ostream &os, const Token &t) 
+static inline std::ostream& operator<<(std::ostream &out, const Token &tok)
 {
-    os << "Type: " << token_to_readable[t.type] << 
-        "\nLine: " << t.line << "\nColumn: " << t.col << '\n' << 
-        "Text: " << t.text;
-    return os;
+    out << "ID: " << tokID_readable[static_cast<int>(tok.id)] << "\nLine: " <<
+        tok.line << "\nCol: " << tok.col << "\nText: " << tok.text << '\n';
+
+    return out;
 }

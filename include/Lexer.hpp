@@ -3,9 +3,6 @@
 #pragma once
 
 #include <string>
-#include <cstdint>
-#include <fstream>
-#include <iostream>
 
 #include "Token.hpp"
 
@@ -16,67 +13,48 @@ public:
 
     Lexer();
 
-    void load(const char *file_path);
+    // Loads the buffer of the Lexer from the in_file
+    void load(const char *in_file_path);
 
-    bool at_eof() const;
+    void close();
 
     Token next_token();
 
 private:
 
-    // Members
+    // Members 
 
-    const char *file_path;
+    const char *file_being_parsed = nullptr;
 
+    uint32_t current_line;
+    uint32_t current_col;
+
+    // Index into src currently being parsed.
+    uint64_t current_idx;
+
+    // Buffer containing the text of the entire source code file.
     std::string source;
 
-    uint64_t current_idx = 0;
-    uint32_t current_line = 0;
-    uint32_t current_col = 0;
+    
+    // Methods
 
-    // Method
+    bool at_eof() const;
 
-    void output_invalid_char(char c, uint32_t line, uint32_t col) const;
-
-    Token make_token(TokenType type, uint32_t start_idx, uint32_t start_line,
-        uint32_t start_col, const std::string &text) const;
-
-    Token lex_ident_or_kword();
-
-    Token lex_number();
-
-    Token lex_op_or_punct();
-
+    void handle_invalid_char(char c);
+    
     void skip_till_newline();
 
+    // Skip any whitespace, newlines, tabs, etc.
     void skip_trivia();
 
-    bool match(char expected);
+    void parse_ident(Token &t);
 
-    char peek(int offset = 0) const;
+    void parse_number(Token &t);
+
+    void parse_non_ident_or_number(Token &t);
+
+    char peek(uint32_t offset = 0) const;
 
     char advance();
-
-    std::string get_span(uint64_t start_idx, uint64_t end_idx) const;
 };
 
-namespace LexerPrinter
-{
-
-static inline void print_lexer_results(const char *file_path)
-{
-    Lexer lex;
-    lex.load(file_path);
-
-    Token t;
-
-    do
-    {
-        t = lex.next_token();
-
-        std::cout << t << "\n\n";
-
-    } while(t.type != END_OF_FILE);
-}
-
-}

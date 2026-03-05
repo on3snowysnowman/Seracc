@@ -1,35 +1,26 @@
 
 #include <iostream>
+#include <fstream>
 
 #include "Lexer.hpp"
-#include "Parser.hpp"
-#include "STBlder.hpp"
+#include "LexerPrinter.hpp"
 
 
 int main(int argc, char **argv)
 {
-    if(argc != 2)
+    if(argc != 3)
     {
-        std::cerr << "Usage: ./Seracc <input_file>\n";
-        exit(1);
+        std::cerr << "Usage: ./Seracc <in_file>.sr <out_file>.C\n";
+        exit(1); 
     }
 
-    // LexerPrinter::print_lexer_results(argv[1]);
+    const char *in_file_path = argv[1];
+    const char *out_file_path = argv[2];
 
-    Parser pars;
-    Program prog = pars.parse_program(argv[1]);
+    // Lexer l;
+    // l.load(in_file_path);
 
-    // ProgramPrinter::print_program(prog);
-
-    STBlder blder;
-
-    NamespaceSymbol *symbol_table = blder.build(prog);
-
-
-    std::cout << '\n';
-    
-    STPrinter::print_symbol_table(symbol_table);
-    delete symbol_table;
+    LexerPrinter::print_lexer_output(in_file_path);
 
     return 0;
 }
