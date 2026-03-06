@@ -5,35 +5,21 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <memory>
+#include <optional>
+
+// Forward Decls
+struct TypeDecl;
+struct FunctionDecl;
+struct ComponentDecl;
+struct StructDecl;
 
 
-enum class ReferenceType
-{
-    NONE,
-    REF,
-    REFMUT
-};
-
-struct TypeDecl
-{
-    uint32_t line;
-    uint32_t col;
-    std::string name;
-    ReferenceType ref_type;
-    std::vector<bool> ptr_depth_mutability;
-};
-
-struct FieldDecl
-{
-    uint32_t line;
-    uint32_t col;
-    std::string name;
-    bool binding_mutable;
-    TypeDecl type_decl;
-};
+// EXPRESSIONS =================================================================
 
 enum class ExpressionType
 {
+    INVALID, // Uninitialized Sentinel
     BIN_LITERAL,
     HEX_LITERAL,
     INT_LITERAL,
@@ -46,205 +32,430 @@ enum class ExpressionType
     TERNARY,
     ASSIGN,
     CAST,
-    COMPARISON,
 
     CALL,
-    ARR_SUBSCRIPT,
-    CONTAINER_SUBSCRIPT,
-    PTR_MEMBER,
+    SUBSCRIPT,
+    MEMBER_ACCESS
+};
 
+enum class UnaryOp
+{
+    INVALID, // Uninitialized Sentinel
+    PRE_INC,
+    PRE_DEC,
     POST_INC,
     POST_DEC,
-    INC,
-    DEC,
+    PLUS,
+    MINUS,
+    BIT_NOT,
+    LOG_NOT,
+    ADDRESS_OF,
+    DEREF
 };
 
-struct ExpressionDecl
+enum class BinaryOp
 {
-    uint32_t line;
-    uint32_t col;
-
-    ExpressionType exp_type;
+    INVALID, // Uninitialized Sentinel
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    LSHIFT,
+    RSHIFT,
+    LT,
+    GT,
+    LE,
+    GE,
+    EQ,
+    NE,
+    BIT_AND,
+    BIT_OR,
+    BIT_XOR,
+    LOG_AND,
+    LOG_OR
 };
 
-struct BinaryLitDecl : ExpressionDecl
+enum class AssignOp
 {
-    BinaryLitDecl() { exp_type = ExpressionType::BIN_LITERAL; }
+    INVALID, // Uninitialized Sentinel
+    ASSIGN,
+    ADD_ASSIGN,
+    SUB_ASSIGN,
+    MUL_ASSIGN,
+    DIV_ASSIGN,
+    MOD_ASSIGN,
+    LSHIFT_ASSIGN,
+    RSHIFT_ASSIGN,
+    BIT_AND_ASSIGN,
+    BIT_OR_ASSIGN,
+    BIT_XOR_ASSIGN
 };
 
-struct HexLitDecl : ExpressionDecl
+struct Expression
 {
-    HexLitDecl() { exp_type = ExpressionType::HEX_LITERAL; }
+    uint32_t line = 0;
+    uint32_t col = 0;
+
+    ExpressionType exp_type = ExpressionType::INVALID;
+
+    virtual ~Expression() = default;
 };
 
-struct IntLitDecl : ExpressionDecl
+struct BinaryLitExpr : Expression
 {
-    IntLitDecl() { exp_type = ExpressionType::INT_LITERAL; }
+    BinaryLitExpr() { exp_type = ExpressionType::BIN_LITERAL; }
     std::string value;
 };
 
-struct FloatLitDecl : ExpressionDecl
+struct HexLitExpr : Expression
 {
-    FloatLitDecl() { exp_type = ExpressionType::FLOAT_LITERAL; }
+    HexLitExpr() { exp_type = ExpressionType::HEX_LITERAL; }
     std::string value;
 };
 
-struct StringLitDecl : ExpressionDecl
+struct IntLitExpr : Expression
 {
-    StringLitDecl() { exp_type = ExpressionType::STRING_LITERAL; }
+    IntLitExpr() { exp_type = ExpressionType::INT_LITERAL; }
     std::string value;
 };
 
-struct IdentDecl : ExpressionDecl
+struct FloatLitExpr : Expression
 {
-    IdentDecl() { exp_type = ExpressionType::IDENTIFIER; }
+    FloatLitExpr() { exp_type = ExpressionType::FLOAT_LITERAL; }
+    std::string value;
+};
+
+struct StringLitExpr : Expression
+{
+    StringLitExpr() { exp_type = ExpressionType::STRING_LITERAL; }
+    std::string value;
+};
+
+struct IdentExpr : Expression
+{
+    IdentExpr() { exp_type = ExpressionType::IDENTIFIER; }
     std::string name;
 };
 
-struct UnaryDecl : ExpressionDecl
+struct UnaryExpr : Expression
 {
-    UnaryDecl() { exp_type = ExpressionType::UNARY; }
+    UnaryExpr() { exp_type = ExpressionType::UNARY; }
 
-    enum class OperationType
-    {
-        PRE_INC,
-        PRE_DEC,
-        POST_INC,
-        POST_DEC,
-        BIT_NOT,
-        LOG_NOT, 
-        GET_ADDRESS,
-        DEREF,
-    };
-
-    OperationType op_type;
-
-    ExpressionDecl *operand;
+    UnaryOp op_type = UnaryOp::INVALID;
+    std::unique_ptr<Expression> operand;
 };
 
-struct BinaryDecl : ExpressionDecl
+struct BinaryExpr : Expression
 {
-    BinaryDecl() { exp_type = ExpressionType::BINARY; }
+    BinaryExpr() { exp_type = ExpressionType::BINARY; }
 
-    enum class OperationType
-    {
-        ADD,
-        SUB,
-        MUL,
-        DIV,
-        MOD,
-        LSHIFT,
-        RSHIFT,
-        BIT_AND,
-        BIT_OR,
-        BIT_XOR,
-        LOG_AND,
-        LOG_OR
-    };
-
-    OperationType op_type;
-
-    // If this operation is an operation with assignment
-    bool is_assign_op;
-
-    ExpressionDecl *first_operand;
-    ExpressionDecl *second_operand;
+    BinaryOp op_type = BinaryOp::INVALID;
+    std::unique_ptr<Expression> lhs;
+    std::unique_ptr<Expression> rhs;
 };
 
-struct TernaryDecl : ExpressionDecl
+struct TernaryExpr : Expression
 {
-    TernaryDecl() { exp_type = ExpressionType::TERNARY; }
+    TernaryExpr() { exp_type = ExpressionType::TERNARY; }
 
-    ExpressionDecl *condition;
-
-    ExpressionDecl *on_true_result;
-    ExpressionDecl *on_false_result;
+    std::unique_ptr<Expression> condition;
+    std::unique_ptr<Expression> on_true_expr;
+    std::unique_ptr<Expression> on_false_expr;
 };
 
-struct AssignDecl : ExpressionDecl
+struct AssignExpr : Expression
 {
-    AssignDecl() { exp_type = ExpressionType::ASSIGN; }
+    AssignExpr() { exp_type = ExpressionType::ASSIGN; }
 
-    ExpressionDecl *lhs;
-    ExpressionDecl *rhs;
+    AssignOp op_type = AssignOp::INVALID;
+    std::unique_ptr<Expression> lhs;
+    std::unique_ptr<Expression> rhs;
 };
 
-struct CastDecl : ExpressionDecl
+struct CastExpr : Expression
 {
-    CastDecl() { exp_type = ExpressionType::CAST; }
+    CastExpr() { exp_type = ExpressionType::CAST; }
 
-    TypeDecl *to_cast_type;
-    ExpressionDecl *obj_to_cast;
+    std::unique_ptr<TypeDecl> to_cast_type;
+    std::unique_ptr<Expression> obj_to_cast;
 };
 
-struct CallDecl : ExpressionDecl
+struct CallExpr : Expression
 {
-    CallDecl() { exp_type = ExpressionType::CALL; }
+    CallExpr() { exp_type = ExpressionType::CALL; }
 
-    FunctionDecl *targ_func;
+    std::unique_ptr<Expression> callee_expr;
+    std::vector<std::unique_ptr<Expression>> args;
+    std::optional<uint64_t> resolved_symbol_idx;
 };
 
-struct ArraySubscriptDecl : ExpressionDecl
+struct SubscriptExpr : Expression
 {
-    ArraySubscriptDecl() { exp_type = ExpressionType::ARR_SUBSCRIPT; }
+    SubscriptExpr() { exp_type = ExpressionType::SUBSCRIPT; }
 
-    IdentDecl *array;
-    ExpressionDecl *index_exp;
+    std::unique_ptr<Expression> base_expr;
+    std::unique_ptr<Expression> index_expr;
 };
 
-struct ContainerSubscriptDecl : ExpressionDecl
+struct MemberAccExpr : Expression
 {
-    ContainerSubscriptDecl() { exp_type = ExpressionType::CONTAINER_SUBSCRIPT; }
+    MemberAccExpr() { exp_type = ExpressionType::MEMBER_ACCESS; }
 
-    IdentDecl *container;
-    IdentDecl *member;
+    bool via_pointer = false;
+
+    std::unique_ptr<Expression> base_expr;
+    std::string member_name;
+
+    // Index into the symbol table of the resolved symbol.
+    std::optional<uint64_t> resolved_symbol_idx;
+};
+
+// STATEMENTS ==================================================================
+
+enum class StatementType
+{
+    INVALID, // Uninitialized Sentinel
+    EXPR,
+    VAR_DECL,
+    STRUCT_DECL,
+    COMPONENT_DECL,
+    RETURN,
+    IF,
+    WHILE,
+    FOR,
+    BLOCK
+};
+
+struct Statement
+{
+    uint32_t line = 0;
+    uint32_t col = 0;
+    StatementType stmt_type = StatementType::INVALID;
+    
+    virtual ~Statement() = default;
+};
+
+struct ExprStmt : Statement
+{
+    ExprStmt() { stmt_type = StatementType::EXPR; }
+
+    std::unique_ptr<Expression> expr;
+};
+
+struct VarDeclStmt : Statement
+{
+    VarDeclStmt() { stmt_type = StatementType::VAR_DECL; }
+
+    bool is_binding_mutable = false;
+    std::unique_ptr<TypeDecl> type_decl;
+    std::string var_name;
+    std::unique_ptr<Expression> init_expr; // nullptr if none
+};
+
+struct StructDeclStmt : Statement
+{
+    StructDeclStmt() { stmt_type = StatementType::STRUCT_DECL; }
+
+    std::unique_ptr<StructDecl> decl;
+};
+
+struct ComponentDeclStmt : Statement
+{
+    ComponentDeclStmt() { stmt_type = StatementType::COMPONENT_DECL; }
+
+    std::unique_ptr<ComponentDecl> decl;
+};
+
+struct RetStmt : Statement
+{
+    RetStmt() { stmt_type = StatementType::RETURN; }
+
+    std::unique_ptr<Expression> ret_expr; // Should not be null, must have ret
 };
 
 struct ScopeDecl
 {
-    uint32_t line;
-    uint32_t col;
+    uint32_t line = 0;
+    uint32_t col = 0;
 
-    std::vector<ExpressionDecl> expression_decls;
+    std::vector<std::unique_ptr<Statement>> statements;
+};
+
+struct IfStmt : Statement
+{
+    IfStmt() { stmt_type = StatementType::IF; }
+
+    std::unique_ptr<Expression> condition_expr;
+    ScopeDecl then_body;
+    std::unique_ptr<Statement> else_branch; // nullptr if none
+};
+
+struct WhileStmt : Statement
+{
+    WhileStmt() { stmt_type = StatementType::WHILE; }
+
+    std::unique_ptr<Expression> condition_expr;
+    ScopeDecl body;
+};
+
+struct ForStmt : Statement
+{
+    ForStmt() { stmt_type = StatementType::FOR; }
+
+    std::unique_ptr<Statement> init_stmt;
+    std::unique_ptr<Expression> condition_expr;
+    std::unique_ptr<Expression> increment_expr;
+    ScopeDecl body;
+};
+
+struct BlockStmt : Statement
+{
+    BlockStmt() { stmt_type = StatementType::BLOCK; }
+
+    ScopeDecl block_decl;
+};
+
+// DECLARATIONS ================================================================
+
+enum class TypeKind
+{
+    INVALID, // Uninitialized Sentinel
+    NAMED,
+    PTR,
+    REF,
+    REF_MUT,
+    ARRAY,
+    FUNC_PTR
+};
+
+struct TypeDecl
+{
+    uint32_t line = 0;
+    uint32_t col = 0;
+    TypeKind kind = TypeKind::INVALID;
+
+    virtual ~TypeDecl() = default;
+};
+
+struct NamedTypeDecl : TypeDecl
+{
+    NamedTypeDecl() { kind = TypeKind::NAMED; }
+
+    std::string type_name;
+    
+    // Index into the symbol table of the resolved type.
+    std::optional<uint64_t> resolved_symbol_idx;
+};
+
+struct PtrTypeDecl : TypeDecl
+{
+    PtrTypeDecl() { kind = TypeKind::PTR; }
+
+    bool points_to_mutable = false;
+    std::unique_ptr<TypeDecl> pointee;
+};
+
+struct RefTypeDecl : TypeDecl
+{
+    RefTypeDecl() { kind = TypeKind::REF; }
+
+    std::unique_ptr<TypeDecl> referred;
+};
+
+struct RefMutTypeDecl : TypeDecl
+{
+    RefMutTypeDecl() { kind = TypeKind::REF_MUT; }
+
+    std::unique_ptr<TypeDecl> referred;
+};
+
+struct ArrTypeDecl : TypeDecl
+{
+    ArrTypeDecl() { kind = TypeKind::ARRAY; }
+
+    std::unique_ptr<TypeDecl> element_type;
+    std::unique_ptr<Expression> size_expr;
+};
+
+struct FuncPtrDecl : TypeDecl
+{
+    FuncPtrDecl() { kind = TypeKind::FUNC_PTR; }
+
+    std::unique_ptr<TypeDecl> return_type;
+    std::vector<std::unique_ptr<TypeDecl>> param_types;
+};
+struct FieldDecl
+{
+    uint32_t line = 0;
+    uint32_t col = 0;
+    std::string name;
+    bool is_binding_mutable = false;
+    bool is_pub = false;
+    std::unique_ptr<TypeDecl> type_decl;
 };
 
 struct ParameterDecl
 {
-    uint32_t line;
-    uint32_t col;
+    uint32_t line = 0;
+    uint32_t col = 0;
     std::string name;
-    bool binding_mutable;
-    TypeDecl type_decl;
+    bool is_binding_mutable = false;
+    std::unique_ptr<TypeDecl> type_decl;
+};
+
+// Data for the receiver parameter of a component receiver function
+struct ReceiverData
+{
+    std::unique_ptr<TypeDecl> receiver_type_decl;
+    std::string receiver_name;
 };
 
 struct FunctionDecl
 {
-    uint32_t line;
-    uint32_t col;
+    uint32_t line = 0;
+    uint32_t col = 0;
     std::string name;
+    std::unique_ptr<TypeDecl> ret_type;
+    std::vector<ParameterDecl> params;
     
-    TypeDecl ret_type_decl;
-
-    std::vector<ScopeDecl> scope_decls;
+    // Receiver component parameter, if this function is a receiver function.
+    std::optional<ReceiverData> receiver_data;
+    ScopeDecl body;
 };
-
 
 struct StructDecl
 {
-    uint32_t line;
-    uint32_t col;
+    uint32_t line = 0;
+    uint32_t col = 0;
     std::string name;
+    bool is_pub = false;
 
-    
+    std::vector<std::unique_ptr<StructDecl>> nested_structs;
+    std::vector<FieldDecl> fields;
+};
+
+struct ComponentDecl
+{
+    uint32_t line = 0;
+    uint32_t col = 0;
+    std::string name;
+    bool is_pub = false;
+
+    std::vector<std::unique_ptr<FunctionDecl>> function_decls;
+    std::vector<std::unique_ptr<StructDecl>> nested_structs;
+    std::vector<std::unique_ptr<ComponentDecl>> nested_comps;
+    std::vector<FieldDecl> fields;
 };
 
 struct NamespaceDecl
 {
-    uint32_t line;
-    uint32_t col;
+    uint32_t line = 0;
+    uint32_t col = 0;
     std::string name;
-    std::vector<NamespaceDecl> namespace_decls;
-    std::vector<StructDecl> structs_decls;
-    std::vector<FunctionDecl> function_decls;
+    std::vector<std::unique_ptr<NamespaceDecl>> namespace_decls;
+    std::vector<std::unique_ptr<StructDecl>> struct_decls;
+    std::vector<std::unique_ptr<FunctionDecl>> function_decls;
+    std::vector<std::unique_ptr<ComponentDecl>> component_decls;
 };
 

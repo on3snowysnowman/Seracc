@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++17 -Iinclude -MMD -MP
+CXXFLAGS = -Wall -Wextra -std=c++17 -Iinclude -MMD -MP -g
 
 SRC = Seracc.cpp $(wildcard src/*.cpp)
 OBJ = $(patsubst %.cpp, build/%.o, $(SRC))

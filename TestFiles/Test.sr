@@ -2,13 +2,15 @@
 
 namespace Serac
 {
-    type struct MyStruct
-    {
-        int x;
-        mut int y;
-        *mut int y_ptr;
-        mut * int x_ptr; 
-    }
+
+type struct MyStruct
+{
+    int x;
+    mut int y;
+    *mut int y_ptr;
+    mut * int x_ptr; 
+}
+
 }
 
 fn main() -> int

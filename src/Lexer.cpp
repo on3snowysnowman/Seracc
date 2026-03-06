@@ -132,7 +132,7 @@ void Lexer::parse_ident(Token &t)
 {
     char c = peek();
 
-    while((std::isalpha(c) || c == '_'))
+    while((std::isalnum(c) || c == '_'))
     {
         t.text.push_back(c);
         
