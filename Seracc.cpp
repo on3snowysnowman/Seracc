@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 
-// #include "LexerPrinter.hpp"
+#include "LexerPrinter.hpp"
 #include "ParserPrinter.hpp"
 
 
@@ -17,7 +17,9 @@ int main(int argc, char **argv)
     const char *in_file_path = argv[1];
     // const char *out_file_path = argv[2];
 
+    // print_lexer_output(in_file_path);
     print_parse_results(in_file_path);
+
 
     return EXIT_SUCCESS;
 }

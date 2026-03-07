@@ -1,3 +1,10 @@
 Namespace: global
-Line: 1
-Col: 1
+Line: 0
+Col: 0
+{
+   Function: main
+   Line: 4
+   Col: 1
+   {
+   }
+}

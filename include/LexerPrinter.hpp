@@ -12,12 +12,12 @@ static void print_lexer_output(const char *in_file)
     Lexer l;
     l.load(in_file);
 
-    Token t = l.next_token();
+    Token t;
 
     do
     {
-        std::cout << t << '\n';
         t = l.next_token();
+        std::cout << t << '\n';
     } while (t.id != TokenID::END_OF_FILE);
 
     l.close();

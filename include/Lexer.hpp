@@ -40,7 +40,9 @@ private:
 
     bool at_eof() const;
 
+    void print_error_location();
     void handle_invalid_char(char c);
+    void handle_unexpected_eof();
     
     void skip_till_newline();
 
@@ -49,10 +51,15 @@ private:
 
     void parse_ident(Token &t);
 
-    void parse_number(Token &t);
+    void parse_int_or_flt_literal(Token &t);
+    void parse_hex_literal(Token &t);
+    void parse_bin_literal(Token &t);
+    void parse_str_literal(Token &t);
+    void parse_char_literal(Token &t);
 
     void parse_non_ident_or_number(Token &t);
 
+    bool is_peek_within_range(uint32_t offset = 0) const;
     char peek(uint32_t offset = 0) const;
 
     char advance();

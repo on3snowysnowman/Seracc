@@ -12,7 +12,14 @@ enum class TokenID
 {
     END_OF_FILE,
     IDENTIFIER,
-    NUM_LITERAL,
+    INT_LITERAL,
+    FLOAT_LITERAL,
+    HEX_LITERAL,
+    BIN_LITERAL,
+    STR_LITERAL,
+    BOOL_LITERAL,
+    NULLPTR_LITERAL,
+    CHAR_LITERAL,
 
     // Keywords
     KW_FN,
@@ -31,6 +38,8 @@ enum class TokenID
     KW_FOR,
     KW_BREAK,
     KW_CONTINUE,
+    KW_EXPORT,
+    KW_LET,
 
     // Brackets
     LPAREN,
@@ -47,8 +56,10 @@ enum class TokenID
     COLON,
 
     // Special Characters
-    AMPERSAND,
+    EXCLAMATION_POINT,
     AT,
+    AMPERSAND,
+    TILDE,
 
     // Operators
     ARROW, // '->'
@@ -67,7 +78,14 @@ const char * const tokID_readable[]
 {
     "END_OF_FILE",
     "IDENTIFIER",
-    "NUM_LITERAL",
+    "INT_LITERAL",
+    "FLOAT_LITERAL",
+    "HEX_LITERAL",
+    "BIN_LITERAL",
+    "STR_LITERAL",
+    "BOOL_LITERAL",
+    "NULLPTR_LITERAL",
+    "CHAR_LITERAL",
 
     // Keywords
     "KW_FN",
@@ -86,6 +104,8 @@ const char * const tokID_readable[]
     "KW_FOR",
     "KW_BREAK",
     "KW_CONTINUE",
+    "KW_EXPORT",
+    "KW_LET",
 
     // Brackets
     "LPAREN",
@@ -102,8 +122,10 @@ const char * const tokID_readable[]
     "COLON",
 
     // Special Characters
-    "AMPERSAND",
+    "EXCLAMATION_POINT",
     "AT",
+    "AMPERSAND",
+    "TILDE",
 
     // Operators
     "ARROW", // '->'
@@ -135,7 +157,9 @@ const std::unordered_map<std::string, TokenID> rdbl_kw_to_id
     {"while", TokenID::KW_WHILE},
     {"for", TokenID::KW_FOR},
     {"break", TokenID::KW_BREAK},
-    {"continue", TokenID::KW_CONTINUE}
+    {"continue", TokenID::KW_CONTINUE},
+    {"export", TokenID::KW_EXPORT},
+    {"let", TokenID::KW_LET}
 };
 
 

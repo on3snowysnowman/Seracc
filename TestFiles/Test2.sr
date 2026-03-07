@@ -1,0 +1,49 @@
+
+
+namespace Serac
+{
+
+export fn exported_func(int z) -> void {}
+
+type struct MyStruct
+{
+    type struct Nested
+    {
+        int x;
+    }
+
+    int x;
+    mut int y;
+    *mut int y_ptr;
+    mut * int x_ptr; 
+
+    ref int g;
+    ref mut int h;
+    ref mut * fn(int z)->u64 ref_to_func_ptr;
+
+    int[3] int_arr;
+    int[4][3] int_arr2D;
+
+    * Nested[4] nested_arr;
+
+    * fn(int z)->u64[5] func_ptr_arr;
+
+    * fn(int z)->u64 func_ptr; // Immutable pointer -> function
+}
+
+}
+
+fn main() -> int
+{
+    Serac::MyStruct t;
+
+    t.func_ptr = &exported_func;
+    t.func_ptr(3); // Call exported_func with '3'
+
+    t.y = 3;
+
+    t.y_ptr = &t.y;
+    t.x_ptr = &t.x;
+
+    ret 0;
+}

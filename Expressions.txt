@@ -1,0 +1,72 @@
+PRIMARY EXPRESSIONS 
+- identifier
+- literal (int, float, binary, hex, string)            //
+- parenthesized expression                             // ?
+
+POSTFIX EXPRESSIONS
+- function call            -> foo(...)
+- array subscript          -> a[i]
+- member access            -> a.b
+- pointer member access    -> a->b
+- postfix increment        -> x++
+- postfix decrement        -> x--
+
+UNARY EXPRESSIONS
+- prefix increment         -> ++x                       // 
+- prefix decrement         -> --x                       //
+- unary minus              -> -x                        //
+- logical not              -> !x                        //
+- bitwise not              -> ~x                        //
+- address-of               -> &x                        //
+- dereference              -> *x                        //
+
+CAST EXPRESSIONS
+- type cast                -> (Type)x
+
+MULTIPLICATIVE EXPRESSIONS
+- multiplication           -> a * b
+- division                 -> a / b
+- modulus                  -> a % b
+
+ADDITIVE EXPRESSIONS
+- addition                 -> a + b
+- subtraction              -> a - b
+
+SHIFT EXPRESSIONS
+- left shift               -> a << b
+- right shift              -> a >> b
+
+RELATIONAL EXPRESSIONS
+- less than                -> a < b
+- greater than             -> a > b
+- less or equal            -> a <= b
+- greater or equal         -> a >= b
+
+EQUALITY EXPRESSIONS
+- equal                    -> a == b
+- not equal                -> a != b
+
+BITWISE EXPRESSIONS
+- bitwise AND              -> a & b
+- bitwise XOR              -> a ^ b
+- bitwise OR               -> a | b
+
+LOGICAL EXPRESSIONS
+- logical AND              -> a && b
+- logical OR               -> a || b
+
+TERNARY EXPRESSION
+- conditional              -> cond ? expr1 : expr2
+
+ASSIGNMENT EXPRESSIONS
+- assignment               -> a = b
+- add assign               -> a += b
+- sub assign               -> a -= b
+- mul assign               -> a *= b
+- div assign               -> a /= b
+- mod assign               -> a %= b
+- left shift assign        -> a <<= b
+- right shift assign       -> a >>= b
+- bitwise AND assign       -> a &= b
+- bitwise XOR assign       -> a ^= b
+- bitwise OR assign        -> a |= b

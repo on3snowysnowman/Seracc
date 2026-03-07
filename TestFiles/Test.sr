@@ -1,26 +1,7 @@
 
 
-namespace Serac
-{
-
-type struct MyStruct
-{
-    int x;
-    mut int y;
-    *mut int y_ptr;
-    mut * int x_ptr; 
-}
-
-}
 
 fn main() -> int
 {
-    Serac::MyStruct t;
-
-    t.y = 3;
-
-    t.y_ptr = &t.y;
-    t.x_ptr = &t.x;
-
-    ret 0;
+    let x : int;
 }

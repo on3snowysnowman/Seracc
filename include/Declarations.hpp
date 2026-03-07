@@ -24,7 +24,7 @@ enum class ExpressionType
     HEX_LITERAL,
     INT_LITERAL,
     FLOAT_LITERAL,
-    STRING_LITERAL,
+    STR_LITERAL,
     IDENTIFIER,
 
     UNARY,
@@ -45,8 +45,7 @@ enum class UnaryOp
     PRE_DEC,
     POST_INC,
     POST_DEC,
-    PLUS,
-    MINUS,
+    NEGATE,
     BIT_NOT,
     LOG_NOT,
     ADDRESS_OF,
@@ -128,7 +127,7 @@ struct FloatLitExpr : Expression
 
 struct StringLitExpr : Expression
 {
-    StringLitExpr() { exp_type = ExpressionType::STRING_LITERAL; }
+    StringLitExpr() { exp_type = ExpressionType::STR_LITERAL; }
     std::string value;
 };
 
@@ -274,7 +273,7 @@ struct RetStmt : Statement
     std::unique_ptr<Expression> ret_expr; // Should not be null, must have ret
 };
 
-struct ScopeDecl
+struct ScopeBody
 {
     uint32_t line = 0;
     uint32_t col = 0;
@@ -287,7 +286,7 @@ struct IfStmt : Statement
     IfStmt() { stmt_type = StatementType::IF; }
 
     std::unique_ptr<Expression> condition_expr;
-    ScopeDecl then_body;
+    ScopeBody then_body;
     std::unique_ptr<Statement> else_branch; // nullptr if none
 };
 
@@ -296,7 +295,7 @@ struct WhileStmt : Statement
     WhileStmt() { stmt_type = StatementType::WHILE; }
 
     std::unique_ptr<Expression> condition_expr;
-    ScopeDecl body;
+    ScopeBody body;
 };
 
 struct ForStmt : Statement
@@ -306,14 +305,14 @@ struct ForStmt : Statement
     std::unique_ptr<Statement> init_stmt;
     std::unique_ptr<Expression> condition_expr;
     std::unique_ptr<Expression> increment_expr;
-    ScopeDecl body;
+    ScopeBody body;
 };
 
 struct BlockStmt : Statement
 {
     BlockStmt() { stmt_type = StatementType::BLOCK; }
 
-    ScopeDecl block_decl;
+    ScopeBody block_decl;
 };
 
 // DECLARATIONS ================================================================
@@ -324,7 +323,6 @@ enum class TypeKind
     NAMED,
     PTR,
     REF,
-    REF_MUT,
     ARRAY,
     FUNC_PTR
 };
@@ -360,13 +358,7 @@ struct RefTypeDecl : TypeDecl
 {
     RefTypeDecl() { kind = TypeKind::REF; }
 
-    std::unique_ptr<TypeDecl> referred;
-};
-
-struct RefMutTypeDecl : TypeDecl
-{
-    RefMutTypeDecl() { kind = TypeKind::REF_MUT; }
-
+    bool ref_to_mutable = false;
     std::unique_ptr<TypeDecl> referred;
 };
 
@@ -374,33 +366,56 @@ struct ArrTypeDecl : TypeDecl
 {
     ArrTypeDecl() { kind = TypeKind::ARRAY; }
 
+    uint8_t depth = 1;
+
     std::unique_ptr<TypeDecl> element_type;
-    std::unique_ptr<Expression> size_expr;
+    std::vector<std::unique_ptr<Expression>> size_exprs;
+};
+
+struct Parameter
+{
+    uint32_t line = 0;
+    uint32_t col = 0;
+    std::string name;
+    bool is_unqual_param = false;
+    bool is_binding_mutable = false;
+    std::unique_ptr<TypeDecl> type_decl;
 };
 
 struct FuncPtrDecl : TypeDecl
 {
     FuncPtrDecl() { kind = TypeKind::FUNC_PTR; }
 
-    std::unique_ptr<TypeDecl> return_type;
-    std::vector<std::unique_ptr<TypeDecl>> param_types;
-};
-struct FieldDecl
-{
-    uint32_t line = 0;
-    uint32_t col = 0;
-    std::string name;
-    bool is_binding_mutable = false;
-    bool is_pub = false;
-    std::unique_ptr<TypeDecl> type_decl;
+    std::unique_ptr<TypeDecl> ret_type;
+    std::vector<Parameter> param_types;
 };
 
-struct ParameterDecl
+enum class DeclKind
+{
+    INVALID,
+    FIELD,
+    NAMESPACE,
+    STRUCT,
+    FUNCTION,
+    COMPONENT
+};
+
+struct Declaration
 {
     uint32_t line = 0;
     uint32_t col = 0;
+    DeclKind kind = DeclKind::INVALID;
     std::string name;
+
+    virtual ~Declaration() = default;
+};
+
+struct FieldDecl : Declaration
+{
+    FieldDecl() { kind = DeclKind::FIELD; }
+
     bool is_binding_mutable = false;
+    bool is_pub = false;
     std::unique_ptr<TypeDecl> type_decl;
 };
 
@@ -411,51 +426,43 @@ struct ReceiverData
     std::string receiver_name;
 };
 
-struct FunctionDecl
+
+struct FunctionDecl : Declaration
 {
-    uint32_t line = 0;
-    uint32_t col = 0;
-    std::string name;
+    FunctionDecl() { kind = DeclKind::FUNCTION; }
+
+    bool is_pub = false;
+
     std::unique_ptr<TypeDecl> ret_type;
-    std::vector<ParameterDecl> params;
+    std::vector<Parameter> params;
     
     // Receiver component parameter, if this function is a receiver function.
     std::optional<ReceiverData> receiver_data;
-    ScopeDecl body;
+    ScopeBody body;
 };
 
-struct StructDecl
+struct StructDecl : Declaration
 {
-    uint32_t line = 0;
-    uint32_t col = 0;
-    std::string name;
+    StructDecl() { kind = DeclKind::STRUCT; }
+
     bool is_pub = false;
 
-    std::vector<std::unique_ptr<StructDecl>> nested_structs;
-    std::vector<FieldDecl> fields;
+    std::vector<std::unique_ptr<Declaration>> decls;
 };
 
-struct ComponentDecl
+struct ComponentDecl : Declaration
 {
-    uint32_t line = 0;
-    uint32_t col = 0;
-    std::string name;
+    ComponentDecl() { kind = DeclKind::COMPONENT; }
+
     bool is_pub = false;
 
-    std::vector<std::unique_ptr<FunctionDecl>> function_decls;
-    std::vector<std::unique_ptr<StructDecl>> nested_structs;
-    std::vector<std::unique_ptr<ComponentDecl>> nested_comps;
-    std::vector<FieldDecl> fields;
+    std::vector<std::unique_ptr<Declaration>> decls;
 };
 
-struct NamespaceDecl
+struct NamespaceDecl : Declaration
 {
-    uint32_t line = 0;
-    uint32_t col = 0;
-    std::string name;
-    std::vector<std::unique_ptr<NamespaceDecl>> namespace_decls;
-    std::vector<std::unique_ptr<StructDecl>> struct_decls;
-    std::vector<std::unique_ptr<FunctionDecl>> function_decls;
-    std::vector<std::unique_ptr<ComponentDecl>> component_decls;
+    NamespaceDecl() { kind = DeclKind::NAMESPACE; }
+
+    std::vector<std::unique_ptr<Declaration>> decls;
 };
 
