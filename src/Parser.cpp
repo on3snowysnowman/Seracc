@@ -384,6 +384,7 @@ std::unique_ptr<Expression> Parser::parse_expression()
     else if(check(TokenID::IDENTIFIER))
     {
         // Could be many operations, or just a identifier expression.
+        
     }
 
     // Prefix increment. Unary + is not supported.

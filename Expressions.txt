@@ -4,8 +4,8 @@ PRIMARY EXPRESSIONS
 - parenthesized expression                             // ?
 
 POSTFIX EXPRESSIONS
-- function call            -> foo(...)
-- array subscript          -> a[i]
+- function call            -> foo(...)                 
+- array subscript          -> a[i] 
 - member access            -> a.b
 - pointer member access    -> a->b
 - postfix increment        -> x++

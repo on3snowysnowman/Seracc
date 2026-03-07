@@ -7,7 +7,6 @@
 #include "Lexer.hpp"
 
 static void print_lexer_output(const char *in_file)
-
 {
     Lexer l;
     l.load(in_file);

@@ -1,10 +1,51 @@
 Namespace: global
 Line: 0
 Col: 0
+Declarations:
 {
    Function: main
    Line: 4
-   Col: 1
+   Col: 8
+   Public: 1
+   Return type:
    {
+      Line: 4
+      Col: 21
+      Type Kind: NAMED
+      Name: int
+   }
+   Body:
+   {
+      Line: 5
+      Col: 1
+      Statements:
+      {
+         Variable Declaration:
+         Name: x
+         Line: 6
+         Col: 5
+         Binding Mutable: 1
+         Type:
+         {
+            Line: 6
+            Col: 17
+            Type Kind: NAMED
+            Name: int
+         }
+
+         Variable Declaration:
+         Name: y
+         Line: 7
+         Col: 5
+         Binding Mutable: 0
+         Type:
+         {
+            Line: 7
+            Col: 13
+            Type Kind: NAMED
+            Name: float
+         }
+
+      }
    }
 }
