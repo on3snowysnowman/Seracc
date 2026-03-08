@@ -1,8 +1,22 @@
 
 
 
+type struct MyStruct {}
+
+
 export fn main() -> int
 {
     let mut x : int;
     let y : float;
+    let s : MyStruct;
+
+    (MyStruct)(x);
+
+    (* *mut MyStruct)(y);
+    (*(ptr++));
+    (*ptr)
+    (**double_ptr)
+
+    (++x);
+    (a + b);
 }

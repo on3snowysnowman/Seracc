@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "Token.hpp"
 
@@ -14,11 +15,11 @@ public:
     Lexer();
 
     // Loads the buffer of the Lexer from the in_file
-    void load(const char *in_file_path);
+    // void load(const char *in_file_path);
 
-    void close();
+    // void close();
 
-    Token next_token();
+    std::vector<Token> lex(const char *in_file_path);
 
 private:
 
@@ -63,5 +64,7 @@ private:
     char peek(uint32_t offset = 0) const;
 
     char advance();
+
+    Token next_token();
 };
 

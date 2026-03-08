@@ -14,7 +14,40 @@ Lexer::Lexer() {}
 
 // Public
 
-void Lexer::load(const char *in_file_path)
+// void Lexer::load(const char *in_file_path)
+// {
+//     std::ifstream in_file(in_file_path);
+
+//     if(!in_file)
+//     {
+//         std::cerr << "Failed to open input file: " << in_file_path << '\n';
+//         exit(1);
+//     }
+
+//     std::ostringstream buffer;
+
+//     buffer << in_file.rdbuf();
+
+//     source = buffer.str();
+
+//     in_file.close();
+
+//     current_idx = 0;
+//     current_line = 1;
+//     current_col = 1;
+//     file_being_parsed = in_file_path;
+// }
+
+// void Lexer::close()
+// {
+//     source.clear();
+//     current_idx = 0;
+//     current_line = 1;
+//     current_col = 1;
+//     file_being_parsed = nullptr;
+// }
+
+std::vector<Token> Lexer::lex(const char *in_file_path)
 {
     std::ifstream in_file(in_file_path);
 
@@ -23,7 +56,6 @@ void Lexer::load(const char *in_file_path)
         std::cerr << "Failed to open input file: " << in_file_path << '\n';
         exit(1);
     }
-
 
     std::ostringstream buffer;
 
@@ -37,97 +69,14 @@ void Lexer::load(const char *in_file_path)
     current_line = 1;
     current_col = 1;
     file_being_parsed = in_file_path;
-}
 
-void Lexer::close()
-{
-    source.clear();
-    current_idx = 0;
-    current_line = 1;
-    current_col = 1;
-    file_being_parsed = nullptr;
-}
-
-Token Lexer::next_token() 
-{
-    skip_trivia();
-
-    Token t;
-    t.line = current_line;
-    t.col = current_col;
-
-    if(at_eof())
+    std::vector<Token> tokens;
+    do
     {
-        t.id = TokenID::END_OF_FILE;
+        tokens.push_back(next_token());
+    } while (tokens.back().id != TokenID::END_OF_FILE);
 
-        return t;
-    }
-
-    char c = peek();
-
-    // Identifier
-    if(std::isalpha(c) || c == '_')
-    {
-        parse_ident(t);
-        return t;
-    }
-
-    // Could be int, float, hex or bin literal
-    if(std::isdigit(c))
-    {       
-        if(c == '0' && !at_eof())
-        {
-            t.text.push_back(c);
-            advance();
-            handle_unexpected_eof();
-            c = peek();
-
-            // Hex literal
-            if(c == 'x')
-            {
-                t.text.push_back(c);
-                advance(); // Consume 'x'
-                handle_unexpected_eof();
-                parse_hex_literal(t);
-                return t;
-            }
-
-            // Binary literal
-            else if(c == 'b')
-            {
-                t.text.push_back(c);
-                advance(); // Consume 'b'
-                handle_unexpected_eof();
-                parse_bin_literal(t);
-                return t;
-            }
-        }
-
-        parse_int_or_flt_literal(t);
-        return t;
-    }
-
-    // String literal
-    if(c == '"')
-    {
-        advance(); // Consume " 
-        handle_unexpected_eof();
-        parse_str_literal(t);
-        return t;
-    }
-
-    // Char literal
-    if(c == '\'')
-    {
-        advance(); // Consume '
-        handle_unexpected_eof();
-        parse_char_literal(t);
-        return t;
-    }
-
-    parse_non_ident_or_number(t);
-
-    return t; 
+    return tokens;
 }
 
 
@@ -227,7 +176,6 @@ void Lexer::parse_ident(Token &t)
         t.id = TokenID::IDENTIFIER;
     }
 }
-
 
 void Lexer::parse_int_or_flt_literal(Token &t)
 {
@@ -560,3 +508,86 @@ char Lexer::advance()
 
     return source.at(current_idx++);
 }
+
+Token Lexer::next_token() 
+{
+    skip_trivia();
+
+    Token t;
+    t.line = current_line;
+    t.col = current_col;
+
+    if(at_eof())
+    {
+        t.id = TokenID::END_OF_FILE;
+
+        return t;
+    }
+
+    char c = peek();
+
+    // Identifier
+    if(std::isalpha(c) || c == '_')
+    {
+        parse_ident(t);
+        return t;
+    }
+
+    // Could be int, float, hex or bin literal
+    if(std::isdigit(c))
+    {       
+        if(c == '0' && !at_eof())
+        {
+            t.text.push_back(c);
+            advance();
+            handle_unexpected_eof();
+            c = peek();
+
+            // Hex literal
+            if(c == 'x')
+            {
+                t.text.push_back(c);
+                advance(); // Consume 'x'
+                handle_unexpected_eof();
+                parse_hex_literal(t);
+                return t;
+            }
+
+            // Binary literal
+            else if(c == 'b')
+            {
+                t.text.push_back(c);
+                advance(); // Consume 'b'
+                handle_unexpected_eof();
+                parse_bin_literal(t);
+                return t;
+            }
+        }
+
+        parse_int_or_flt_literal(t);
+        return t;
+    }
+
+    // String literal
+    if(c == '"')
+    {
+        advance(); // Consume " 
+        handle_unexpected_eof();
+        parse_str_literal(t);
+        return t;
+    }
+
+    // Char literal
+    if(c == '\'')
+    {
+        advance(); // Consume '
+        handle_unexpected_eof();
+        parse_char_literal(t);
+        return t;
+    }
+
+    parse_non_ident_or_number(t);
+
+    return t; 
+}
+

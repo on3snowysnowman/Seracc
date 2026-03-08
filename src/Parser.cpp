@@ -33,7 +33,11 @@ void Parser::handle_unexpected_token(const Token &got_tok)
 
 Program Parser::parse(const char *in_file_path) 
 {
-    lexer.load(in_file_path);
+    Lexer l;
+
+    tokens = l.lex(in_file_path);
+
+    // lexer.load(in_file_path);
 
     Program prog;
     prog.source_file_name = in_file_path;
@@ -56,7 +60,7 @@ Program Parser::parse(const char *in_file_path)
 
     // prog.ast = std::move(parse_top_level());
 
-    lexer.close();
+    // lexer.close();
     parsed_file = nullptr;
 
     return prog;
@@ -180,8 +184,26 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
     ptr->col = peek().col;
 
     expect(TokenID::KW_STRUCT);
-
+    
     ptr->name = expect(TokenID::IDENTIFIER).text;
+
+    const auto it = defined_types.find(ptr->name);
+
+    // This struct has been defined already been defined
+    if(it != defined_types.end())
+    {
+        print_error_location(ptr->line, ptr->col);
+        std::cerr << ": Type \"" << ptr->name << "\" has already been defined "
+            "here: " << it->second.file_defined << ":" << it->second.line << 
+            ":" << it->second.col << '\n';
+        exit(1);
+    }
+
+    else
+    {
+        std::cerr << "Defined type: " << ptr->name << '\n';
+        defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
+    }
 
     expect(TokenID::LBRACE);
 
@@ -198,6 +220,8 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
         // Parsing a field
         ptr->decls.push_back(parse_field(true));
     }
+
+    expect(TokenID::RBRACE);
 
     return ptr;
 }
@@ -322,6 +346,61 @@ std::unique_ptr<Statement> Parser::parse_statement()
     ptr->col = start_col;
 
     return ptr;
+}
+
+std::unique_ptr<Expression> Parser::parse_asterisk_expression()
+{
+    // Expression could be deref or a type identifier.
+    std::unique_ptr<Expression> ptr = nullptr; 
+
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
+    // Token starts on the asterisk.
+
+    // Save this token position so we can return back.
+    uint64_t saved_token_idx = current_token_idx;
+
+    expect(TokenID::ASTERISK);
+    
+    // If there is a parenthesis right after the asterisk, it must be a deref.
+    if(consume_if(TokenID::LPAREN))
+    {
+        ptr = std::make_unique<UnaryExpr>();
+        ptr->exp_type = ExpressionType::UNARY;
+
+        UnaryExpr * const reint_ptr = reinterpret_cast<UnaryExpr*>(ptr.get());
+
+        reint_ptr->op_type = UnaryOp::DEREF;
+
+        // Get the expression inside the parenthesis that is being dereferenced.
+        reint_ptr->operand = parse_expression();
+        expect(TokenID::RBRACE);
+
+        ptr->line = start_line;
+        ptr->col = start_col;
+        return ptr;
+    }
+
+    // There is no parenthesis right after the asterisk, so we're either dealing
+    // a type declaration which would be a cast or derefencing a variable.
+
+    
+}
+
+std::unique_ptr<Expression> Parser::parse_parenth_expression()
+{
+    // Save the index of the current token so we can return here after deducing
+    // what the expression inside the parenthesis is.
+    uint64_t saved_token_idx = current_token_idx;
+
+    // Parse the expression inside the parenthesis
+    std::unique_ptr<Expression> got_expression = parse_expression();
+
+    if(got_expression->exp_type == ExpressionType::IDENTIFIER)
+    {
+        // Check if the identifier is 
+    }
 }
 
 std::unique_ptr<Expression> Parser::parse_expression() 
@@ -462,23 +541,25 @@ std::unique_ptr<Expression> Parser::parse_expression()
         reint_ptr->operand = parse_expression();
     }
 
+    // Could be deref or a type identifier 
     else if(consume_if(TokenID::ASTERISK))
     {
-        ptr = std::make_unique<UnaryExpr>();
-        ptr->exp_type = ExpressionType::UNARY;
+        ptr = parse_asterisk_expression();
 
-        UnaryExpr *reint_ptr = reinterpret_cast<UnaryExpr*>(ptr.get());
+        // ptr = std::make_unique<UnaryExpr>();
+        // ptr->exp_type = ExpressionType::UNARY;
 
-        reint_ptr->op_type = UnaryOp::DEREF;
-        reint_ptr->operand = parse_expression();
+        // UnaryExpr *reint_ptr = reinterpret_cast<UnaryExpr*>(ptr.get());
+
+        // reint_ptr->op_type = UnaryOp::DEREF;
+        // reint_ptr->operand = parse_expression();
     }
 
     // Parenthesized expression
     else if(consume_if(TokenID::LPAREN))
     { 
-        ptr = parse_expression();
-        expect(TokenID::RPAREN);
-    }
+        ptr = parse_parenth_expression();
+    }   
 
     else
     {
@@ -508,7 +589,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl()
         ptr->kind = TypeKind::NAMED;
         NamedTypeDecl *reint_ptr = reinterpret_cast<NamedTypeDecl*>(ptr.get());
 
-        reint_ptr->type_name = expect(TokenID::IDENTIFIER).text;
+        reint_ptr->type_name = expect(TokenID::IDENTIFIER).text;        
     }
 
     // Pointer 
@@ -696,13 +777,19 @@ Token Parser::expect(TokenID id)
 
 const Token& Parser::peek() const
 {
-    return current_token;
+    return tokens.at(current_token_idx);
 }
 
 Token Parser::advance() 
 {
-    Token tok = current_token;
+    Token tok = peek();
 
-    current_token = lexer.next_token();
+    // current_token = lexer.next_token();
+    ++current_token_idx;
     return tok;
+}
+
+void Parser::rewind(uint64_t token_idx)
+{
+    current_token_idx = token_idx;
 }

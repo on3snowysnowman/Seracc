@@ -52,14 +52,41 @@ static void print_type_decl(const TypeDecl * const ptr,
             break;
 
         case TypeKind::PTR:
+        {
+            const PtrTypeDecl * const reint_ptr = 
+                reinterpret_cast<const PtrTypeDecl*>(ptr);
 
-            std::cout << "PTR\n";
+            std::cout << "PTR";
+            handle_newline(tab_depth);
+            std::cout << "Points to mutable: " << reint_ptr->points_to_mutable;
+            handle_newline(tab_depth);
+            std::cout << "Pointed to type: ";
+            handle_newline(tab_depth);
+            std::cout << "{\n";
+            print_type_decl(reint_ptr->pointee.get(), tab_depth + 1);
+            handle_tab_print(tab_depth);
+            std::cout << "}\n";
             break;
+        }
         
         case TypeKind::REF:
+        {
+            const RefTypeDecl * const reint_ptr = 
+                reinterpret_cast<const RefTypeDecl*>(ptr);
 
-            std::cout << "REF\n";
+            std::cout << "REF";
+            handle_newline(tab_depth);
+            std::cout << "Reference to mutable: " << 
+                reint_ptr->ref_to_mutable;
+            handle_newline(tab_depth);
+            std::cout << "Referenced to type: ";
+            handle_newline(tab_depth);
+            std::cout << "{\n";
+            print_type_decl(reint_ptr->referred.get(), tab_depth + 1);
+            handle_tab_print(tab_depth);
+            std::cout << "}\n";
             break;
+        }
 
         case TypeKind::ARRAY:
 
@@ -106,6 +133,14 @@ static void print_struct(const StructDecl * const ptr,
     std::cout << "Line: " << ptr->line;
     handle_newline(tab_depth);
     std::cout << "Col: " << ptr->col;
+    
+    
+    if(ptr->decls.size() == 0)
+    {
+        std::cout << '\n';
+        return;
+    }
+    
     handle_newline(tab_depth);
     std::cout << "{";
     handle_newline(tab_depth);
@@ -379,6 +414,7 @@ static void print_namespace(const NamespaceDecl * const ptr,
                 std::cerr << "Invalid declaration type\n";
                 exit(1);
         }
+        std::cout << "\n";
     }
 
     std::cout << "}\n";

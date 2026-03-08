@@ -163,14 +163,13 @@ const std::unordered_map<std::string, TokenID> rdbl_kw_to_id
 };
 
 
-
-
 struct Token
 {
     TokenID id;
     uint32_t line;
     uint32_t col;
-    std::string text;
+    std::string text; 
+    // std::string_view test_view;
 };
 
 static inline std::ostream& operator<<(std::ostream &out, const Token &tok)
