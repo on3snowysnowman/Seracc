@@ -31,9 +31,9 @@ enum class ExpressionType
     BINARY,
     TERNARY,
     ASSIGN,
-    CAST,
 
     CALL,
+    CAST,
     SUBSCRIPT,
     MEMBER_ACCESS
 };
@@ -177,7 +177,7 @@ struct CastExpr : Expression
     CastExpr() { exp_type = ExpressionType::CAST; }
 
     std::unique_ptr<TypeDecl> to_cast_type;
-    std::unique_ptr<Expression> obj_to_cast;
+    std::unique_ptr<Expression> expr_to_cast;
 };
 
 struct CallExpr : Expression

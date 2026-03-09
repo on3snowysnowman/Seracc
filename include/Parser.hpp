@@ -68,9 +68,11 @@ private:
     std::unique_ptr<StructDecl> parse_struct(bool is_pub);
     std::unique_ptr<ComponentDecl> parse_component(bool is_pub);
     std::unique_ptr<Statement> parse_statement();
-    std::unique_ptr<Expression> parse_asterisk_expression();
-    std::unique_ptr<Expression> parse_parenth_expression();
     std::unique_ptr<Expression> parse_expression();
+    std::unique_ptr<Expression> parse_assignment();
+    std::unique_ptr<Expression> parse_log_or();
+
+
     std::unique_ptr<TypeDecl> parse_type_decl();
     std::unique_ptr<FieldDecl> parse_field(bool is_pub);
     ScopeBody parse_scope();

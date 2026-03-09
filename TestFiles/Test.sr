@@ -10,13 +10,15 @@ export fn main() -> int
     let y : float;
     let s : MyStruct;
 
-    (MyStruct)(x);
+    // (MyStruct)(x);
 
-    (* *mut MyStruct)(y);
-    (*(ptr++));
-    (*ptr)
-    (**double_ptr)
+    (* *mut MyStruct);
+    // (*(ptr++));
+    // (*ptr)
+    // (**double_ptr)
 
-    (++x);
-    (a + b);
+    // (++x);
+    // (a + b);
+
+    (mut int)(*some_ptr);
 }
