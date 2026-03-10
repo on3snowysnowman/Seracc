@@ -131,7 +131,7 @@ std::unique_ptr<NamespaceDecl> Parser::parse_namespace()
             std::cerr << parsed_file << ": Reached end of file expecting '}' "
                 "for namespace: \"" << ptr->name << "\" found here: ";
                 print_error_location(ptr->line, ptr->col);
-                std::cout << '\n';
+                std::cerr << '\n';
             exit(1);
         }
 
@@ -165,7 +165,7 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
         if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
         {
             print_error_location(peek().line, peek().col);
-            std::cout << ": Trailing comma in parameter list\n";
+            std::cerr << ": Trailing comma in parameter list\n";
             exit(1);
         }
     }
@@ -196,7 +196,7 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
 
     const auto it = defined_types.find(ptr->name);
 
-    // This struct has been defined already been defined
+    // This struct has already been defined
     if(it != defined_types.end())
     {
         print_error_location(ptr->line, ptr->col);
@@ -206,11 +206,8 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
         exit(1);
     }
 
-    else
-    {
-        std::cerr << "Defined type: " << ptr->name << '\n';
-        defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
-    }
+    // Otherwise, register this struct type as defined.
+    else defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
 
     expect(TokenID::LBRACE);
 
@@ -235,6 +232,7 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
 
 std::unique_ptr<ComponentDecl> Parser::parse_component(bool is_pub) 
 {
+    (void)is_pub;
     std::cerr << "Parse component not implemented\n";
     exit(1);
 }
@@ -342,11 +340,6 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
     else
     {
-        // print_error_location(peek().line, peek().col);
-        // std::cerr << ": Expecting statement but got token: \n" << 
-        //     peek() << '\n';
-        // exit(1);
-
         // Anything else we assume is an expression and attempt to parse it.
         ptr = std::make_unique<ExprStmt>();
 
@@ -354,6 +347,7 @@ std::unique_ptr<Statement> Parser::parse_statement()
             static_cast<ExprStmt*>(ptr.get());
 
         reint_ptr->expr = parse_expression();
+        expect(TokenID::SEMICOLON);
     }
 
     ptr->line = start_line;
@@ -364,161 +358,428 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
 std::unique_ptr<Expression> Parser::parse_expression()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    return parse_assignment();
 }
 
 std::unique_ptr<Expression> Parser::parse_assignment()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    std::unique_ptr<Expression> left = parse_log_or();
+
+    AssignOp op = AssignOp::INVALID;
+
+    if(consume_if(TokenID::ASSIGN)) op = AssignOp::ASSIGN;
+    else if(consume_if(TokenID::PLUS_ASSIGN)) op = AssignOp::ADD_ASSIGN;
+    else if(consume_if(TokenID::MINUS_ASSIGN)) op = AssignOp::SUB_ASSIGN;
+    else if(consume_if(TokenID::ASTERISK_ASSIGN)) op = AssignOp::MUL_ASSIGN;
+    else if(consume_if(TokenID::FORW_SLASH_ASSIGN)) op = AssignOp::DIV_ASSIGN;
+    else if(consume_if(TokenID::MODULO_ASSIGN)) op = AssignOp::MOD_ASSIGN;
+    else return left;
+
+    auto full_expr = std::make_unique<AssignExpr>();
+
+    full_expr->line = left->line;
+    full_expr->col = left->col;
+    full_expr->op_type = op;
+    
+    full_expr->lhs = std::move(left);
+
+    // Parse RHS using log_or. We don't support chained assignments.
+    full_expr->rhs = parse_log_or();
+
+    return full_expr;
 }
 
 std::unique_ptr<Expression> Parser::parse_log_or()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    std::unique_ptr<Expression> left = parse_log_and();
+
+    while(true)
+    {
+        if(!consume_if(TokenID::LOGIC_OR)) break;
+
+        auto full_expr = std::make_unique<BinaryExpr>();
+
+        full_expr->line = left->line;
+        full_expr->col = left->col;
+        full_expr->op_type = BinaryOp::LOG_OR;
+        full_expr->lhs = std::move(left);
+        full_expr->rhs = parse_log_and();
+
+        left = std::move(full_expr);
+    }
+
+    return left;
 }
 
 std::unique_ptr<Expression> Parser::parse_log_and()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    std::unique_ptr<Expression> left = parse_equality();
+
+    while(true)
+    {
+        if(!consume_if(TokenID::LOGIC_AND)) break;
+
+        auto full_expr = std::make_unique<BinaryExpr>();
+
+        full_expr->line = left->line;
+        full_expr->col = left->col;
+        full_expr->op_type = BinaryOp::LOG_AND;
+        full_expr->lhs = std::move(left);
+        full_expr->rhs = parse_equality();
+
+        left = std::move(full_expr);
+    }
+
+    return left;
 }
 
 std::unique_ptr<Expression> Parser::parse_equality()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    std::unique_ptr<Expression> left = parse_relational();
+
+    while(true)
+    {
+        BinaryOp op = BinaryOp::INVALID;
+
+        if(consume_if(TokenID::EQUAL_EQUAL)) op = BinaryOp::EQ;
+        else if(consume_if(TokenID::NOT_EQUAL)) op = BinaryOp::NE;
+        else break;
+
+        auto full_expr = std::make_unique<BinaryExpr>();
+
+        full_expr->line = left->line;
+        full_expr->col = left->col;
+        full_expr->op_type = op;
+        full_expr->lhs = std::move(left);
+        full_expr->rhs = parse_relational();
+
+        left = std::move(full_expr);
+    }
+
+    return left;
 }
 
 std::unique_ptr<Expression> Parser::parse_relational()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    std::unique_ptr<Expression> left = parse_additive();
+
+    while(true)
+    {
+        BinaryOp op = BinaryOp::INVALID;
+
+        if(consume_if(TokenID::LESS_THAN)) op = BinaryOp::LT;
+        else if(consume_if(TokenID::GREATER_THAN)) op = BinaryOp::GT;
+        else if(consume_if(TokenID::LESS_EQUAL)) op = BinaryOp::LE;
+        else if(consume_if(TokenID::GREATER_EQUAL)) op = BinaryOp::GE;
+        else break;
+
+        auto full_expr = std::make_unique<BinaryExpr>();
+
+        full_expr->line = left->line;
+        full_expr->col = left->col;
+        full_expr->op_type = op;
+        full_expr->lhs = std::move(left);
+        full_expr->rhs = parse_additive();
+
+        left = std::move(full_expr);
+    }
+
+    return left;
 }
 
 std::unique_ptr<Expression> Parser::parse_additive()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    std::unique_ptr<Expression> left = parse_multiplicative();
+
+    while(true)
+    {
+        BinaryOp op = BinaryOp::INVALID;
+
+        if(consume_if(TokenID::PLUS)) op = BinaryOp::ADD;
+        else if(consume_if(TokenID::MINUS)) op = BinaryOp::SUB;
+        else break; // Did not find a proper operator, we're done.
+        
+        auto full_expr = std::make_unique<BinaryExpr>();
+
+        full_expr->line = left->line;
+        full_expr->col = left->col;
+        full_expr->op_type = op;
+        full_expr->lhs = std::move(left);
+        full_expr->rhs = parse_multiplicative();
+        left = std::move(full_expr);
+    }
+
+    return left;   
 }
 
 std::unique_ptr<Expression> Parser::parse_multiplicative()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    std::unique_ptr<Expression> left = parse_unary();
+
+    while(true)
+    {
+        BinaryOp op = BinaryOp::INVALID;
+
+        if(consume_if(TokenID::ASTERISK)) op = BinaryOp::MUL;
+        else if(consume_if(TokenID::FORW_SLASH)) op = BinaryOp::DIV;
+        else if(consume_if(TokenID::MODULO)) op = BinaryOp::MOD;
+        else break; // Did not find a proper operator, we're done.
+        
+        auto full_expr = std::make_unique<BinaryExpr>();
+
+        full_expr->line = left->line;
+        full_expr->col = left->col;
+        full_expr->op_type = op;
+        full_expr->lhs = std::move(left);
+        full_expr->rhs = parse_unary();
+        left = std::move(full_expr);
+    }
+
+    return left;
 }
 
 std::unique_ptr<Expression> Parser::parse_unary()
 {
-    std::cerr << "This parse not implemented\n";
-    exit(1);    
+    if(check(TokenID::PLUS_PLUS))
+    {   
+        Token t = expect(TokenID::PLUS_PLUS);
+
+        auto ptr = std::make_unique<UnaryExpr>();
+        
+        ptr->op_type = UnaryOp::PRE_INC;
+        ptr->operand = parse_unary();
+        ptr->line = t.line;
+        ptr->col = t.col;
+        return ptr;
+    }
+
+    else if(check(TokenID::MINUS_MINUS))
+    {
+        Token t = expect(TokenID::MINUS_MINUS);
+
+        auto ptr = std::make_unique<UnaryExpr>();
+        
+        ptr->op_type = UnaryOp::PRE_DEC;
+        ptr->operand = parse_unary();
+        ptr->line = t.line;
+        ptr->col = t.col;
+        return ptr;
+    }
+
+    else if(check(TokenID::MINUS))
+    {
+        Token t = expect(TokenID::MINUS);
+
+        auto ptr = std::make_unique<UnaryExpr>();
+        
+        ptr->op_type = UnaryOp::NEGATE;
+        ptr->operand = parse_unary();
+        ptr->line = t.line;
+        ptr->col = t.col;
+        return ptr;
+    }
+
+    else if(check(TokenID::EXCLAMATION_POINT))
+    {
+        Token t = expect(TokenID::EXCLAMATION_POINT);
+
+        auto ptr = std::make_unique<UnaryExpr>();
+        
+        ptr->op_type = UnaryOp::LOG_NOT;
+        ptr->operand = parse_unary();
+        ptr->line = t.line;
+        ptr->col = t.col;
+        return ptr;
+    }
+
+    else if(check(TokenID::TILDE))
+    {
+        Token t = expect(TokenID::TILDE);
+
+        auto ptr = std::make_unique<UnaryExpr>();
+        
+        ptr->op_type = UnaryOp::BIT_NOT;
+        ptr->operand = parse_unary();
+        ptr->line = t.line;
+        ptr->col = t.col;
+        return ptr;
+    }
+
+    else if(check(TokenID::AMPERSAND))
+    {
+        Token t = expect(TokenID::AMPERSAND);
+
+        auto ptr = std::make_unique<UnaryExpr>();
+        
+        ptr->op_type = UnaryOp::ADDRESS_OF;
+        ptr->operand = parse_unary();
+        ptr->line = t.line;
+        ptr->col = t.col;
+        return ptr;
+    }
+
+    else if(check(TokenID::ASTERISK))
+    {
+        Token t = expect(TokenID::ASTERISK);
+
+        auto ptr = std::make_unique<UnaryExpr>();
+        
+        ptr->op_type = UnaryOp::DEREF;
+        ptr->operand = parse_unary();
+        ptr->line = t.line;
+        ptr->col = t.col;
+        return ptr;
+    }
+
+    else if(check(TokenID::LPAREN))
+    {
+        Token t = expect(TokenID::LPAREN);
+
+        uint64_t saved_tok_idx = current_token_idx;
+
+        // Attempt to parse a type with error on failure as false. 
+        auto type_ptr = parse_type_decl(false);
+
+        // If the ptr was not returned as nullptr, we have successfully parsed
+        // a type, and this is a cast
+        if(type_ptr != nullptr) 
+        {
+            auto expr_ptr = std::make_unique<CastExpr>();
+
+            expr_ptr->to_cast_type = std::move(type_ptr); 
+            expr_ptr->line = t.line;
+            expr_ptr->col = t.col;
+            expect(TokenID::RPAREN);
+            expr_ptr->expr_to_cast = parse_unary();
+            return expr_ptr;
+        }
+
+        // If the type parsing failed, rewind to the token before we starting
+        // attempting to consume the non type.
+        else rewind(saved_tok_idx);
+    }
+
+    return parse_postfix();
 }
 
 std::unique_ptr<Expression> Parser::parse_postfix()
 {
-    std::unique_ptr<Expression> ptr = nullptr;
-
-    uint32_t start_line = peek().line;
-    uint32_t start_col = peek().col;
-
-    std::unique_ptr<Expression> got_expr = parse_expression();
+    // Expression that came before the postfix.
+    std::unique_ptr<Expression> pre_expr = parse_primary();
 
     while(true)
     {
         // Function call
         if(consume_if(TokenID::LPAREN))
         {
-            ptr = std::make_unique<CallExpr>();
+            std::unique_ptr<CallExpr> full_expr = 
+                std::make_unique<CallExpr>();
 
-            CallExpr * const reint_ptr = static_cast<CallExpr*>(ptr.get());
-
-            reint_ptr->callee_expr = std::move(got_expr);
-
+            // Move the pre expression into the full expression's callee expr
+            full_expr->callee_expr = std::move(pre_expr);
+            
             // Parse arguments
             while(!check(TokenID::RPAREN))
             {
-                reint_ptr->args.push_back(parse_expression());
+                full_expr->args.push_back(parse_expression());
 
                 // Trailing comma
                 if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
                 {
                     print_error_location(peek().line, peek().col);
-                    std::cout << ": Trailing comma in argument list\n";
+                    std::cerr << ": Trailing comma in argument list\n";
                     exit(1);
                 }
             }
 
             expect(TokenID::RPAREN);
 
-            ptr->line = start_line;
-            ptr->col = start_col;
+            // Move the full expr now into the pre expr so we can continue 
+            // parsing any further postfix operations with this as the pre expr.
+            pre_expr = std::move(full_expr);
         }
 
         // Subscript
-        if(consume_if(TokenID::LBRACKET))
+        else if(consume_if(TokenID::LBRACKET))
         {
-            ptr = std::make_unique<SubscriptExpr>();
+            std::unique_ptr<SubscriptExpr> full_expr = 
+                std::make_unique<SubscriptExpr>();
 
-            SubscriptExpr * const reint_ptr =  
-                static_cast<SubscriptExpr*>(ptr.get());
+            // Move the pre expression into the full expression's base expr
+            full_expr->base_expr = std::move(pre_expr);
 
-            reint_ptr->base_expr = std::move(got_expr);
-            reint_ptr->index_expr = parse_expression();
+            // Get the expression for the index. 
+            full_expr->index_expr = parse_expression();
+
             expect(TokenID::RBRACKET);
+        
+            pre_expr = std::move(full_expr);
+        }
+
+        // Member access by dot
+        else if(consume_if(TokenID::DOT))
+        {
+            std::unique_ptr<MemberAccExpr> full_expr = 
+                std::make_unique<MemberAccExpr>();
+
+            full_expr->base_expr = std::move(pre_expr);
+            full_expr->member_name = expect(TokenID::IDENTIFIER).text;
+            full_expr->via_pointer = false;
+
+            pre_expr = std::move(full_expr);
+        }
+
+        // Member access by arrow
+        else if(consume_if(TokenID::ARROW))
+        {
+            std::unique_ptr<MemberAccExpr> full_expr =
+                std::make_unique<MemberAccExpr>();
+                
+            full_expr->base_expr = std::move(pre_expr);
+            full_expr->member_name = expect(TokenID::IDENTIFIER).text;
+            full_expr->via_pointer = true;
+
+            pre_expr = std::move(full_expr);
+        }
+
+        // Post increment
+        else if(consume_if(TokenID::PLUS_PLUS))
+        {
+            std::unique_ptr<UnaryExpr> full_expr = 
+                std::make_unique<UnaryExpr>();
+
+            full_expr->op_type = UnaryOp::POST_INC;
+            full_expr->operand = std::move(pre_expr);
             
-            ptr->line = start_line;
-            ptr->col = start_col;
-            return ptr;
+            pre_expr = std::move(full_expr);
         }
 
-        // Member access direct
-        if(consume_if(TokenID::DOT))
+        else if(consume_if(TokenID::MINUS_MINUS))
         {
-            ptr = std::make_unique<MemberAccExpr>();
+            std::unique_ptr<UnaryExpr> full_expr = 
+                std::make_unique<UnaryExpr>();
 
-            MemberAccExpr * const reint_ptr = 
-                static_cast<MemberAccExpr*>(ptr.get());
+            full_expr->op_type = UnaryOp::POST_DEC;
+            full_expr->operand = std::move(pre_expr);
 
-            reint_ptr->base_expr = std::move(got_expr);
-            reint_ptr->member_name = expect(TokenID::IDENTIFIER).text;
-            reint_ptr->via_pointer = false;
-
-            ptr->line = start_line;
-            ptr->col = start_col;
-            return ptr;
+            pre_expr = std::move(full_expr);
         }
 
-        // Member access via pointer
-        if(consume_if(TokenID::ARROW))
-        {
-            ptr = std::make_unique<MemberAccExpr>();
-
-            MemberAccExpr * const reint_ptr = 
-                static_cast<MemberAccExpr*>(ptr.get());
-
-            reint_ptr->base_expr = std::move(got_expr);
-            reint_ptr->member_name = expect(TokenID::IDENTIFIER).text;
-            reint_ptr->via_pointer = true;
-
-            ptr->line = start_line;
-            ptr->col = start_col;
-            return ptr;
-        }
+        // No more postfix expressions.
+        else break;
     }
+
+    return pre_expr;
 }
 
 std::unique_ptr<Expression> Parser::parse_primary()
 {
-    std::unique_ptr<Expression> ptr;
-
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    if(consume_if(TokenID::INT_LITERAL))
+    if(check(TokenID::INT_LITERAL))
     {
-        ptr = std::make_unique<IntLitExpr>();
+        auto ptr = std::make_unique<IntLitExpr>();
 
         IntLitExpr * const reint_ptr = static_cast<IntLitExpr*>(ptr.get());
 
@@ -528,9 +789,9 @@ std::unique_ptr<Expression> Parser::parse_primary()
         return ptr;
     }
 
-    if(consume_if(TokenID::FLOAT_LITERAL))
+    if(check(TokenID::FLOAT_LITERAL))
     {
-        ptr = std::make_unique<FloatLitExpr>();
+        auto ptr = std::make_unique<FloatLitExpr>();
 
         FloatLitExpr * const reint_ptr = static_cast<FloatLitExpr*>(ptr.get());
 
@@ -540,9 +801,9 @@ std::unique_ptr<Expression> Parser::parse_primary()
         return ptr;
     }
 
-    if(consume_if(TokenID::HEX_LITERAL))
+    if(check(TokenID::HEX_LITERAL))
     {
-        ptr = std::make_unique<HexLitExpr>();
+        auto ptr = std::make_unique<HexLitExpr>();
 
         HexLitExpr * const reint_ptr = static_cast<HexLitExpr*>(ptr.get());
 
@@ -552,9 +813,9 @@ std::unique_ptr<Expression> Parser::parse_primary()
         return ptr;
     }
 
-    if(consume_if(TokenID::BIN_LITERAL))
+    if(check(TokenID::BIN_LITERAL))
     {
-        ptr = std::make_unique<BinaryLitExpr>();
+        auto ptr = std::make_unique<BinaryLitExpr>();
 
         BinaryLitExpr * const reint_ptr = static_cast<BinaryLitExpr*>(ptr.get());
 
@@ -564,9 +825,9 @@ std::unique_ptr<Expression> Parser::parse_primary()
         return ptr;
     }
 
-    if(consume_if(TokenID::STR_LITERAL))
+    if(check(TokenID::STR_LITERAL))
     {
-        ptr = std::make_unique<StringLitExpr>();
+        auto ptr = std::make_unique<StringLitExpr>();
 
         StringLitExpr * const reint_ptr = static_cast<StringLitExpr*>(ptr.get());
 
@@ -576,9 +837,9 @@ std::unique_ptr<Expression> Parser::parse_primary()
         return ptr;
     }
 
-    if(consume_if(TokenID::CHAR_LITERAL))
+    if(check(TokenID::CHAR_LITERAL))
     {
-        ptr = std::make_unique<CharLitExpr>();
+        auto ptr = std::make_unique<CharLitExpr>();
 
         CharLitExpr * const reint_ptr = static_cast<CharLitExpr*>(ptr.get());
 
@@ -588,9 +849,9 @@ std::unique_ptr<Expression> Parser::parse_primary()
         return ptr;
     }
 
-    if(consume_if(TokenID::BOOL_LITERAL))
+    if(check(TokenID::BOOL_LITERAL))
     {
-        ptr = std::make_unique<BoolLitExpr>();
+        auto ptr = std::make_unique<BoolLitExpr>();
 
         BoolLitExpr * const reint_ptr = static_cast<BoolLitExpr*>(ptr.get());
 
@@ -600,28 +861,26 @@ std::unique_ptr<Expression> Parser::parse_primary()
         return ptr;
     }
 
-    if(consume_if(TokenID::NULLPTR_LITERAL))
+    if(check(TokenID::NULLPTR_LITERAL))
     {
-        ptr = std::make_unique<NullptrLitExpr>();
-
-        NullptrLitExpr * const reint_ptr = 
-            static_cast<NullptrLitExpr*>(ptr.get());
+        auto ptr = std::make_unique<NullptrLitExpr>();
 
         ptr->line = peek().line;
         ptr->col = peek().col;
+        expect(TokenID::NULLPTR_LITERAL);
         return ptr;
     }
 
     if(consume_if(TokenID::LPAREN))
     {
-        ptr = parse_expression();
+        auto ptr = parse_expression();
         expect(TokenID::RPAREN);
         return ptr;
     }
 
     if(check(TokenID::IDENTIFIER))
     {
-        ptr = std::make_unique<IdentExpr>();
+        auto ptr = std::make_unique<IdentExpr>();
 
         IdentExpr * const reint_ptr = static_cast<IdentExpr*>(ptr.get());
 
@@ -763,8 +1022,19 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
 
 std::unique_ptr<FieldDecl> Parser::parse_field(bool is_pub) 
 {
-    std::cerr << "Parse field not implemented\n";
-    exit(1);
+    auto ptr = std::make_unique<FieldDecl>();
+
+    ptr->line = peek().line;
+    ptr->col = peek().col;
+
+    ptr->is_pub = is_pub;
+    ptr->is_binding_mutable = consume_if(TokenID::KW_MUT);
+    ptr->name = expect(TokenID::IDENTIFIER).text;
+    expect(TokenID::COLON);
+    ptr->type_decl = parse_type_decl();
+    expect(TokenID::SEMICOLON);
+
+    return ptr;
 }
 
 ScopeBody Parser::parse_scope()
@@ -820,37 +1090,6 @@ Parameter Parser::parse_param()
     p.type_decl = parse_type_decl();
 
     return p;
-
-    // Parameter p;
-
-    // p.line = peek().line;
-    // p.col = peek().col;
-    // p.is_binding_mutable = false;
-
-    // // If this is an unqualified parameter
-    // if(check(TokenID::IDENTIFIER))
-    // {
-    //     p.is_unqual_param = true;
-    // }
-
-    // else if(consume_if(TokenID::KW_MUT))
-    // {
-    //     // If this parameter is marked mut, we need to make sure that it is also
-    //     // marked val.
-    //     if(!check(TokenID::KW_VAL))
-    //     {
-    //         print_error_location(peek().line, peek().col);
-    //         std::cerr << "Non ref parameter marked mut but not passed in by "
-    //             "val.\n";
-    //         exit(1);
-    //     }
-
-    //     p.is_binding_mutable = true;
-    // }
-
-    // p.type_decl = parse_type_decl();
-
-    // return p;
 }
 
 bool Parser::check(TokenID id) const 

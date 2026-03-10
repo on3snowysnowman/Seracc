@@ -354,7 +354,79 @@ void Lexer::parse_non_ident_or_number(Token &t)
             return;
         }
 
+        // Check for "--"
+        else if(peek() == '-')
+        {
+            advance(); // Consume '-'
+            t.id = TokenID::MINUS_MINUS;
+            return;
+        }
+
+        // Check for "-="
+        else if(peek() == '=')
+        {
+            advance(); // Consume '='
+            t.id = TokenID::MINUS_ASSIGN;
+            return;
+        }
+
         t.id = TokenID::MINUS;
+        return;
+    }
+
+    else if(c == '+')
+    {
+        // Check for "++"
+        if(peek() == '+')
+        {
+            advance();
+            t.id = TokenID::PLUS_PLUS;
+            return;
+        }
+
+        t.id = TokenID::PLUS;
+        return;
+    }
+
+    else if(c == '*')
+    {
+        // Check for "*="
+        if(peek() == '=')
+        {
+            advance();
+            t.id = TokenID::ASTERISK_ASSIGN;
+            return;
+        }
+
+        t.id = TokenID::ASTERISK;
+        return;
+    }
+
+    else if(c == '/')
+    {
+        // Check for "/="
+        if(peek() == '=')
+        {
+            advance();
+            t.id = TokenID::FORW_SLASH_ASSIGN;
+            return;
+        }
+
+        t.id = TokenID::FORW_SLASH;
+        return;
+    }
+
+    else if(c == '%')
+    {
+        // Check for "%="
+        if(peek() == '=')
+        {
+            advance();
+            t.id = TokenID::MODULO_ASSIGN;
+            return;
+        }
+
+        t.id = TokenID::MODULO;
         return;
     }
 
@@ -516,25 +588,25 @@ void Lexer::parse_non_ident_or_number(Token &t)
             t.id = TokenID::AT;
             break;
 
-        case '+':
+        // case '*':
 
-            t.id = TokenID::PLUS;
-            break;
+        //     t.id = TokenID::ASTERISK;
+        //     break;
 
-        case '*':
+        // case '/':
 
-            t.id = TokenID::ASTERISK;
-            break;
-
-        case '/':
-
-            t.id = TokenID::FORW_SLASH;
-            break;
+        //     t.id = TokenID::FORW_SLASH;
+        //     break;
 
         case '\\':
 
             t.id = TokenID::BACK_SLASH;
             break;
+
+        // case '%':
+
+        //     t.id = TokenID::MODULO;
+        //     break;
 
         case '~':
 

@@ -1,4 +1,15 @@
 
 
 
-export fn do_thing(x: val int) -> void {}
+export fn do_thing(x: ref mut * int) -> void {}
+
+export fn main() -> void
+{
+
+
+    let mut t: SomeStruct;
+
+    t.x = 0;
+
+    ret 0;
+}

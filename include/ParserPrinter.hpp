@@ -47,14 +47,14 @@ static void print_type_decl(const TypeDecl * const ptr,
         case TypeKind::NAMED:
 
             std::cout << "NAMED\n";
-            print_named_type(reinterpret_cast<const NamedTypeDecl*>(ptr), 
+            print_named_type(static_cast<const NamedTypeDecl*>(ptr), 
                 tab_depth);
             break;
 
         case TypeKind::PTR:
         {
             const PtrTypeDecl * const reint_ptr = 
-                reinterpret_cast<const PtrTypeDecl*>(ptr);
+                static_cast<const PtrTypeDecl*>(ptr);
 
             std::cout << "PTR";
             handle_newline(tab_depth);
@@ -72,7 +72,7 @@ static void print_type_decl(const TypeDecl * const ptr,
         case TypeKind::REF:
         {
             const RefTypeDecl * const reint_ptr = 
-                reinterpret_cast<const RefTypeDecl*>(ptr);
+                static_cast<const RefTypeDecl*>(ptr);
 
             std::cout << "REF";
             handle_newline(tab_depth);
@@ -114,14 +114,39 @@ static void print_field(const FieldDecl * const ptr, int tab_depth)
     handle_newline(tab_depth);
     std::cout << "Col: " << ptr->col;
     handle_newline(tab_depth);
-    std::cout << "{";
+    std::cout << "Binding Mutable: " << ptr->is_binding_mutable;
     handle_newline(tab_depth);
+    std::cout << "Public: " << ptr->is_pub;
+    handle_newline(tab_depth); 
+    std::cout << "Type:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_type_decl(ptr->type_decl.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
 }
 
 static void print_param(const Parameter &param, int tab_depth)
 {
-    (void)param;
-    (void)tab_depth;
+    handle_tab_print(tab_depth);
+    std::cout << "Param: " << param.name;
+    handle_newline(tab_depth);
+    std::cout << "Line: " << param.line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << param.col;
+    handle_newline(tab_depth); 
+    std::cout << "Binding Mutable: " << param.is_binding_mutable;
+    handle_newline(tab_depth);
+    std::cout << "Unqualified: " << param.is_unqual_param;
+    handle_newline(tab_depth);
+    std::cout << "Passed by copy: " << param.passed_by_copy;
+    handle_newline(tab_depth);
+    std::cout << "Type:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_type_decl(param.type_decl.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
 }
 
 static void print_struct(const StructDecl * const ptr,
@@ -134,7 +159,6 @@ static void print_struct(const StructDecl * const ptr,
     handle_newline(tab_depth);
     std::cout << "Col: " << ptr->col;
     
-    
     if(ptr->decls.size() == 0)
     {
         std::cout << '\n';
@@ -142,8 +166,9 @@ static void print_struct(const StructDecl * const ptr,
     }
     
     handle_newline(tab_depth);
-    std::cout << "{";
+    std::cout << "Members: ";
     handle_newline(tab_depth);
+    std::cout << "{\n";
 
     for(const std::unique_ptr<Declaration> &decl : ptr->decls)
     {
@@ -152,14 +177,14 @@ static void print_struct(const StructDecl * const ptr,
             case DeclKind::FIELD:
 
                 print_field(
-                    reinterpret_cast<FieldDecl*>(decl.get()),
+                    static_cast<FieldDecl*>(decl.get()),
                     tab_depth + 1);
                 break;
 
             case DeclKind::STRUCT:
 
                 print_struct(
-                    reinterpret_cast<StructDecl*>(decl.get()),
+                    static_cast<StructDecl*>(decl.get()),
                     tab_depth + 1);
                 break;
 
@@ -174,26 +199,13 @@ static void print_struct(const StructDecl * const ptr,
     std::cout << "}\n";
 }
 
-// static void print_statement(const Statement * const ptr,
-//     int tab_depth)
-// {
-//     handle_tab_print(tab_depth);
-//     std::cout << "Statement: " << static_cast<int>(ptr->stmt_type);
-//     handle_newline(tab_depth);
-//     std::cout << "Line: " << ptr->line;
-//     handle_newline(tab_depth);
-//     std::cout << "Col: " << ptr->col;
-//     handle_newline(tab_depth);
-//     std::cout << "{";
-//     handle_newline(tab_depth);
-// }
-
-// static void print_expression(const Expression * const ptr,
-//     int tab_depth)
-// {
-//     (void)ptr;
-//     (void)tab_depth;
-// }
+static void print_expression(const Expression * const ptr, int tab_depth)
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Expression\n";
+    (void)ptr;
+    (void)tab_depth;
+}
 
 static void print_var_decl(const VarDeclStmt * const ptr, int tab_depth)
 {
@@ -214,31 +226,56 @@ static void print_var_decl(const VarDeclStmt * const ptr, int tab_depth)
     print_type_decl(ptr->type_decl.get(), tab_depth + 1);
     handle_tab_print(tab_depth);
     std::cout << "}\n";
+
+    if(ptr->init_expr != nullptr)
+    {
+        handle_tab_print(tab_depth);
+        std::cout << "Init Expression:";
+        handle_newline(tab_depth);
+        std::cout << "{\n";
+        print_expression(ptr->init_expr.get(), tab_depth + 1);
+        handle_tab_print(tab_depth);
+        std::cout << "}\n";
+    }
 }
 
-static void print_scope(const ScopeBody &s, int tab_depth)
+static void print_ret_decl(const RetStmt * const ptr, int tab_depth)
 {
     handle_tab_print(tab_depth);
-    std::cout << "Line: " << s.line;
+    std::cout << "Return:";
     handle_newline(tab_depth);
-    std::cout << "Col: " << s.col;
+    std::cout << "Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->ret_expr.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+}
+
+static void print_scope(const ScopeBody &scope, int tab_depth)
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << scope.line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << scope.col;
     
-    if(s.statements.size() > 0)
+    if(scope.statements.size() > 0)
     {
         handle_newline(tab_depth);
         std::cout << "Statements:";
         handle_newline(tab_depth);
         std::cout << "{";
 
-        for(const std::unique_ptr<Statement> &s : s.statements)
+        for(const std::unique_ptr<Statement> &stmt : scope.statements)
         {
             std::cout << '\n';
 
-            switch(s->stmt_type)
+            switch(stmt->stmt_type)
             {   
                 case StatementType::BLOCK:
 
-                    std::cout << "Block";
+                    print_scope(static_cast<BlockStmt*>(stmt.get())->block_decl, 
+                        tab_depth + 1);
                     break;
 
                 case StatementType::COMPONENT_DECL:
@@ -248,7 +285,9 @@ static void print_scope(const ScopeBody &s, int tab_depth)
 
                 case StatementType::EXPR:
 
-                    std::cout << "Expression";
+                    print_expression(
+                        static_cast<ExprStmt*>(stmt.get())->expr.get(),
+                        tab_depth + 1);
                     break;
 
                 case StatementType::FOR:
@@ -263,18 +302,21 @@ static void print_scope(const ScopeBody &s, int tab_depth)
 
                 case StatementType::RETURN:
 
-                    std::cout << "Return";
+                    print_ret_decl(
+                        static_cast<const RetStmt*>(stmt.get()), tab_depth + 1);
                     break;
 
                 case StatementType::STRUCT_DECL:
 
-                    std::cout << "Struct Decl";
+                    print_struct(
+                        static_cast<StructDeclStmt*>(stmt.get())->decl.get(),
+                        tab_depth + 1);
                     break;
 
                 case StatementType::VAR_DECL:
 
                     print_var_decl(
-                        reinterpret_cast<const VarDeclStmt*>(s.get()), 
+                        static_cast<const VarDeclStmt*>(stmt.get()), 
                         tab_depth + 1);
                     break;
 
@@ -319,6 +361,7 @@ static void print_function(const FunctionDecl * const ptr,
     
     if(ptr->params.size() > 0)
     {
+        handle_tab_print(tab_depth);
         std::cout << "Parameters:";
         handle_newline(tab_depth);
         std::cout << "{\n";
@@ -377,35 +420,35 @@ static void print_namespace(const NamespaceDecl * const ptr,
             case DeclKind::FIELD:
 
                 print_field(
-                    reinterpret_cast<FieldDecl*>(decl.get()),
+                    static_cast<FieldDecl*>(decl.get()),
                     tab_depth + 1);
                 break;
 
             case DeclKind::NAMESPACE:
 
                 print_namespace(
-                    reinterpret_cast<NamespaceDecl*>(decl.get()),
+                    static_cast<NamespaceDecl*>(decl.get()),
                     tab_depth + 1);
                 break;
 
             case DeclKind::STRUCT:
 
                 print_struct(
-                    reinterpret_cast<StructDecl*>(decl.get()),
+                    static_cast<StructDecl*>(decl.get()),
                     tab_depth + 1);
                 break;
 
             case DeclKind::FUNCTION:
 
                 print_function(
-                    reinterpret_cast<FunctionDecl*>(decl.get()),
+                    static_cast<FunctionDecl*>(decl.get()),
                     tab_depth + 1);
                 break;
 
             case DeclKind::COMPONENT:
 
                 print_component(
-                    reinterpret_cast<ComponentDecl*>(decl.get()),
+                    static_cast<ComponentDecl*>(decl.get()),
                     tab_depth + 1);
                 break;
 
