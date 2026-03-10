@@ -24,7 +24,7 @@ private:
 
     // Token current_token;
 
-    uint64_t current_token_idx;
+    uint64_t current_token_idx = 0;
 
     std::vector<Token> tokens;
 
@@ -68,12 +68,22 @@ private:
     std::unique_ptr<StructDecl> parse_struct(bool is_pub);
     std::unique_ptr<ComponentDecl> parse_component(bool is_pub);
     std::unique_ptr<Statement> parse_statement();
+
+    // Expression parsing functions
     std::unique_ptr<Expression> parse_expression();
     std::unique_ptr<Expression> parse_assignment();
     std::unique_ptr<Expression> parse_log_or();
+    std::unique_ptr<Expression> parse_log_and();
+    std::unique_ptr<Expression> parse_equality();
+    std::unique_ptr<Expression> parse_relational();
+    std::unique_ptr<Expression> parse_additive();
+    std::unique_ptr<Expression> parse_multiplicative();
+    std::unique_ptr<Expression> parse_unary();
+    std::unique_ptr<Expression> parse_postfix();
+    std::unique_ptr<Expression> parse_primary();
 
-
-    std::unique_ptr<TypeDecl> parse_type_decl();
+    // If error_on_invalid is false, returns nullptr instead of crashing.
+    std::unique_ptr<TypeDecl> parse_type_decl(bool error_on_invalid = true);
     std::unique_ptr<FieldDecl> parse_field(bool is_pub);
     ScopeBody parse_scope();
     Parameter parse_param();

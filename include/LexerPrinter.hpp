@@ -9,15 +9,11 @@
 static void print_lexer_output(const char *in_file)
 {
     Lexer l;
-    l.load(in_file);
 
-    Token t;
+    std::vector<Token> tokens = l.lex(in_file);
 
-    do
+    for(const Token &t : tokens)
     {
-        t = l.next_token();
         std::cout << t << '\n';
-    } while (t.id != TokenID::END_OF_FILE);
-
-    l.close();
+    }
 }

@@ -358,7 +358,7 @@ void Lexer::parse_non_ident_or_number(Token &t)
         return;
     }
 
-    if(c == '=')
+    else if(c == '=')
     {
         // Check for "=="
         if(peek() == '=')
@@ -369,6 +369,92 @@ void Lexer::parse_non_ident_or_number(Token &t)
         }
 
         t.id = TokenID::ASSIGN;
+        return;
+    }
+
+    else if(c == '!')
+    {
+        // Check for "!="
+        if(peek() == '=')
+        {
+            advance(); // Consume '='
+            t.id = TokenID::NOT_EQUAL;
+            return;
+        }
+
+        t.id = TokenID::EXCLAMATION_POINT;
+        return;
+    }
+
+    else if(c == '<')
+    {
+        // Check for "<="
+        if(peek() == '=')
+        {
+            advance(); // Consume '='
+            t.id = TokenID::LESS_EQUAL;
+            return;
+        }
+
+        // Check for "<<"
+        else if(peek() == '<')
+        {
+            advance(); // Consume '<'
+            t.id = TokenID::SHIFT_LEFT;
+            return;
+        }
+
+        t.id = TokenID::LESS_THAN;
+        return;
+    }
+
+    else if(c == '>')
+    {
+        // Check for ">="
+        if(peek() == '=')
+        {
+            advance(); // Consume '='
+            t.id = TokenID::GREATER_EQUAL;
+            return;
+        }
+
+        // Check for ">>""
+        else if(peek() == '>')
+        {
+            advance(); // Consume '>
+            t.id = TokenID::SHIFT_RIGHT;
+            return;
+        }
+
+        t.id = TokenID::GREATER_THAN;
+        return;
+    }
+
+    else if(c == '&')
+    {
+        // Check for "&&"
+        if(peek() == '&')
+        {
+            advance(); // Consume '&'
+            t.id = TokenID::LOGIC_AND;
+            return;
+        }
+
+        t.id = TokenID::AMPERSAND;
+        return;
+    }
+
+    else if(c == '|')
+    {
+        // Check for "||"
+        if(peek() == '|')
+        {
+            advance(); // Consume '|'
+            t.id = TokenID::LOGIC_OR;
+            return;
+        }
+
+        t.id = TokenID::VERT_BAR;
         return;
     }
 
@@ -425,11 +511,6 @@ void Lexer::parse_non_ident_or_number(Token &t)
             t.id = TokenID::COLON;
             break;
 
-        case '&':
-
-            t.id = TokenID::AMPERSAND;
-            break;
-
         case '@':
 
             t.id = TokenID::AT;
@@ -453,21 +534,6 @@ void Lexer::parse_non_ident_or_number(Token &t)
         case '\\':
 
             t.id = TokenID::BACK_SLASH;
-            break;
-
-        case '<':
-
-            t.id = TokenID::LESS_THAN;
-            break;
-
-        case '>':
-
-            t.id = TokenID::GREATER_THAN;
-            break;
-
-        case '!':
-
-            t.id = TokenID::EXCLAMATION_POINT;
             break;
 
         case '~':

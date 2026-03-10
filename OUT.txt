@@ -1,0 +1,97 @@
+ID: KW_EXPORT
+Line: 4
+Col: 1
+Text: export
+
+ID: KW_FN
+Line: 4
+Col: 8
+Text: fn
+
+ID: IDENTIFIER
+Line: 4
+Col: 11
+Text: do_thing
+
+ID: LPAREN
+Line: 4
+Col: 19
+Text: 
+
+ID: IDENTIFIER
+Line: 4
+Col: 20
+Text: x
+
+ID: COLON
+Line: 4
+Col: 21
+Text: 
+
+ID: KW_VAL
+Line: 4
+Col: 23
+Text: val
+
+ID: IDENTIFIER
+Line: 4
+Col: 27
+Text: int
+
+ID: RPAREN
+Line: 4
+Col: 30
+Text: 
+
+ID: ARROW
+Line: 4
+Col: 32
+Text: 
+
+ID: IDENTIFIER
+Line: 4
+Col: 35
+Text: void
+
+ID: LBRACE
+Line: 4
+Col: 40
+Text: 
+
+ID: RBRACE
+Line: 4
+Col: 41
+Text: 
+
+ID: END_OF_FILE
+Line: 4
+Col: 42
+Text: 
+
+Namespace: global
+Line: 0
+Col: 0
+Declarations:
+{
+   Function: do_thing
+   Line: 4
+   Col: 8
+   Public: 1
+   Return type:
+   {
+      Line: 4
+      Col: 35
+      Type Kind: NAMED
+      Name: void
+   }
+Parameters:
+   {
+
+   }
+   Body:
+   {
+      Line: 4
+      Col: 40
+   }
+
+}

@@ -33,6 +33,8 @@ void Parser::handle_unexpected_token(const Token &got_tok)
 
 Program Parser::parse(const char *in_file_path) 
 {
+    current_token_idx = 0;
+
     Lexer l;
 
     tokens = l.lex(in_file_path);
@@ -42,8 +44,6 @@ Program Parser::parse(const char *in_file_path)
     Program prog;
     prog.source_file_name = in_file_path;
     parsed_file = in_file_path;
-
-    advance(); // Get first token.
 
     prog.ast->name = "global";
     prog.ast->line = 0;
@@ -56,8 +56,6 @@ Program Parser::parse(const char *in_file_path)
         prog.ast->decls.push_back(std::move(decl));
         decl = parse_top_level();
     }
-
-
     // prog.ast = std::move(parse_top_level());
 
     // lexer.close();
@@ -72,14 +70,23 @@ Program Parser::parse(const char *in_file_path)
 std::unique_ptr<Declaration> Parser::parse_top_level() 
 {
     Token t = peek();
-
+    
     bool is_exported = false;
 
     if(consume_if(TokenID::KW_EXPORT)) is_exported = true;
 
     if(check(TokenID::END_OF_FILE)) return nullptr;
 
-    if(check(TokenID::KW_NAMESPACE)) return parse_namespace();
+    if(check(TokenID::KW_NAMESPACE)) 
+    {
+        if(is_exported)
+        {
+            std::cerr << "Namespaces cannot be marked \"export\"\n";
+            exit(1);
+        }
+
+        return parse_namespace();
+    }
 
     if(check(TokenID::KW_FN)) return parse_function(is_exported);
 
@@ -228,8 +235,8 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
 
 std::unique_ptr<ComponentDecl> Parser::parse_component(bool is_pub) 
 {
-    (void)is_pub;
-    return nullptr;
+    std::cerr << "Parse component not implemented\n";
+    exit(1);
 }
 
 std::unique_ptr<Statement> Parser::parse_statement() 
@@ -357,15 +364,279 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
 std::unique_ptr<Expression> Parser::parse_expression()
 {
-    std::unique_ptr<Expression> ptr = nullptr;
-
-
-
-    std::cerr << "Expression getting not implemented\n";
-    exit(1);
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
 }
 
-std::unique_ptr<TypeDecl> Parser::parse_type_decl() 
+std::unique_ptr<Expression> Parser::parse_assignment()
+{
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
+}
+
+std::unique_ptr<Expression> Parser::parse_log_or()
+{
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
+}
+
+std::unique_ptr<Expression> Parser::parse_log_and()
+{
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
+}
+
+std::unique_ptr<Expression> Parser::parse_equality()
+{
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
+}
+
+std::unique_ptr<Expression> Parser::parse_relational()
+{
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
+}
+
+std::unique_ptr<Expression> Parser::parse_additive()
+{
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
+}
+
+std::unique_ptr<Expression> Parser::parse_multiplicative()
+{
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
+}
+
+std::unique_ptr<Expression> Parser::parse_unary()
+{
+    std::cerr << "This parse not implemented\n";
+    exit(1);    
+}
+
+std::unique_ptr<Expression> Parser::parse_postfix()
+{
+    std::unique_ptr<Expression> ptr = nullptr;
+
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
+    std::unique_ptr<Expression> got_expr = parse_expression();
+
+    while(true)
+    {
+        // Function call
+        if(consume_if(TokenID::LPAREN))
+        {
+            ptr = std::make_unique<CallExpr>();
+
+            CallExpr * const reint_ptr = static_cast<CallExpr*>(ptr.get());
+
+            reint_ptr->callee_expr = std::move(got_expr);
+
+            // Parse arguments
+            while(!check(TokenID::RPAREN))
+            {
+                reint_ptr->args.push_back(parse_expression());
+
+                // Trailing comma
+                if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
+                {
+                    print_error_location(peek().line, peek().col);
+                    std::cout << ": Trailing comma in argument list\n";
+                    exit(1);
+                }
+            }
+
+            expect(TokenID::RPAREN);
+
+            ptr->line = start_line;
+            ptr->col = start_col;
+        }
+
+        // Subscript
+        if(consume_if(TokenID::LBRACKET))
+        {
+            ptr = std::make_unique<SubscriptExpr>();
+
+            SubscriptExpr * const reint_ptr =  
+                static_cast<SubscriptExpr*>(ptr.get());
+
+            reint_ptr->base_expr = std::move(got_expr);
+            reint_ptr->index_expr = parse_expression();
+            expect(TokenID::RBRACKET);
+            
+            ptr->line = start_line;
+            ptr->col = start_col;
+            return ptr;
+        }
+
+        // Member access direct
+        if(consume_if(TokenID::DOT))
+        {
+            ptr = std::make_unique<MemberAccExpr>();
+
+            MemberAccExpr * const reint_ptr = 
+                static_cast<MemberAccExpr*>(ptr.get());
+
+            reint_ptr->base_expr = std::move(got_expr);
+            reint_ptr->member_name = expect(TokenID::IDENTIFIER).text;
+            reint_ptr->via_pointer = false;
+
+            ptr->line = start_line;
+            ptr->col = start_col;
+            return ptr;
+        }
+
+        // Member access via pointer
+        if(consume_if(TokenID::ARROW))
+        {
+            ptr = std::make_unique<MemberAccExpr>();
+
+            MemberAccExpr * const reint_ptr = 
+                static_cast<MemberAccExpr*>(ptr.get());
+
+            reint_ptr->base_expr = std::move(got_expr);
+            reint_ptr->member_name = expect(TokenID::IDENTIFIER).text;
+            reint_ptr->via_pointer = true;
+
+            ptr->line = start_line;
+            ptr->col = start_col;
+            return ptr;
+        }
+    }
+}
+
+std::unique_ptr<Expression> Parser::parse_primary()
+{
+    std::unique_ptr<Expression> ptr;
+
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
+    if(consume_if(TokenID::INT_LITERAL))
+    {
+        ptr = std::make_unique<IntLitExpr>();
+
+        IntLitExpr * const reint_ptr = static_cast<IntLitExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        reint_ptr->value = expect(TokenID::INT_LITERAL).text;
+        return ptr;
+    }
+
+    if(consume_if(TokenID::FLOAT_LITERAL))
+    {
+        ptr = std::make_unique<FloatLitExpr>();
+
+        FloatLitExpr * const reint_ptr = static_cast<FloatLitExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        reint_ptr->value = expect(TokenID::FLOAT_LITERAL).text;
+        return ptr;
+    }
+
+    if(consume_if(TokenID::HEX_LITERAL))
+    {
+        ptr = std::make_unique<HexLitExpr>();
+
+        HexLitExpr * const reint_ptr = static_cast<HexLitExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        reint_ptr->value = expect(TokenID::HEX_LITERAL).text;
+        return ptr;
+    }
+
+    if(consume_if(TokenID::BIN_LITERAL))
+    {
+        ptr = std::make_unique<BinaryLitExpr>();
+
+        BinaryLitExpr * const reint_ptr = static_cast<BinaryLitExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        reint_ptr->value = expect(TokenID::BIN_LITERAL).text;
+        return ptr;
+    }
+
+    if(consume_if(TokenID::STR_LITERAL))
+    {
+        ptr = std::make_unique<StringLitExpr>();
+
+        StringLitExpr * const reint_ptr = static_cast<StringLitExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        reint_ptr->value = expect(TokenID::STR_LITERAL).text;
+        return ptr;
+    }
+
+    if(consume_if(TokenID::CHAR_LITERAL))
+    {
+        ptr = std::make_unique<CharLitExpr>();
+
+        CharLitExpr * const reint_ptr = static_cast<CharLitExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        reint_ptr->value = expect(TokenID::CHAR_LITERAL).text.at(0);
+        return ptr;
+    }
+
+    if(consume_if(TokenID::BOOL_LITERAL))
+    {
+        ptr = std::make_unique<BoolLitExpr>();
+
+        BoolLitExpr * const reint_ptr = static_cast<BoolLitExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        reint_ptr->value = expect(TokenID::BOOL_LITERAL).text == "true";
+        return ptr;
+    }
+
+    if(consume_if(TokenID::NULLPTR_LITERAL))
+    {
+        ptr = std::make_unique<NullptrLitExpr>();
+
+        NullptrLitExpr * const reint_ptr = 
+            static_cast<NullptrLitExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        return ptr;
+    }
+
+    if(consume_if(TokenID::LPAREN))
+    {
+        ptr = parse_expression();
+        expect(TokenID::RPAREN);
+        return ptr;
+    }
+
+    if(check(TokenID::IDENTIFIER))
+    {
+        ptr = std::make_unique<IdentExpr>();
+
+        IdentExpr * const reint_ptr = static_cast<IdentExpr*>(ptr.get());
+
+        ptr->line = peek().line;
+        ptr->col = peek().col;
+        reint_ptr->name = expect(TokenID::IDENTIFIER).text;
+        return ptr;
+    }
+
+    print_error_location(start_line, start_col);
+    std::cerr << ": Invalid expression\n";
+    exit(1);    
+}
+
+std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid) 
 {
     std::unique_ptr<TypeDecl> ptr = nullptr;
     
@@ -378,6 +649,8 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl()
         ptr = std::make_unique<NamedTypeDecl>();
         ptr->kind = TypeKind::NAMED;
         NamedTypeDecl *reint_ptr = static_cast<NamedTypeDecl*>(ptr.get());
+
+        if(!error_on_invalid && !check(TokenID::IDENTIFIER)) return nullptr;
 
         reint_ptr->type_name = expect(TokenID::IDENTIFIER).text;        
     }
@@ -411,7 +684,11 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl()
         ptr->kind = TypeKind::FUNC_PTR;
         FuncPtrDecl *reint_ptr = static_cast<FuncPtrDecl*>(ptr.get());
 
+        if(!error_on_invalid && !check(TokenID::LPAREN)) return nullptr;
+
         expect(TokenID::LPAREN);
+
+        if(!error_on_invalid && !check(TokenID::LPAREN)) return nullptr;
 
         expect(TokenID::LPAREN);
 
@@ -423,14 +700,17 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl()
             // If the next token is not a comma, it must be a right paren
             if(!check(TokenID::COMMA))
             {
+                if(!error_on_invalid && check(TokenID::RPAREN)) return nullptr;
                 expect(TokenID::RPAREN);
                 break;
             }
 
             // Comma present, read in next parameter
+            if(!error_on_invalid && check(TokenID::COMMA)) return nullptr;
             expect(TokenID::COMMA);
         }
 
+        if(!error_on_invalid && check(TokenID::ARROW)) return nullptr;
         expect(TokenID::ARROW);
 
         // Read return type
@@ -483,8 +763,8 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl()
 
 std::unique_ptr<FieldDecl> Parser::parse_field(bool is_pub) 
 {
-    (void)is_pub;
-    return nullptr;
+    std::cerr << "Parse field not implemented\n";
+    exit(1);
 }
 
 ScopeBody Parser::parse_scope()
@@ -512,32 +792,65 @@ Parameter Parser::parse_param()
 
     p.line = peek().line;
     p.col = peek().col;
-    p.is_binding_mutable = false;
+    p.is_binding_mutable = consume_if(TokenID::KW_MUT);
 
-    // If this is an unqualified parameter
+    p.name = expect(TokenID::IDENTIFIER).text;
+
+    expect(TokenID::COLON);
+
+    // This is an unqualified parameter
     if(check(TokenID::IDENTIFIER))
     {
         p.is_unqual_param = true;
     }
 
-    else if(consume_if(TokenID::KW_MUT))
+    // Parameter is passed in as copy
+    else if(consume_if(TokenID::KW_VAL))
     {
-        // If this parameter is marked mut, we need to make sure that it is also
-        // marked val.
-        if(!check(TokenID::KW_VAL))
+        if(check(TokenID::KW_REF))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << "Non ref parameter marked mut but not passed in by "
-                "val.\n";
-            exit(1);
+            std::cerr << ": Reference parameters cannot be passed in by val.\n";
+            exit(1); 
         }
 
-        p.is_binding_mutable = true;
+        p.passed_by_copy = true;
     }
 
     p.type_decl = parse_type_decl();
 
     return p;
+
+    // Parameter p;
+
+    // p.line = peek().line;
+    // p.col = peek().col;
+    // p.is_binding_mutable = false;
+
+    // // If this is an unqualified parameter
+    // if(check(TokenID::IDENTIFIER))
+    // {
+    //     p.is_unqual_param = true;
+    // }
+
+    // else if(consume_if(TokenID::KW_MUT))
+    // {
+    //     // If this parameter is marked mut, we need to make sure that it is also
+    //     // marked val.
+    //     if(!check(TokenID::KW_VAL))
+    //     {
+    //         print_error_location(peek().line, peek().col);
+    //         std::cerr << "Non ref parameter marked mut but not passed in by "
+    //             "val.\n";
+    //         exit(1);
+    //     }
+
+    //     p.is_binding_mutable = true;
+    // }
+
+    // p.type_decl = parse_type_decl();
+
+    // return p;
 }
 
 bool Parser::check(TokenID id) const 

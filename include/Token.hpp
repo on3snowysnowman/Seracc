@@ -62,16 +62,24 @@ enum class TokenID
     TILDE,
 
     // Operators
-    ARROW, // '->'
-    ASSIGN, // '='
+    ARROW,
+    ASSIGN,
     PLUS,
     MINUS,
     ASTERISK,
     FORW_SLASH,
     BACK_SLASH,
-    EQUAL_EQUAL, // '==',
+    VERT_BAR,
+    EQUAL_EQUAL,
+    NOT_EQUAL,
     LESS_THAN,
+    LESS_EQUAL,
     GREATER_THAN,
+    GREATER_EQUAL,
+    LOGIC_AND,
+    LOGIC_OR,
+    SHIFT_LEFT,
+    SHIFT_RIGHT
 };
 
 const char * const tokID_readable[]
@@ -128,16 +136,24 @@ const char * const tokID_readable[]
     "TILDE",
 
     // Operators
-    "ARROW", // '->'
-    "ASSIGN", // '='
+    "ARROW",
+    "ASSIGN",
     "PLUS",
     "MINUS",
     "ASTERISK",
     "FORW_SLASH",
     "BACK_SLASH",
-    "EQUAL_EQUAL", // '=='
+    "VERT_BAR",
+    "EQUAL_EQUAL",
+    "NOT_EQUAL",
     "LESS_THAN",
-    "GREATER_THAN"
+    "LESS_EQUAL",
+    "GREATER_THAN",
+    "GREATER_EQUAL",
+    "LOGIC_AND",
+    "LOGIC_OR",
+    "SHIFT_LEFT",
+    "SHIFT_RIGHT"
 };
 
 const std::unordered_map<std::string, TokenID> rdbl_kw_to_id

@@ -25,6 +25,9 @@ enum class ExpressionType
     INT_LITERAL,
     FLOAT_LITERAL,
     STR_LITERAL,
+    CHAR_LITERAL,
+    BOOL_LITERAL,
+    NULLPTR_LITERAL,
     IDENTIFIER,
 
     UNARY,
@@ -129,6 +132,23 @@ struct StringLitExpr : Expression
 {
     StringLitExpr() { exp_type = ExpressionType::STR_LITERAL; }
     std::string value;
+};
+
+struct CharLitExpr : Expression
+{
+    CharLitExpr() { exp_type = ExpressionType::CHAR_LITERAL; }
+    char value;
+};
+
+struct BoolLitExpr : Expression
+{
+    BoolLitExpr() { exp_type = ExpressionType::BOOL_LITERAL; }
+    bool value;
+};
+
+struct NullptrLitExpr : Expression
+{
+    NullptrLitExpr() { exp_type = ExpressionType::NULLPTR_LITERAL; }
 };
 
 struct IdentExpr : Expression
@@ -379,6 +399,7 @@ struct Parameter
     std::string name;
     bool is_unqual_param = false;
     bool is_binding_mutable = false;
+    bool passed_by_copy = false;
     std::unique_ptr<TypeDecl> type_decl;
 };
 

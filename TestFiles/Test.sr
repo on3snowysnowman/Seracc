@@ -1,24 +1,4 @@
 
 
 
-type struct MyStruct {}
-
-
-export fn main() -> int
-{
-    let mut x : int;
-    let y : float;
-    let s : MyStruct;
-
-    // (MyStruct)(x);
-
-    (* *mut MyStruct);
-    // (*(ptr++));
-    // (*ptr)
-    // (**double_ptr)
-
-    // (++x);
-    // (a + b);
-
-    (mut int)(*some_ptr);
-}
+export fn do_thing(x: val int) -> void {}
