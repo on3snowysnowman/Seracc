@@ -988,7 +988,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
     ptr->col = start_col;
 
     // Check if after parsing the type, if this is an array of that type.
-    if(check(TokenID::LBRACKET))
+    if(consume_if(TokenID::LBRACKET))
     {
         std::unique_ptr<ArrTypeDecl> arr_decl = std::make_unique<ArrTypeDecl>();
     

@@ -1,15 +1,19 @@
 
 
 
-export fn do_thing(x: ref mut * int) -> void {}
+namespace SomeNamespace {export fn do_thing(x: ref mut * int) -> void {}}
 
 export fn main() -> void
 {
-
+    let arr: int[3];
 
     let mut t: SomeStruct;
 
     t.x = 0;
+
+    do_thing(&t.x + 3 - 12.3 / 4);
+
+    arr[t.x];
 
     ret 0;
 }

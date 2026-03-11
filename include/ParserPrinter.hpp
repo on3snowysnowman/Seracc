@@ -6,6 +6,9 @@
 namespace ParserPrinter
 {
 
+static void print_expression(const Expression * const ptr, int tab_depth);
+
+
 static void handle_tab_print(int tab_depth)
 {
     for(int i = 0; i < tab_depth; ++i)
@@ -89,9 +92,37 @@ static void print_type_decl(const TypeDecl * const ptr,
         }
 
         case TypeKind::ARRAY:
+        {
 
-            std::cout << "ARRAY\n";
+            const ArrTypeDecl * const reint_ptr = 
+                static_cast<const ArrTypeDecl*>(ptr);
+
+            std::cout << "ARRAY";
+            handle_newline(tab_depth);
+            std::cout << "Depth: " << (int)reint_ptr->depth;
+            handle_newline(tab_depth);
+            std::cout << "Type: ";
+            handle_newline(tab_depth);
+            std::cout << "{\n";
+            print_type_decl(reint_ptr->element_type.get(), tab_depth + 1);
+            handle_tab_print(tab_depth);
+            std::cout << "}";
+            handle_newline(tab_depth);
+
+            std::cout << "Size Expressions:";
+            handle_newline(tab_depth);
+            std::cout << "{\n";
+
+            for(const auto &p : reint_ptr->size_exprs)
+            {
+                print_expression(p.get(), tab_depth + 1);
+                std::cout << '\n';
+            }
+
+            handle_tab_print(tab_depth);
+            std::cout << "}\n";
             break;
+        }
 
         case TypeKind::FUNC_PTR:
 
@@ -199,12 +230,425 @@ static void print_struct(const StructDecl * const ptr,
     std::cout << "}\n";
 }
 
-static void print_expression(const Expression * const ptr, int tab_depth)
+static void print_bin_lit_expr(const BinaryLitExpr * const ptr, int tab_depth) 
 {
     handle_tab_print(tab_depth);
-    std::cout << "Expression\n";
-    (void)ptr;
-    (void)tab_depth;
+    std::cout << "Binary Literal: " << ptr->value << '\n';
+}
+
+static void print_hex_lit_expr(const HexLitExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Hex Literal: " << ptr->value << '\n';
+}
+
+static void print_int_lit_expr(const IntLitExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "Int Literal: " << ptr->value << '\n';
+}
+
+static void print_float_lit_expr(const FloatLitExpr * const ptr, int 
+    tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "Float Literal: " << ptr->value << '\n';
+}
+
+static void print_str_lit_expr(const StringLitExpr * const ptr, int 
+    tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "String Literal: " << ptr->value << '\n';
+}
+
+static void print_char_lit_expr(const CharLitExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "Char Literal: " << ptr->value << '\n';
+}
+
+static void print_bool_lit_expr(const BoolLitExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "Bool Literal: " << ptr->value << '\n';
+}
+
+static void print_nullptr_lit_expr(const NullptrLitExpr * const ptr, 
+    int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "Nullptr Literal" << '\n';
+}
+
+static void print_ident_expr(const IdentExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "Identifier: " << ptr->name << '\n';
+}
+
+static void print_unary_expr(const UnaryExpr* const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Unary Operation: ";
+
+    static constexpr const char * OP_READABLE_LOOKUP[]
+    {
+        "INVALID",
+        "PRE_INC",
+        "PRE_DEC",
+        "POST_INC",
+        "POST_DEC",
+        "NEGATE",
+        "BIT_NOT",
+        "LO_NOT",
+        "ADDRESS_OF",
+        "DEREF"
+    };
+
+    std::cout << OP_READABLE_LOOKUP[static_cast<int>(ptr->op_type)];
+    handle_newline(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+
+    std::cout << "Operand:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->operand.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+}
+
+static void print_binary_expr(const BinaryExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Binary Operation: ";
+
+    static constexpr const char * OP_READABLE_LOOKUP[]
+    {
+        "INVALID",
+        "ADD",
+        "SUB",
+        "MUL",
+        "DIV",
+        "MOD",
+        "LSHIFT",
+        "RSHIFT",
+        "LT",
+        "GT",
+        "LE",
+        "GE",
+        "EQ",
+        "NE",
+        "BIT_AND",
+        "BIT_OR",
+        "BIT_XOR",
+        "LOG_AND",
+        "LOG_OR"
+    };
+
+    std::cout << OP_READABLE_LOOKUP[static_cast<int>(ptr->op_type)];
+
+    handle_newline(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+
+    std::cout << "Left Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->lhs.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}";
+    handle_newline(tab_depth);
+    std::cout << "Right Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->rhs.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+}
+
+static void print_assign_expr(const AssignExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Assignment Operation: ";
+
+    static constexpr const char * OP_READABLE_LOOKUP[]
+    {
+        "INVALID",
+        "ASSIGN",
+        "ADD_ASSIGN",
+        "SUB_ASSIGN",
+        "MUL_ASSIGN",
+        "DIV_ASSIGN",
+        "MOD_ASSIGN",
+        "LSHIFT_ASSIGN",
+        "RSHIFT_ASSIGN",
+        "BIT_AND_ASSIGN",
+        "BIT_OR_ASSIGN",
+        "BIT_XOR_ASSIGN"
+    };
+
+    std::cout << OP_READABLE_LOOKUP[static_cast<int>(ptr->op_type)];
+
+    handle_newline(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+
+    std::cout << "Left Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->lhs.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}";
+    handle_newline(tab_depth);
+    std::cout << "Right Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->rhs.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+}
+
+static void print_call_expr(const CallExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth); 
+    std::cout << "Call Expression: ";
+    handle_newline(tab_depth);
+    std::cout << "Callee: ";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->callee_expr.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+
+    if(ptr->args.size() == 0) return;
+    
+    handle_tab_print(tab_depth);
+    std::cout << "Args:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+
+    for(const auto &p : ptr->args)
+    {
+        print_expression(p.get(), tab_depth + 1);
+        std::cout << '\n';
+    }
+
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+}
+
+static void print_cast_expr(const CastExpr * const ptr, int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth); 
+    std::cout << "Cast Expression:";
+    handle_newline(tab_depth);
+    std::cout << "Cast type: ";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_type_decl(ptr->to_cast_type.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}";
+    handle_newline(tab_depth);
+    std::cout << "To Cast Expression: ";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->expr_to_cast.get(), tab_depth);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+}
+
+static void print_sbscrpt_expr(const SubscriptExpr * const ptr, 
+    int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth); 
+    std::cout << "Subscript Expression:";
+    handle_newline(tab_depth);
+    std::cout << "Base Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->base_expr.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}";
+    handle_newline(tab_depth);
+    std::cout << "Index Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->index_expr.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+}
+
+static void print_memb_acc_expr(const MemberAccExpr * const ptr, 
+    int tab_depth) 
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth); 
+    std::cout << "Member Access Expression:";
+    handle_newline(tab_depth);
+    std::cout << "Via Pointer: " << ptr->via_pointer;
+    handle_newline(tab_depth);
+    std::cout << "Base Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->base_expr.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}";
+    handle_newline(tab_depth);
+    std::cout << "Member Name: " << ptr->member_name << '\n';
+}
+ 
+static void print_expression(const Expression * const ptr, int tab_depth)
+{
+    switch(ptr->exp_type)
+    {
+        case ExpressionType::BIN_LITERAL:
+
+            print_bin_lit_expr(static_cast<const BinaryLitExpr*>(ptr), 
+                tab_depth);
+            break;
+
+        case ExpressionType::HEX_LITERAL:
+
+            print_hex_lit_expr(static_cast<const HexLitExpr*>(ptr),
+                tab_depth);
+            break;
+
+        case ExpressionType::INT_LITERAL:
+
+            print_int_lit_expr(static_cast<const IntLitExpr*>(ptr), 
+                tab_depth);
+            break;
+
+        case ExpressionType::FLOAT_LITERAL:
+
+            print_float_lit_expr(static_cast<const FloatLitExpr*>(ptr),
+                tab_depth);
+            break;
+
+        case ExpressionType::STR_LITERAL:
+
+            print_str_lit_expr(static_cast<const StringLitExpr*>(ptr),
+                tab_depth);
+            break;
+
+        case ExpressionType::CHAR_LITERAL:
+
+            print_char_lit_expr(static_cast<const CharLitExpr*>(ptr),
+                tab_depth);
+            break;
+
+        case ExpressionType::BOOL_LITERAL:
+
+            print_bool_lit_expr(static_cast<const BoolLitExpr*>(ptr), 
+                tab_depth);
+            break;
+
+        case ExpressionType::NULLPTR_LITERAL:
+
+            print_nullptr_lit_expr(static_cast<const NullptrLitExpr*>(ptr),
+                tab_depth);
+            break;
+
+        case ExpressionType::IDENTIFIER:
+
+            print_ident_expr(static_cast<const IdentExpr*>(ptr),
+                tab_depth);
+            break;
+
+        case ExpressionType::UNARY:
+
+            print_unary_expr(static_cast<const UnaryExpr*>(ptr), tab_depth);
+            break;
+
+        case ExpressionType::BINARY:
+
+            print_binary_expr(static_cast<const BinaryExpr*>(ptr), tab_depth);
+            break;
+
+        case ExpressionType::ASSIGN:
+
+            print_assign_expr(static_cast<const AssignExpr*>(ptr),
+                tab_depth);
+            break;
+
+        case ExpressionType::CALL:
+
+            print_call_expr(static_cast<const CallExpr*>(ptr), tab_depth);
+            break;
+
+        case ExpressionType::CAST:
+
+            print_cast_expr(static_cast<const CastExpr*>(ptr), tab_depth);
+            break;
+
+        case ExpressionType::SUBSCRIPT:
+
+            print_sbscrpt_expr(static_cast<const SubscriptExpr*>(ptr), 
+                tab_depth);
+            break;
+
+        case ExpressionType::MEMBER_ACCESS:
+
+            print_memb_acc_expr(static_cast<const MemberAccExpr*>(ptr),
+                tab_depth);
+            break;
+
+        default:
+
+            std::cout << "No printing for this expression\n";
+            break;
+    }
 }
 
 static void print_var_decl(const VarDeclStmt * const ptr, int tab_depth)

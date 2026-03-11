@@ -1,255 +1,62 @@
-ID: KW_EXPORT
-Line: 4
-Col: 1
-Text: export
-
-ID: KW_FN
-Line: 4
-Col: 8
-Text: fn
-
-ID: IDENTIFIER
-Line: 4
-Col: 11
-Text: do_thing
-
-ID: LPAREN
-Line: 4
-Col: 19
-Text: 
-
-ID: IDENTIFIER
-Line: 4
-Col: 20
-Text: x
-
-ID: COLON
-Line: 4
-Col: 21
-Text: 
-
-ID: KW_REF
-Line: 4
-Col: 23
-Text: ref
-
-ID: KW_MUT
-Line: 4
-Col: 27
-Text: mut
-
-ID: ASTERISK
-Line: 4
-Col: 31
-Text: 
-
-ID: IDENTIFIER
-Line: 4
-Col: 33
-Text: int
-
-ID: RPAREN
-Line: 4
-Col: 36
-Text: 
-
-ID: ARROW
-Line: 4
-Col: 38
-Text: 
-
-ID: IDENTIFIER
-Line: 4
-Col: 41
-Text: void
-
-ID: LBRACE
-Line: 4
-Col: 46
-Text: 
-
-ID: RBRACE
-Line: 4
-Col: 47
-Text: 
-
-ID: KW_EXPORT
-Line: 6
-Col: 1
-Text: export
-
-ID: KW_FN
-Line: 6
-Col: 8
-Text: fn
-
-ID: IDENTIFIER
-Line: 6
-Col: 11
-Text: main
-
-ID: LPAREN
-Line: 6
-Col: 15
-Text: 
-
-ID: RPAREN
-Line: 6
-Col: 16
-Text: 
-
-ID: ARROW
-Line: 6
-Col: 18
-Text: 
-
-ID: IDENTIFIER
-Line: 6
-Col: 21
-Text: void
-
-ID: LBRACE
-Line: 7
-Col: 1
-Text: 
-
-ID: KW_LET
-Line: 10
-Col: 5
-Text: let
-
-ID: KW_MUT
-Line: 10
-Col: 9
-Text: mut
-
-ID: IDENTIFIER
-Line: 10
-Col: 13
-Text: t
-
-ID: COLON
-Line: 10
-Col: 14
-Text: 
-
-ID: IDENTIFIER
-Line: 10
-Col: 16
-Text: SomeStruct
-
-ID: SEMICOLON
-Line: 10
-Col: 26
-Text: 
-
-ID: IDENTIFIER
-Line: 12
-Col: 5
-Text: t
-
-ID: DOT
-Line: 12
-Col: 6
-Text: 
-
-ID: IDENTIFIER
-Line: 12
-Col: 7
-Text: x
-
-ID: ASSIGN
-Line: 12
-Col: 9
-Text: 
-
-ID: INT_LITERAL
-Line: 12
-Col: 11
-Text: 0
-
-ID: SEMICOLON
-Line: 12
-Col: 12
-Text: 
-
-ID: KW_RET
-Line: 14
-Col: 5
-Text: ret
-
-ID: INT_LITERAL
-Line: 14
-Col: 9
-Text: 0
-
-ID: SEMICOLON
-Line: 14
-Col: 10
-Text: 
-
-ID: RBRACE
-Line: 15
-Col: 1
-Text: 
-
-ID: END_OF_FILE
-Line: 15
-Col: 2
-Text: 
-
 Namespace: global
 Line: 0
 Col: 0
 Declarations:
 {
-   Function: do_thing
+   Namespace: SomeNamespace
    Line: 4
-   Col: 8
-   Public: 1
-   Return type:
+   Col: 1
+   Declarations:
    {
+      Function: do_thing
       Line: 4
-      Col: 41
-      Type Kind: NAMED
-      Name: void
-   }
-   Parameters:
-   {
-      Param: x
-      Line: 4
-      Col: 20
-      Binding Mutable: 0
-      Unqualified: 0
-      Passed by copy: 0
-      Type:
+      Col: 33
+      Public: 1
+      Return type:
       {
          Line: 4
-         Col: 23
-         Type Kind: REF
-         Reference to mutable: 1
-         Referenced to type: 
+         Col: 66
+         Type Kind: NAMED
+         Name: void
+      }
+      Parameters:
+      {
+         Param: x
+         Line: 4
+         Col: 45
+         Binding Mutable: 0
+         Unqualified: 0
+         Passed by copy: 0
+         Type:
          {
             Line: 4
-            Col: 31
-            Type Kind: PTR
-            Points to mutable: 0
-            Pointed to type: 
+            Col: 48
+            Type Kind: REF
+            Reference to mutable: 1
+            Referenced to type: 
             {
                Line: 4
-               Col: 33
-               Type Kind: NAMED
-               Name: int
+               Col: 56
+               Type Kind: PTR
+               Points to mutable: 0
+               Pointed to type: 
+               {
+                  Line: 4
+                  Col: 58
+                  Type Kind: NAMED
+                  Name: int
+               }
             }
          }
+
+      }
+      Body:
+      {
+         Line: 4
+         Col: 71
       }
 
-   }
-   Body:
-   {
-      Line: 4
-      Col: 46
-   }
+}
 
    Function: main
    Line: 6
@@ -269,6 +76,33 @@ Declarations:
       Statements:
       {
          Variable Declaration:
+         Name: arr
+         Line: 8
+         Col: 5
+         Binding Mutable: 0
+         Type:
+         {
+            Line: 8
+            Col: 14
+            Type Kind: ARRAY
+            Depth: 1
+            Type: 
+            {
+               Line: 8
+               Col: 14
+               Type Kind: NAMED
+               Name: int
+            }
+            Size Expressions:
+            {
+               Line: 8
+               Col: 18
+               Int Literal: 3
+
+            }
+         }
+
+         Variable Declaration:
          Name: t
          Line: 10
          Col: 5
@@ -281,12 +115,127 @@ Declarations:
             Name: SomeStruct
          }
 
-         Expression
+         Assignment Operation: ASSIGN
+         Line: 0
+         Col: 0
+         Left Expression:
+         {
+            Line: 0
+            Col: 0
+            Member Access Expression:
+            Via Pointer: 0
+            Base Expression:
+            {
+               Line: 12
+               Col: 5
+               Identifier: t
+            }
+            Member Name: x
+         }
+         Right Expression:
+         {
+            Line: 12
+            Col: 11
+            Int Literal: 0
+         }
+
+         Line: 0
+         Col: 0
+         Call Expression: 
+         Callee: 
+         {
+            Line: 14
+            Col: 5
+            Identifier: do_thing
+         }
+         Args:
+         {
+            Binary Operation: SUB
+            Line: 14
+            Col: 14
+            Left Expression:
+            {
+               Binary Operation: ADD
+               Line: 14
+               Col: 14
+               Left Expression:
+               {
+                  Unary Operation: ADDRESS_OF
+                  Line: 14
+                  Col: 14
+                  Operand:
+                  {
+                     Line: 0
+                     Col: 0
+                     Member Access Expression:
+                     Via Pointer: 0
+                     Base Expression:
+                     {
+                        Line: 14
+                        Col: 15
+                        Identifier: t
+                     }
+                     Member Name: x
+                  }
+               }
+               Right Expression:
+               {
+                  Line: 14
+                  Col: 21
+                  Int Literal: 3
+               }
+            }
+            Right Expression:
+            {
+               Binary Operation: DIV
+               Line: 14
+               Col: 25
+               Left Expression:
+               {
+                  Line: 14
+                  Col: 25
+                  Float Literal: 12.3
+               }
+               Right Expression:
+               {
+                  Line: 14
+                  Col: 32
+                  Int Literal: 4
+               }
+            }
+
+         }
+
+         Line: 0
+         Col: 0
+         Subscript Expression:
+         Base Expression:
+         {
+            Line: 16
+            Col: 5
+            Identifier: arr
+         }
+         Index Expression:
+         {
+            Line: 0
+            Col: 0
+            Member Access Expression:
+            Via Pointer: 0
+            Base Expression:
+            {
+               Line: 16
+               Col: 9
+               Identifier: t
+            }
+            Member Name: x
+         }
 
          Return:
          Expression:
          {
-            Expression
+            Line: 18
+            Col: 9
+            Int Literal: 0
          }
 
       }
