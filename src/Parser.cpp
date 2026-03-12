@@ -311,20 +311,76 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
     else if(consume_if(TokenID::KW_IF))
     {
-        std::cerr << "If/While/For not implemented\n";
-        exit(1);
+        ptr = std::make_unique<IfStmt>();
+
+        IfStmt * reint_ptr = static_cast<IfStmt*>(ptr.get());
+
+        expect(TokenID::LPAREN);
+
+        reint_ptr->condition_expr = parse_expression();
+
+        expect(TokenID::RPAREN);
+
+        reint_ptr->then_body = parse_scope();
+
+        if(consume_if(TokenID::KW_ELSE))
+        {
+            if(check(TokenID::KW_IF))
+            {
+                reint_ptr->else_branch = parse_statement();
+                return ptr;
+            }
+            
+            auto else_block = std::make_unique<BlockStmt>();
+            else_block->block_decl = parse_scope();
+            reint_ptr->else_branch = std::move(else_block);
+        }
     }
 
     else if(consume_if(TokenID::KW_WHILE))
     {
-        std::cerr << "If/While/For not implemented\n";
-        exit(1);
+        ptr = std::make_unique<WhileStmt>();
+
+        WhileStmt * const reint_ptr = static_cast<WhileStmt*>(ptr.get());
+
+        expect(TokenID::LPAREN);
+
+        reint_ptr->condition_expr = parse_expression();
+
+        expect(TokenID::RPAREN);
+
+        reint_ptr->body = parse_scope();
     }
 
     else if(consume_if(TokenID::KW_FOR))
     {
-        std::cerr << "If/While/For not implemented\n";
-        exit(1);
+        ptr = std::make_unique<ForStmt>();
+
+        ForStmt * const reint_ptr = static_cast<ForStmt*>(ptr.get());
+
+        expect(TokenID::LPAREN);
+
+        if(!check(TokenID::SEMICOLON))
+        {
+            reint_ptr->init_stmt = parse_statement();
+        }
+        // Depending on the statement, the semicolon may not have been consumed.
+        consume_if(TokenID::SEMICOLON);
+        
+        if(!check(TokenID::SEMICOLON))
+        {
+            reint_ptr->condition_expr = parse_expression();
+        }
+        expect(TokenID::SEMICOLON);
+
+        if(!check(TokenID::RPAREN))
+        {
+            reint_ptr->increment_expr = parse_expression();
+        }
+
+        expect(TokenID::RPAREN);
+
+        reint_ptr->body = parse_scope();
     }
 
     // Block Declaration
@@ -363,6 +419,9 @@ std::unique_ptr<Expression> Parser::parse_expression()
 
 std::unique_ptr<Expression> Parser::parse_assignment()
 {
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
     std::unique_ptr<Expression> left = parse_log_or();
 
     AssignOp op = AssignOp::INVALID;
@@ -377,8 +436,8 @@ std::unique_ptr<Expression> Parser::parse_assignment()
 
     auto full_expr = std::make_unique<AssignExpr>();
 
-    full_expr->line = left->line;
-    full_expr->col = left->col;
+    full_expr->line = start_line;
+    full_expr->col = start_col;
     full_expr->op_type = op;
     
     full_expr->lhs = std::move(left);
@@ -391,6 +450,9 @@ std::unique_ptr<Expression> Parser::parse_assignment()
 
 std::unique_ptr<Expression> Parser::parse_log_or()
 {
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
     std::unique_ptr<Expression> left = parse_log_and();
 
     while(true)
@@ -399,8 +461,8 @@ std::unique_ptr<Expression> Parser::parse_log_or()
 
         auto full_expr = std::make_unique<BinaryExpr>();
 
-        full_expr->line = left->line;
-        full_expr->col = left->col;
+        full_expr->line = start_line;
+        full_expr->col = start_col;
         full_expr->op_type = BinaryOp::LOG_OR;
         full_expr->lhs = std::move(left);
         full_expr->rhs = parse_log_and();
@@ -413,6 +475,9 @@ std::unique_ptr<Expression> Parser::parse_log_or()
 
 std::unique_ptr<Expression> Parser::parse_log_and()
 {
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
     std::unique_ptr<Expression> left = parse_equality();
 
     while(true)
@@ -421,8 +486,8 @@ std::unique_ptr<Expression> Parser::parse_log_and()
 
         auto full_expr = std::make_unique<BinaryExpr>();
 
-        full_expr->line = left->line;
-        full_expr->col = left->col;
+        full_expr->line = start_line;
+        full_expr->col = start_col;
         full_expr->op_type = BinaryOp::LOG_AND;
         full_expr->lhs = std::move(left);
         full_expr->rhs = parse_equality();
@@ -435,6 +500,9 @@ std::unique_ptr<Expression> Parser::parse_log_and()
 
 std::unique_ptr<Expression> Parser::parse_equality()
 {
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
     std::unique_ptr<Expression> left = parse_relational();
 
     while(true)
@@ -447,8 +515,8 @@ std::unique_ptr<Expression> Parser::parse_equality()
 
         auto full_expr = std::make_unique<BinaryExpr>();
 
-        full_expr->line = left->line;
-        full_expr->col = left->col;
+        full_expr->line = start_line;
+        full_expr->col = start_col;
         full_expr->op_type = op;
         full_expr->lhs = std::move(left);
         full_expr->rhs = parse_relational();
@@ -461,6 +529,9 @@ std::unique_ptr<Expression> Parser::parse_equality()
 
 std::unique_ptr<Expression> Parser::parse_relational()
 {
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
     std::unique_ptr<Expression> left = parse_additive();
 
     while(true)
@@ -475,8 +546,8 @@ std::unique_ptr<Expression> Parser::parse_relational()
 
         auto full_expr = std::make_unique<BinaryExpr>();
 
-        full_expr->line = left->line;
-        full_expr->col = left->col;
+        full_expr->line = start_line;
+        full_expr->col = start_col;
         full_expr->op_type = op;
         full_expr->lhs = std::move(left);
         full_expr->rhs = parse_additive();
@@ -489,6 +560,9 @@ std::unique_ptr<Expression> Parser::parse_relational()
 
 std::unique_ptr<Expression> Parser::parse_additive()
 {
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
     std::unique_ptr<Expression> left = parse_multiplicative();
 
     while(true)
@@ -501,8 +575,8 @@ std::unique_ptr<Expression> Parser::parse_additive()
         
         auto full_expr = std::make_unique<BinaryExpr>();
 
-        full_expr->line = left->line;
-        full_expr->col = left->col;
+        full_expr->line = start_line;
+        full_expr->col = start_col;
         full_expr->op_type = op;
         full_expr->lhs = std::move(left);
         full_expr->rhs = parse_multiplicative();
@@ -514,6 +588,9 @@ std::unique_ptr<Expression> Parser::parse_additive()
 
 std::unique_ptr<Expression> Parser::parse_multiplicative()
 {
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
     std::unique_ptr<Expression> left = parse_unary();
 
     while(true)
@@ -527,8 +604,8 @@ std::unique_ptr<Expression> Parser::parse_multiplicative()
         
         auto full_expr = std::make_unique<BinaryExpr>();
 
-        full_expr->line = left->line;
-        full_expr->col = left->col;
+        full_expr->line = start_line;
+        full_expr->col = start_col;
         full_expr->op_type = op;
         full_expr->lhs = std::move(left);
         full_expr->rhs = parse_unary();
@@ -664,6 +741,9 @@ std::unique_ptr<Expression> Parser::parse_unary()
 
 std::unique_ptr<Expression> Parser::parse_postfix()
 {
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
     // Expression that came before the postfix.
     std::unique_ptr<Expression> pre_expr = parse_primary();
 
@@ -674,6 +754,9 @@ std::unique_ptr<Expression> Parser::parse_postfix()
         {
             std::unique_ptr<CallExpr> full_expr = 
                 std::make_unique<CallExpr>();
+
+            full_expr->line = start_line;
+            full_expr->col = start_col;
 
             // Move the pre expression into the full expression's callee expr
             full_expr->callee_expr = std::move(pre_expr);
@@ -704,6 +787,9 @@ std::unique_ptr<Expression> Parser::parse_postfix()
         {
             std::unique_ptr<SubscriptExpr> full_expr = 
                 std::make_unique<SubscriptExpr>();
+            
+            full_expr->line = start_line;
+            full_expr->col = start_col;
 
             // Move the pre expression into the full expression's base expr
             full_expr->base_expr = std::move(pre_expr);
@@ -722,6 +808,8 @@ std::unique_ptr<Expression> Parser::parse_postfix()
             std::unique_ptr<MemberAccExpr> full_expr = 
                 std::make_unique<MemberAccExpr>();
 
+            full_expr->line = start_line;
+            full_expr->col = start_col;
             full_expr->base_expr = std::move(pre_expr);
             full_expr->member_name = expect(TokenID::IDENTIFIER).text;
             full_expr->via_pointer = false;
@@ -735,6 +823,8 @@ std::unique_ptr<Expression> Parser::parse_postfix()
             std::unique_ptr<MemberAccExpr> full_expr =
                 std::make_unique<MemberAccExpr>();
                 
+            full_expr->line = start_line;
+            full_expr->col = start_col;
             full_expr->base_expr = std::move(pre_expr);
             full_expr->member_name = expect(TokenID::IDENTIFIER).text;
             full_expr->via_pointer = true;
@@ -748,6 +838,8 @@ std::unique_ptr<Expression> Parser::parse_postfix()
             std::unique_ptr<UnaryExpr> full_expr = 
                 std::make_unique<UnaryExpr>();
 
+            full_expr->line = start_line;
+            full_expr->col = start_col;
             full_expr->op_type = UnaryOp::POST_INC;
             full_expr->operand = std::move(pre_expr);
             
@@ -759,6 +851,8 @@ std::unique_ptr<Expression> Parser::parse_postfix()
             std::unique_ptr<UnaryExpr> full_expr = 
                 std::make_unique<UnaryExpr>();
 
+            full_expr->line = start_line;
+            full_expr->col = start_col;
             full_expr->op_type = UnaryOp::POST_DEC;
             full_expr->operand = std::move(pre_expr);
 
@@ -783,8 +877,8 @@ std::unique_ptr<Expression> Parser::parse_primary()
 
         IntLitExpr * const reint_ptr = static_cast<IntLitExpr*>(ptr.get());
 
-        ptr->line = peek().line;
-        ptr->col = peek().col;
+        ptr->line = start_line;
+        ptr->col = start_col;
         reint_ptr->value = expect(TokenID::INT_LITERAL).text;
         return ptr;
     }

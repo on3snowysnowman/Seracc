@@ -13,6 +13,21 @@ export fn main() -> void
 
     do_thing(&t.x + 3 - 12.3 / 4);
 
+    if(t.x == 0)
+    {
+        t.x = 1;
+    }
+
+    else if(t.x == -1)
+    {
+        t.x = 0;
+    }
+
+    for(let mut i: int = 0; i < 3; ++i)
+    {
+        ++t.x;
+    }
+
     arr[t.x];
 
     ret 0;

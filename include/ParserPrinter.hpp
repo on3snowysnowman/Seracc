@@ -168,7 +168,7 @@ static void print_param(const Parameter &param, int tab_depth)
     handle_newline(tab_depth); 
     std::cout << "Binding Mutable: " << param.is_binding_mutable;
     handle_newline(tab_depth);
-    std::cout << "Unqualified: " << param.is_unqual_param;
+    std::cout << "Unqual noied: " << param.is_unqual_param;
     handle_newline(tab_depth);
     std::cout << "Passed by copy: " << param.passed_by_copy;
     handle_newline(tab_depth);
@@ -686,7 +686,11 @@ static void print_var_decl(const VarDeclStmt * const ptr, int tab_depth)
 static void print_ret_decl(const RetStmt * const ptr, int tab_depth)
 {
     handle_tab_print(tab_depth);
-    std::cout << "Return:";
+    std::cout << "Return Statement:";
+    handle_newline(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
     handle_newline(tab_depth);
     std::cout << "Expression:";
     handle_newline(tab_depth);
@@ -695,6 +699,47 @@ static void print_ret_decl(const RetStmt * const ptr, int tab_depth)
     handle_tab_print(tab_depth);
     std::cout << "}\n";
 }
+
+static void print_if_stmt(const IfStmt * const ptr, int tab_depth)
+{
+    handle_tab_print(tab_depth);
+    std::cout << "If Statement:";
+    handle_newline(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "Condition Expr:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->condition_expr.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}";
+
+    if(ptr->else_branch != nullptr)
+    {
+        handle_newline(tab_depth);
+        std::cout << "Else Branch Statement:";
+        handle_newline(tab_depth);
+        std::cout << "{\n";
+        print_if_stmt(static_cast<IfStmt*>(ptr->else_branch.get()), 
+            tab_depth + 1);
+        handle_tab_print(tab_depth);
+        std::cout << "}";
+    }
+
+    std::cout << '\n';
+}
+
+// static void print_while_stmt(const WhileStmt * const ptr, int tab_depth)
+// {
+    
+// }
+
+// static void print_for_stmt(const ForStmt * const ptr, int tab_depth)
+// {
+    
+// }
 
 static void print_scope(const ScopeBody &scope, int tab_depth)
 {
@@ -741,7 +786,10 @@ static void print_scope(const ScopeBody &scope, int tab_depth)
 
                 case StatementType::IF:
 
-                    std::cout << "If";
+                    print_if_stmt(
+                        static_cast<IfStmt*>(stmt.get()),
+                        tab_depth + 1
+                    );
                     break;
 
                 case StatementType::RETURN:
@@ -904,6 +952,7 @@ static void print_namespace(const NamespaceDecl * const ptr,
         std::cout << "\n";
     }
 
+    handle_tab_print(tab_depth);
     std::cout << "}\n";
 }
 

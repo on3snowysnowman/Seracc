@@ -25,7 +25,7 @@ Declarations:
          Line: 4
          Col: 45
          Binding Mutable: 0
-         Unqualified: 0
+         Unqual noied: 0
          Passed by copy: 0
          Type:
          {
@@ -56,7 +56,7 @@ Declarations:
          Col: 71
       }
 
-}
+   }
 
    Function: main
    Line: 6
@@ -116,12 +116,12 @@ Declarations:
          }
 
          Assignment Operation: ASSIGN
-         Line: 0
-         Col: 0
+         Line: 12
+         Col: 5
          Left Expression:
          {
-            Line: 0
-            Col: 0
+            Line: 12
+            Col: 5
             Member Access Expression:
             Via Pointer: 0
             Base Expression:
@@ -139,8 +139,8 @@ Declarations:
             Int Literal: 0
          }
 
-         Line: 0
-         Col: 0
+         Line: 14
+         Col: 5
          Call Expression: 
          Callee: 
          {
@@ -165,8 +165,8 @@ Declarations:
                   Col: 14
                   Operand:
                   {
-                     Line: 0
-                     Col: 0
+                     Line: 14
+                     Col: 15
                      Member Access Expression:
                      Via Pointer: 0
                      Base Expression:
@@ -206,34 +206,105 @@ Declarations:
 
          }
 
+         If Statement:
          Line: 0
          Col: 0
+         Condition Expr:
+         {
+            Binary Operation: EQ
+            Line: 16
+            Col: 8
+            Left Expression:
+            {
+               Line: 16
+               Col: 8
+               Member Access Expression:
+               Via Pointer: 0
+               Base Expression:
+               {
+                  Line: 16
+                  Col: 8
+                  Identifier: t
+               }
+               Member Name: x
+            }
+            Right Expression:
+            {
+               Line: 16
+               Col: 15
+               Int Literal: 0
+            }
+         }
+         Else Branch Statement:
+         {
+            If Statement:
+            Line: 21
+            Col: 10
+            Condition Expr:
+            {
+               Binary Operation: EQ
+               Line: 21
+               Col: 13
+               Left Expression:
+               {
+                  Line: 21
+                  Col: 13
+                  Member Access Expression:
+                  Via Pointer: 0
+                  Base Expression:
+                  {
+                     Line: 21
+                     Col: 13
+                     Identifier: t
+                  }
+                  Member Name: x
+               }
+               Right Expression:
+               {
+                  Unary Operation: NEGATE
+                  Line: 21
+                  Col: 20
+                  Operand:
+                  {
+                     Line: 21
+                     Col: 21
+                     Int Literal: 1
+                  }
+               }
+            }
+         }
+
+For
+         Line: 31
+         Col: 5
          Subscript Expression:
          Base Expression:
          {
-            Line: 16
+            Line: 31
             Col: 5
             Identifier: arr
          }
          Index Expression:
          {
-            Line: 0
-            Col: 0
+            Line: 31
+            Col: 9
             Member Access Expression:
             Via Pointer: 0
             Base Expression:
             {
-               Line: 16
+               Line: 31
                Col: 9
                Identifier: t
             }
             Member Name: x
          }
 
-         Return:
+         Return Statement:
+         Line: 33
+         Col: 5
          Expression:
          {
-            Line: 18
+            Line: 33
             Col: 9
             Int Literal: 0
          }
