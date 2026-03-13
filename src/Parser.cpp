@@ -152,6 +152,19 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
 
     expect(TokenID::KW_FN);
 
+    // This function has a receiver parameter
+    if(consume_if(TokenID::LPAREN))
+    {
+        ReceiverData r_data;
+        r_data.receiver_name = expect(TokenID::IDENTIFIER).text;
+        expect(TokenID::COLON);
+        r_data.receiver_type_decl = parse_type_decl();
+
+        ptr->receiver_data.emplace(std::move(r_data));
+
+        expect(TokenID::RPAREN);
+    }
+
     ptr->name = expect(TokenID::IDENTIFIER).text;
 
     expect(TokenID::LPAREN);
@@ -232,9 +245,66 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
 
 std::unique_ptr<ComponentDecl> Parser::parse_component(bool is_pub) 
 {
-    (void)is_pub;
-    std::cerr << "Parse component not implemented\n";
-    exit(1);
+    std::unique_ptr<ComponentDecl> ptr = std::make_unique<ComponentDecl>();
+
+    ptr->is_pub = is_pub;
+    ptr->line = peek().line;
+    ptr->col = peek().col;
+
+    expect(TokenID::KW_COMPONENT);
+
+    ptr->name = expect(TokenID::IDENTIFIER).text;
+
+    const auto it = defined_types.find(ptr->name);
+
+    // This component has already been defined
+    if(it != defined_types.end())
+    {
+        print_error_location(ptr->line, ptr->col);
+        std::cerr << ": Type \"" << ptr->name << "\" has already been defined "
+            "here: " << it->second.file_defined << ":" << it->second.line << 
+            ":" << it->second.col << '\n';
+        exit(1);
+    }
+
+        // Otherwise, register this struct type as defined.
+    else defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
+
+    expect(TokenID::LBRACE);
+
+    // Parse component body
+    while(!check(TokenID::RBRACE))
+    {
+        bool is_member_pub = consume_if(TokenID::KW_PUB);
+
+        // Parsing a nested container
+        if(consume_if(TokenID::KW_TYPE))
+        {
+            if(check(TokenID::KW_STRUCT)) 
+                ptr->decls.push_back(parse_struct(is_member_pub));
+            
+            else if(check(TokenID::KW_COMPONENT))
+                ptr->decls.push_back(parse_component(is_member_pub));
+
+            else
+            {
+                print_error_location(peek().line, peek().col);
+                std::cerr << ": \"type\" not followed by a declaration of a "
+                    "struct or component.\n";
+                exit(1);
+            }
+        }
+
+        else if(check(TokenID::KW_FN)) 
+            ptr->decls.push_back(parse_function(is_member_pub));
+
+        else
+            ptr->decls.push_back(parse_field(is_member_pub));
+    }
+
+    expect(TokenID::RBRACE);
+
+    return ptr;
 }
 
 std::unique_ptr<Statement> Parser::parse_statement() 

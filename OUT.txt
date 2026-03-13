@@ -1,20 +1,88 @@
-Namespace: global
+-- NAMESPACE --
+Name: global
 Line: 0
 Col: 0
 Declarations:
 {
-   Namespace: SomeNamespace
+   -- COMPONENT --
+   Name: SomeComponent
    Line: 4
+   Col: 13
+   Members: 
+   {
+      -- FUNCTION --
+      Name: some_func
+      Line: 8
+      Col: 9
+      Public: 1
+      Return type:
+      {
+         Line: 8
+         Col: 57
+         Type Kind: NAMED
+         Name: void
+      }
+      Receiver Parameter
+      {
+         Name: self
+         Type:
+         {
+            Line: 8
+            Col: 19
+            Type Kind: REF
+            Reference to mutable: 1
+            Referenced to type: 
+            {
+               Line: 8
+               Col: 27
+               Type Kind: NAMED
+               Name: SomeComponent
+            }
+         }
+      }
+      Body:
+      {
+         Line: 8
+         Col: 62
+      }
+
+      Struct: SomeStruct
+      Line: 10
+      Col: 10
+      Members: 
+      {
+         Field: x
+         Line: 12
+         Col: 9
+         Binding Mutable: 1
+         Public: 1
+         Type:
+         {
+            Line: 12
+            Col: 16
+            Type Kind: NAMED
+            Name: int
+         }
+
+      }
+
+
+   }
+
+   -- NAMESPACE --
+   Name: SomeNamespace
+   Line: 18
    Col: 1
    Declarations:
    {
-      Function: do_thing
-      Line: 4
+      -- FUNCTION --
+      Name: do_thing
+      Line: 18
       Col: 33
       Public: 1
       Return type:
       {
-         Line: 4
+         Line: 18
          Col: 66
          Type Kind: NAMED
          Name: void
@@ -22,26 +90,26 @@ Declarations:
       Parameters:
       {
          Param: x
-         Line: 4
+         Line: 18
          Col: 45
          Binding Mutable: 0
          Unqual noied: 0
          Passed by copy: 0
          Type:
          {
-            Line: 4
+            Line: 18
             Col: 48
             Type Kind: REF
             Reference to mutable: 1
             Referenced to type: 
             {
-               Line: 4
+               Line: 18
                Col: 56
                Type Kind: PTR
                Points to mutable: 0
                Pointed to type: 
                {
-                  Line: 4
+                  Line: 18
                   Col: 58
                   Type Kind: NAMED
                   Name: int
@@ -52,50 +120,124 @@ Declarations:
       }
       Body:
       {
-         Line: 4
+         Line: 18
          Col: 71
       }
 
    }
 
-   Function: main
-   Line: 6
+   -- FUNCTION --
+   Name: main
+   Line: 20
    Col: 8
    Public: 1
    Return type:
    {
-      Line: 6
+      Line: 20
       Col: 21
       Type Kind: NAMED
       Name: void
    }
    Body:
    {
-      Line: 7
+      Line: 21
       Col: 1
       Statements:
       {
+         For Statement:
+         Line: 22
+         Col: 5
+         Init Statement:
+         {
+               Variable Declaration:
+               Name: i
+               Line: 22
+               Col: 9
+               Binding Mutable: 1
+               Type:
+               {
+                  Line: 22
+                  Col: 20
+                  Type Kind: NAMED
+                  Name: u64
+               }
+         }
+         Condition Expr:
+         {
+            Binary Operation: LT
+            Line: 22
+            Col: 25
+            Left Expression:
+            {
+               Line: 22
+               Col: 25
+               Identifier: i
+            }
+            Right Expression:
+            {
+               Line: 22
+               Col: 29
+               Int Literal: 5
+            }
+         }
+         Increment Expr:
+         {
+            Unary Operation: PRE_INC
+            Line: 22
+            Col: 32
+            Operand:
+            {
+               Line: 22
+               Col: 34
+               Identifier: i
+            }
+         }
+         Body:
+         {
+            Line: 23
+            Col: 5
+            Statements:
+            {
+               Assignment Operation: SUB_ASSIGN
+               Line: 24
+               Col: 9
+               Left Expression:
+               {
+                  Line: 24
+                  Col: 9
+                  Identifier: i
+               }
+               Right Expression:
+               {
+                  Line: 24
+                  Col: 14
+                  Int Literal: 1
+               }
+
+            }
+         }
+
          Variable Declaration:
          Name: arr
-         Line: 8
+         Line: 28
          Col: 5
          Binding Mutable: 0
          Type:
          {
-            Line: 8
+            Line: 28
             Col: 14
             Type Kind: ARRAY
             Depth: 1
             Type: 
             {
-               Line: 8
+               Line: 28
                Col: 14
                Type Kind: NAMED
                Name: int
             }
             Size Expressions:
             {
-               Line: 8
+               Line: 28
                Col: 18
                Int Literal: 3
 
@@ -104,29 +246,29 @@ Declarations:
 
          Variable Declaration:
          Name: t
-         Line: 10
+         Line: 30
          Col: 5
          Binding Mutable: 1
          Type:
          {
-            Line: 10
+            Line: 30
             Col: 16
             Type Kind: NAMED
             Name: SomeStruct
          }
 
          Assignment Operation: ASSIGN
-         Line: 12
+         Line: 32
          Col: 5
          Left Expression:
          {
-            Line: 12
+            Line: 32
             Col: 5
             Member Access Expression:
             Via Pointer: 0
             Base Expression:
             {
-               Line: 12
+               Line: 32
                Col: 5
                Identifier: t
             }
@@ -134,44 +276,44 @@ Declarations:
          }
          Right Expression:
          {
-            Line: 12
+            Line: 32
             Col: 11
             Int Literal: 0
          }
 
-         Line: 14
+         Line: 34
          Col: 5
          Call Expression: 
          Callee: 
          {
-            Line: 14
+            Line: 34
             Col: 5
             Identifier: do_thing
          }
          Args:
          {
             Binary Operation: SUB
-            Line: 14
+            Line: 34
             Col: 14
             Left Expression:
             {
                Binary Operation: ADD
-               Line: 14
+               Line: 34
                Col: 14
                Left Expression:
                {
                   Unary Operation: ADDRESS_OF
-                  Line: 14
+                  Line: 34
                   Col: 14
                   Operand:
                   {
-                     Line: 14
+                     Line: 34
                      Col: 15
                      Member Access Expression:
                      Via Pointer: 0
                      Base Expression:
                      {
-                        Line: 14
+                        Line: 34
                         Col: 15
                         Identifier: t
                      }
@@ -180,7 +322,7 @@ Declarations:
                }
                Right Expression:
                {
-                  Line: 14
+                  Line: 34
                   Col: 21
                   Int Literal: 3
                }
@@ -188,17 +330,17 @@ Declarations:
             Right Expression:
             {
                Binary Operation: DIV
-               Line: 14
+               Line: 34
                Col: 25
                Left Expression:
                {
-                  Line: 14
+                  Line: 34
                   Col: 25
                   Float Literal: 12.3
                }
                Right Expression:
                {
-                  Line: 14
+                  Line: 34
                   Col: 32
                   Int Literal: 4
                }
@@ -212,17 +354,17 @@ Declarations:
          Condition Expr:
          {
             Binary Operation: EQ
-            Line: 16
+            Line: 36
             Col: 8
             Left Expression:
             {
-               Line: 16
+               Line: 36
                Col: 8
                Member Access Expression:
                Via Pointer: 0
                Base Expression:
                {
-                  Line: 16
+                  Line: 36
                   Col: 8
                   Identifier: t
                }
@@ -230,30 +372,63 @@ Declarations:
             }
             Right Expression:
             {
-               Line: 16
+               Line: 36
                Col: 15
                Int Literal: 0
             }
          }
+         Body:
+         {
+            Line: 37
+            Col: 5
+            Statements:
+            {
+               Assignment Operation: ASSIGN
+               Line: 38
+               Col: 9
+               Left Expression:
+               {
+                  Line: 38
+                  Col: 9
+                  Member Access Expression:
+                  Via Pointer: 0
+                  Base Expression:
+                  {
+                     Line: 38
+                     Col: 9
+                     Identifier: t
+                  }
+                  Member Name: x
+               }
+               Right Expression:
+               {
+                  Line: 38
+                  Col: 15
+                  Int Literal: 1
+               }
+
+            }
+         }
+
          Else Branch Statement:
          {
             If Statement:
-            Line: 21
+            Line: 41
             Col: 10
             Condition Expr:
             {
                Binary Operation: EQ
-               Line: 21
+               Line: 41
                Col: 13
                Left Expression:
                {
-                  Line: 21
+                  Line: 41
                   Col: 13
                   Member Access Expression:
                   Via Pointer: 0
                   Base Expression:
                   {
-                     Line: 21
+                     Line: 41
                      Col: 13
                      Identifier: t
                   }
@@ -262,37 +437,150 @@ Declarations:
                Right Expression:
                {
                   Unary Operation: NEGATE
-                  Line: 21
+                  Line: 41
                   Col: 20
                   Operand:
                   {
-                     Line: 21
+                     Line: 41
                      Col: 21
                      Int Literal: 1
                   }
                }
             }
+            Body:
+            {
+               Line: 42
+               Col: 5
+               Statements:
+               {
+                  Assignment Operation: ASSIGN
+                  Line: 43
+                  Col: 9
+                  Left Expression:
+                  {
+                     Line: 43
+                     Col: 9
+                     Member Access Expression:
+                     Via Pointer: 0
+                     Base Expression:
+                     {
+                        Line: 43
+                        Col: 9
+                        Identifier: t
+                     }
+                     Member Name: x
+                  }
+                  Right Expression:
+                  {
+                     Line: 43
+                     Col: 15
+                     Int Literal: 0
+                  }
+
+               }
+            }
+
          }
 
-For
-         Line: 31
+         For Statement:
+         Line: 46
+         Col: 5
+         Init Statement:
+         {
+               Variable Declaration:
+               Name: i
+               Line: 46
+               Col: 9
+               Binding Mutable: 1
+               Type:
+               {
+                  Line: 46
+                  Col: 20
+                  Type Kind: NAMED
+                  Name: int
+               }
+               Init Expression:
+               {
+                  Line: 46
+                  Col: 26
+                  Int Literal: 0
+               }
+         }
+         Condition Expr:
+         {
+            Binary Operation: LT
+            Line: 46
+            Col: 29
+            Left Expression:
+            {
+               Line: 46
+               Col: 29
+               Identifier: i
+            }
+            Right Expression:
+            {
+               Line: 46
+               Col: 33
+               Int Literal: 3
+            }
+         }
+         Increment Expr:
+         {
+            Unary Operation: PRE_INC
+            Line: 46
+            Col: 36
+            Operand:
+            {
+               Line: 46
+               Col: 38
+               Identifier: i
+            }
+         }
+         Body:
+         {
+            Line: 47
+            Col: 5
+            Statements:
+            {
+               Unary Operation: PRE_INC
+               Line: 48
+               Col: 9
+               Operand:
+               {
+                  Line: 48
+                  Col: 11
+                  Member Access Expression:
+                  Via Pointer: 0
+                  Base Expression:
+                  {
+                     Line: 48
+                     Col: 11
+                     Identifier: t
+                  }
+                  Member Name: x
+               }
+
+            }
+         }
+
+         Line: 51
          Col: 5
          Subscript Expression:
          Base Expression:
          {
-            Line: 31
+            Line: 51
             Col: 5
             Identifier: arr
          }
          Index Expression:
          {
-            Line: 31
+            Line: 51
             Col: 9
             Member Access Expression:
             Via Pointer: 0
             Base Expression:
             {
-               Line: 31
+               Line: 51
                Col: 9
                Identifier: t
             }
@@ -300,11 +588,11 @@ For
          }
 
          Return Statement:
-         Line: 33
+         Line: 53
          Col: 5
          Expression:
          {
-            Line: 33
+            Line: 53
             Col: 9
             Int Literal: 0
          }
