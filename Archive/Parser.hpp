@@ -8,7 +8,7 @@
 #include <string>
 
 #include "Lexer.hpp"
-#include "Declarations.hpp"
+#include "ASTDeclarations.hpp"
 
 
 struct Program
@@ -236,7 +236,7 @@ static inline void print_namespace(NamespaceDecl *ptr)
 
     if(ptr->decls.size() > 0)
     {
-        std::cout << "--Declarations--\n";
+        std::cout << "--ASTDeclarations--\n";
 
         for(const std::unique_ptr<Decl> &decl : ptr->decls)
         {
@@ -270,7 +270,7 @@ static inline void print_namespace(NamespaceDecl *ptr)
             std::cout << "}\n";
         }
 
-        std::cout << "--Declarations--\n";
+        std::cout << "--ASTDeclarations--\n";
     }
 }
 

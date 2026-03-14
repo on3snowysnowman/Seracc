@@ -7,7 +7,7 @@
 #include <vector>
 #include <unordered_map>
 
-#include "Declarations.hpp"
+#include "ASTDeclarations.hpp"
 #include "STBlder.hpp"
 #include "Parser.hpp"
 

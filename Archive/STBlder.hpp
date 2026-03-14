@@ -7,7 +7,7 @@
 #include <vector>
 #include <memory>
 
-#include "Declarations.hpp"
+#include "ASTDeclarations.hpp"
 #include "Parser.hpp"
 
 struct TypeSymbol

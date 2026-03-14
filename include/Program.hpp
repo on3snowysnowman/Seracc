@@ -4,7 +4,7 @@
 
 #include <vector>
 
-#include "Declarations.hpp"
+#include "ASTDeclarations.hpp"
 
 
 struct Program
