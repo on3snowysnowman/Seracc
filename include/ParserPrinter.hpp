@@ -1045,11 +1045,11 @@ static void print_component(const ComponentDecl * const ptr,
     std::cout << "}\n";
 }
 
-static void print_namespace(const NamespaceDecl * const ptr, 
+static void print_module(const ModuleDecl * const ptr, 
     int tab_depth)
 {
     handle_tab_print(tab_depth);
-    std::cout << "-- NAMESPACE --";
+    std::cout << "-- MODULE --";
     handle_newline(tab_depth);
     std::cout << "Name: " << ptr->name;
     handle_newline(tab_depth);
@@ -1072,10 +1072,10 @@ static void print_namespace(const NamespaceDecl * const ptr,
                     tab_depth + 1);
                 break;
 
-            case DeclKind::NAMESPACE:
+            case DeclKind::MODULE:
 
-                print_namespace(
-                    static_cast<NamespaceDecl*>(decl.get()),
+                print_module(
+                    static_cast<ModuleDecl*>(decl.get()),
                     tab_depth + 1);
                 break;
 
@@ -1119,5 +1119,5 @@ static void print_parse_results(const char *in_file_path)
     Parser pars;
     Program prog = pars.parse(in_file_path);
 
-    ParserPrinter::print_namespace(prog.ast.get(), 0);
+    ParserPrinter::print_module(prog.ast.get(), 0);
 }

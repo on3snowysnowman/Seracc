@@ -1,6 +1,6 @@
 
 
-namespace Serac
+module Serac
 {
 
 export fn exported_func(int z) -> void {}

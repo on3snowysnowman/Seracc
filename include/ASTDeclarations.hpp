@@ -270,6 +270,7 @@ struct VarDeclStmt : Statement
     std::unique_ptr<TypeDecl> type_decl;
     std::string var_name;
     std::unique_ptr<Expression> init_expr; // nullptr if none
+    uint64_t symbol_idx;
 };
 
 struct StructDeclStmt : Statement
@@ -277,6 +278,7 @@ struct StructDeclStmt : Statement
     StructDeclStmt() { stmt_type = StatementType::STRUCT_DECL; }
 
     std::unique_ptr<StructDecl> decl;
+    uint64_t symbol_idx;
 };
 
 struct ComponentDeclStmt : Statement
@@ -284,13 +286,14 @@ struct ComponentDeclStmt : Statement
     ComponentDeclStmt() { stmt_type = StatementType::COMPONENT_DECL; }
 
     std::unique_ptr<ComponentDecl> decl;
+    uint64_t  symbol_idx;
 };
 
 struct RetStmt : Statement
 {
     RetStmt() { stmt_type = StatementType::RETURN; }
 
-    std::unique_ptr<Expression> ret_expr; // Should not be null, must have ret
+    std::unique_ptr<Expression> ret_expr; 
 };
 
 struct ScopeBody
@@ -299,6 +302,7 @@ struct ScopeBody
     uint32_t col = 0;
 
     std::vector<std::unique_ptr<Statement>> statements;
+    uint64_t scope_idx = 0;
 };
 
 struct IfStmt : Statement
@@ -361,9 +365,6 @@ struct NamedTypeDecl : TypeDecl
     NamedTypeDecl() { kind = TypeKind::NAMED; }
 
     std::string type_name;
-    
-    // Index into the symbol table of the resolved type.
-    std::optional<uint64_t> resolved_symbol_idx;
 };
 
 struct PtrTypeDecl : TypeDecl
@@ -390,6 +391,7 @@ struct ArrTypeDecl : TypeDecl
 
     std::unique_ptr<TypeDecl> element_type;
     std::vector<std::unique_ptr<Expression>> size_exprs;
+    std::optional<uint64_t> symbol_idx;
 };
 
 struct Parameter
@@ -401,6 +403,7 @@ struct Parameter
     bool is_binding_mutable = false;
     bool passed_by_copy = false;
     std::unique_ptr<TypeDecl> type_decl;
+    std::optional<uint64_t> symbol_idx;
 };
 
 struct FuncPtrDecl : TypeDecl
@@ -409,13 +412,14 @@ struct FuncPtrDecl : TypeDecl
 
     std::unique_ptr<TypeDecl> ret_type;
     std::vector<Parameter> param_types;
+    std::optional<uint64_t> symbol_idx;
 };
 
 enum class DeclKind
 {
     INVALID,
     FIELD,
-    NAMESPACE,
+    MODULE,
     STRUCT,
     FUNCTION,
     COMPONENT
@@ -438,6 +442,7 @@ struct FieldDecl : Declaration
     bool is_binding_mutable = false;
     bool is_pub = false;
     std::unique_ptr<TypeDecl> type_decl;
+    std::optional<uint64_t> symbol_idx;
 };
 
 // Data for the receiver parameter of a component receiver function
@@ -445,8 +450,8 @@ struct ReceiverData
 {
     std::unique_ptr<TypeDecl> receiver_type_decl;
     std::string receiver_name;
+    std::optional<uint64_t> symbol_idx;
 };
-
 
 struct FunctionDecl : Declaration
 {
@@ -460,6 +465,7 @@ struct FunctionDecl : Declaration
     // Receiver component parameter, if this function is a receiver function.
     std::optional<ReceiverData> receiver_data;
     ScopeBody body;
+    std::optional<uint64_t> symbol_idx;
 };
 
 struct StructDecl : Declaration
@@ -469,6 +475,7 @@ struct StructDecl : Declaration
     bool is_pub = false;
 
     std::vector<std::unique_ptr<Declaration>> decls;
+    std::optional<uint64_t> symbol_idx;
 };
 
 struct ComponentDecl : Declaration
@@ -478,12 +485,14 @@ struct ComponentDecl : Declaration
     bool is_pub = false;
 
     std::vector<std::unique_ptr<Declaration>> decls;
+    std::optional<uint64_t> symbol_idx;
 };
 
-struct NamespaceDecl : Declaration
+struct ModuleDecl : Declaration
 {
-    NamespaceDecl() { kind = DeclKind::NAMESPACE; }
+    ModuleDecl() { kind = DeclKind::MODULE; }
 
     std::vector<std::unique_ptr<Declaration>> decls;
+    std::optional<uint64_t> symbol_idx;
 };
 

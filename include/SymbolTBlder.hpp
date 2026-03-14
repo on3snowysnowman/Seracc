@@ -27,9 +27,9 @@ enum class SymbolType
 
 struct Symbol
 {
-    std::string name;
+    // std::string name;
     SymbolType sym_type = SymbolType::INVALID;
-    uint64_t declr_scope_id = 0;
+    uint64_t scope_idx = 0;
     virtual ~Symbol() = default;
 };
 
@@ -37,14 +37,14 @@ struct TypeSymbol : Symbol
 {
     TypeSymbol() { sym_type = SymbolType::TYPE; }
 
-    std::optional<uint64_t> child_scope_id;
+    uint64_t created_scope_idx = 0;
 };
 
 struct FunctionSymbol : Symbol
 {
     FunctionSymbol() { sym_type = SymbolType::FN; }
 
-    uint64_t child_scope_id = 0;
+    uint64_t created_scope_idx = 0;
 };
 
 struct VarSymbol : Symbol
@@ -55,8 +55,8 @@ struct VarSymbol : Symbol
 struct ModuleSymbol : Symbol
 {
     ModuleSymbol() { sym_type = SymbolType::MODULE; }
-    
-    uint64_t child_scope_id = 0;
+
+    uint64_t created_scope_idx = 0;
 };
 
 struct FieldSymbol : Symbol
@@ -66,8 +66,8 @@ struct FieldSymbol : Symbol
 
 struct Scope
 {
-    std::optional<uint64_t> parent_scope_id;
-    std::unordered_map<std::string, uint64_t> sym_name_to_id;
+    std::optional<uint64_t> parent_scope_idx;
+    std::unordered_map<std::string, uint64_t> sym_name_to_symbol_idx;
 };
 
 // =============================================================================
@@ -76,7 +76,7 @@ struct Scope
 struct SymbolTable
 {
     std::vector<std::unique_ptr<Symbol>> symbols;
-    std::vector<Scope> scope_syms;
+    std::vector<Scope> scopes;
 };
 
 
@@ -87,19 +87,39 @@ public:
 
     SymbolTBlder();
 
-    SymbolTable build(const Program &p);
+    SymbolTable build(Program &p);
 
 private:
 
     // Members
 
-    std::vector<std::unique_ptr<Symbol>> symbols;
-    std::vector<Scope> scope_syms;
+    const char * parsed_file = nullptr;
 
+    std::vector<std::unique_ptr<Symbol>> symbols;
+    std::vector<Scope> scopes;
+
+    
     // Methods
 
-    uint64_t build_namespace(const NamespaceDecl * const ptr, 
-        std::optional<uint64_t> parent_scope_id);
+    void build_top_level(ModuleDecl * const ptr);
 
-    uint64_t add_scope_assign_id(Scope &&s);
+    void build_scope_body(ScopeBody &body, uint64_t parent_scope_idx);
+
+    void build_field(FieldDecl * const ptr, 
+        uint64_t parent_scope_id);
+
+    void build_struct(StructDecl * const ptr,
+        uint64_t parent_scope_id);
+
+    void build_function(FunctionDecl * const ptr,
+        uint64_t parent_scope_id);
+
+    void build_component(ComponentDecl * const ptr,
+        uint64_t parent_scope_id);
+
+    void build_module(ModuleDecl * const ptr, 
+        uint64_t parent_scope_id);
+
+    uint64_t get_next_scope_idx();
+    uint64_t get_next_symbol_idx();
 };

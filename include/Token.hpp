@@ -175,7 +175,7 @@ const char * const tokID_readable[]
 const std::unordered_map<std::string, TokenID> rdbl_kw_to_id
 {
     {"fn", TokenID::KW_FN},
-    {"namespace", TokenID::KW_NAMESPACE},
+    {"module", TokenID::KW_NAMESPACE},
     {"type", TokenID::KW_TYPE},
     {"struct", TokenID::KW_STRUCT},
     {"component", TokenID::KW_COMPONENT},

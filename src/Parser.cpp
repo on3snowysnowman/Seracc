@@ -81,11 +81,11 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
     {
         if(is_exported)
         {
-            std::cerr << "Namespaces cannot be marked \"export\"\n";
+            std::cerr << "Sub Modules cannot be marked \"export\"\n";
             exit(1);
         }
 
-        return parse_namespace();
+        return parse_module();
     }
 
     if(check(TokenID::KW_FN)) return parse_function(is_exported);
@@ -109,9 +109,9 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
     return nullptr;
 }
 
-std::unique_ptr<NamespaceDecl> Parser::parse_namespace() 
+std::unique_ptr<ModuleDecl> Parser::parse_module() 
 {
-    std::unique_ptr<NamespaceDecl> ptr = std::make_unique<NamespaceDecl>();
+    std::unique_ptr<ModuleDecl> ptr = std::make_unique<ModuleDecl>();
 
     ptr->line = peek().line;
     ptr->col = peek().col;
@@ -129,7 +129,7 @@ std::unique_ptr<NamespaceDecl> Parser::parse_namespace()
         if(!decl)
         {
             std::cerr << parsed_file << ": Reached end of file expecting '}' "
-                "for namespace: \"" << ptr->name << "\" found here: ";
+                "for module: \"" << ptr->name << "\" found here: ";
                 print_error_location(ptr->line, ptr->col);
                 std::cerr << '\n';
             exit(1);

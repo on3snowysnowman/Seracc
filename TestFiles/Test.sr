@@ -13,7 +13,7 @@ export type component SomeComponent
     }
 }
 
-namespace SomeNamespace {export fn do_thing(x: ref mut * int) -> void {}}
+module SomeNamespace {export fn do_thing(x: ref mut * int) -> void {}}
 
 export fn main() -> void
 {
