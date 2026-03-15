@@ -306,7 +306,8 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
     {
         uint64_t param_symbol_idx = get_next_symbol_idx();
 
-        p.symbol_idx.value() = param_symbol_idx;
+        p.symbol_idx.emplace(param_symbol_idx);
+        // p.symbol_idx.value() = param_symbol_idx;
 
         symbols.at(param_symbol_idx) = std::make_unique<VarSymbol>();
 

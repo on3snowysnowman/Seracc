@@ -3,7 +3,8 @@
 #include <fstream>
 
 // #include "LexerPrinter.hpp"
-#include "ParserPrinter.hpp"
+// #include "ParserPrinter.hpp"
+#include "SymbolTPrinter.hpp"
 
 
 int main(int argc, char **argv)
@@ -18,8 +19,9 @@ int main(int argc, char **argv)
     // const char *out_file_path = argv[2];
 
     // print_lexer_output(in_file_path);
-    print_parse_results(in_file_path);
+    // print_parse_results(in_file_path);
 
+    print_symT_results(in_file_path);
 
     return EXIT_SUCCESS;
 }
