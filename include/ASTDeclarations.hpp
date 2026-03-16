@@ -302,7 +302,7 @@ struct ScopeBody
     uint32_t col = 0;
 
     std::vector<std::unique_ptr<Statement>> statements;
-    uint64_t scope_idx = 0;
+    uint64_t scope_idx = 0; // Idx of the scope of this body 
 };
 
 struct IfStmt : Statement
@@ -442,6 +442,7 @@ struct FieldDecl : Declaration
     bool is_binding_mutable = false;
     bool is_pub = false;
     std::unique_ptr<TypeDecl> type_decl;
+    std::unique_ptr<Expression> init_expr; // nullptr if none.
     std::optional<uint64_t> symbol_idx;
 };
 

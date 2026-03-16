@@ -38,23 +38,23 @@ private:
     };
 
     // Map of defined type names to the line and column they were defined on.
-    std::unordered_map<std::string, DefinedType> defined_types
-    {
-        // Register initial builtins
-        {"int", {0, 0, "BUILTIN"}},
-        {"u8", {0, 0, "BUILTIN"}},
-        {"i8", {0, 0, "BUILTIN"}},
-        {"u16", {0, 0, "BUILTIN"}},
-        {"i16", {0, 0, "BUILTIN"}},
-        {"u32", {0, 0, "BUILTIN"}},
-        {"i32", {0, 0, "BUILTIN"}},
-        {"u64", {0, 0, "BUILTIN"}},
-        {"i64", {0, 0, "BUILTIN"}},
-        {"float", {0, 0, "BUILTIN"}},
-        {"double", {0, 0, "BUILTIN"}},
-        {"bool", {0, 0, "BUILTIN"}},
-        {"char", {0, 0, "BUILTIN"}}
-    };
+    // std::unordered_map<std::string, DefinedType> defined_types
+    // {
+    //     // Register initial builtins
+    //     {"int", {0, 0, "BUILTIN"}},
+    //     {"u8", {0, 0, "BUILTIN"}},
+    //     {"i8", {0, 0, "BUILTIN"}},
+    //     {"u16", {0, 0, "BUILTIN"}},
+    //     {"i16", {0, 0, "BUILTIN"}},
+    //     {"u32", {0, 0, "BUILTIN"}},
+    //     {"i32", {0, 0, "BUILTIN"}},
+    //     {"u64", {0, 0, "BUILTIN"}},
+    //     {"i64", {0, 0, "BUILTIN"}},
+    //     {"float", {0, 0, "BUILTIN"}},
+    //     {"double", {0, 0, "BUILTIN"}},
+    //     {"bool", {0, 0, "BUILTIN"}},
+    //     {"char", {0, 0, "BUILTIN"}}
+    // };
 
     // Methods
 

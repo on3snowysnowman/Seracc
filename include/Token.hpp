@@ -23,7 +23,7 @@ enum class TokenID
 
     // Keywords
     KW_FN,
-    KW_NAMESPACE,
+    KW_MODULE,
     KW_TYPE,
     KW_STRUCT,
     KW_COMPONENT,
@@ -105,7 +105,7 @@ const char * const tokID_readable[]
 
     // Keywords
     "KW_FN",
-    "KW_NAMESPACE",
+    "KW_MODULE",
     "KW_TYPE",
     "KW_STRUCT",
     "KW_COMPONENT",
@@ -175,7 +175,7 @@ const char * const tokID_readable[]
 const std::unordered_map<std::string, TokenID> rdbl_kw_to_id
 {
     {"fn", TokenID::KW_FN},
-    {"module", TokenID::KW_NAMESPACE},
+    {"module", TokenID::KW_MODULE},
     {"type", TokenID::KW_TYPE},
     {"struct", TokenID::KW_STRUCT},
     {"component", TokenID::KW_COMPONENT},

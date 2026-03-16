@@ -32,9 +32,75 @@ SymbolTable SymbolTBlder::build(Program &p)
 
 // Private
 
+void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
+    std::string symbol_name, uint32_t symbol_line, uint32_t symbol_col,
+    bool is_variable)
+{
+    // If this is  variable, we don't want to allow duplicate variable 
+    // declarations shadowing parent scopes.
+    if(is_variable)
+    {
+        std::optional<uint64_t> parsed_scope_idx = scope_idx;
+
+        while(parsed_scope_idx.has_value())
+        {
+            // Ensure this symbol name has not been defined already in a parent 
+            // scope.
+            auto it = 
+                scopes.at(parsed_scope_idx.value()).
+                    sym_name_to_symbol_idx.find(symbol_name);
+
+            // This symbol has already been defined here.
+            if(it != scopes.at(parsed_scope_idx.value()).
+                sym_name_to_symbol_idx.end())
+            {
+                std::cerr << parsed_file << ":" << symbol_line << ":" << 
+                    symbol_col << ": Symbol already defined: " << 
+                    symbol_name << '\n';
+                exit(1);
+            }
+
+            parsed_scope_idx = scopes.at(parsed_scope_idx.value()).parent_scope_idx;
+        }
+    }
+
+    else
+    {
+        // Ensure this symbol name has not been defined already in a parent 
+        // scope.
+        auto it = 
+            scopes.at(scope_idx).sym_name_to_symbol_idx.find(symbol_name);
+
+        // This symbol has already been defined here.
+        if(it != scopes.at(scope_idx).sym_name_to_symbol_idx.end())
+        {
+            std::cerr << parsed_file << ":" << symbol_line << ":" << 
+                symbol_col << ": Symbol already defined: " << 
+                symbol_name << '\n';
+            exit(1);
+        }
+    }
+    // Add our symbol the parent scope's symbol lookup.
+    scopes.at(scope_idx).sym_name_to_symbol_idx[symbol_name] = 
+        symbol_idx;
+}
+
 void SymbolTBlder::build_top_level(ModuleDecl * const ptr)
 {
+    uint64_t top_symbol_idx = get_next_symbol_idx();
     uint64_t top_scope_idx = get_next_scope_idx();
+
+    ptr->symbol_idx = top_symbol_idx;
+
+    symbols.at(top_symbol_idx) = std::make_unique<ModuleSymbol>();
+
+    ModuleSymbol * const mod_sym_ptr = 
+        static_cast<ModuleSymbol*>(symbols.at(top_symbol_idx).get());
+
+    // ModuleSymbol does not belong to a scope, therefore it's scope index will
+    // be left as optional default constructed.
+    
+    mod_sym_ptr->created_scope_idx = top_scope_idx;
 
     for(const std::unique_ptr<Declaration> &decl : ptr->decls)
     {
@@ -64,62 +130,85 @@ void SymbolTBlder::build_top_level(ModuleDecl * const ptr)
                     top_scope_idx);
                 break;
 
+            case DeclKind::FIELD:
+
+                build_field(static_cast<FieldDecl*>(decl.get()),
+                    top_scope_idx);
+                break;
+
             default:
 
                 std::cerr << "Symbol Table Builder parsed incorrect "
-                    " declaration for module: " << decl->name << '\n';
+                    "declaration for module: " << decl->name << '\n';
                 exit(1);
         }
     }
 }
 
-void SymbolTBlder::build_scope_body(ScopeBody &body, uint64_t parent_scope_idx)
+void SymbolTBlder::build_statement(Statement * const ptr, 
+    uint64_t parent_scope_idx)
 {
-    uint64_t scope_idx = get_next_scope_idx();
-
-    body.scope_idx = scope_idx;
-
-    // Set our scope to point to our parent scope.
-    scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
-
-    // Parse statements
-    for(const std::unique_ptr<Statement> &stmt : body.statements)
-    {
-        switch(stmt->stmt_type)
+    switch(ptr->stmt_type)
         {
-
             case StatementType::BLOCK:
 
                 build_scope_body(
-                    static_cast<BlockStmt*>(stmt.get())->block_decl,
-                    scope_idx);
+                    static_cast<BlockStmt*>(ptr)->block_decl,
+                    parent_scope_idx, {});
                 break;
 
             case StatementType::COMPONENT_DECL:
 
                 build_component(
-                    static_cast<ComponentDeclStmt*>(stmt.get())->decl.get(),
-                    scope_idx);
+                    static_cast<ComponentDeclStmt*>(ptr)->decl.get(),
+                    parent_scope_idx);
                 break;
 
             case StatementType::FOR:
+            {
+                ForStmt * const for_ptr = static_cast<ForStmt*>(ptr);
 
-                build_scope_body(
-                    static_cast<ForStmt*>(stmt.get())->body,
-                    parent_scope_idx
-                );
+                uint64_t for_scope_idx = get_next_scope_idx();
+
+                scopes.at(for_scope_idx).parent_scope_idx = parent_scope_idx;
+
+                // If this for statement has an init declaration, this needs to
+                // be added inside the scope body.
+                if(for_ptr->init_stmt != nullptr)
+                {
+                    VarDeclStmt * var_init = 
+                        static_cast<VarDeclStmt*>(for_ptr->init_stmt.get());
+
+                    uint64_t var_symbol_idx = get_next_symbol_idx();
+
+                    symbols.at(var_symbol_idx) = std::make_unique<VarSymbol>();
+
+                    VarSymbol * const var_sym_ptr = 
+                        static_cast<VarSymbol*>(symbols.at(
+                        var_symbol_idx).get());
+
+                    var_sym_ptr->scope_idx = for_scope_idx;
+
+                    add_symbol_to_scope(for_scope_idx, var_symbol_idx, 
+                        var_init->var_name, var_init->line, var_init->col, 
+                        true);
+                }
+
+                build_scope_body(for_ptr->body, parent_scope_idx, 
+                    for_scope_idx);
+
                 break;
+            }
 
             case StatementType::IF:
             {
-                IfStmt * const if_ptr = static_cast<IfStmt*>(stmt.get());
+                IfStmt * const if_ptr = static_cast<IfStmt*>(ptr);
 
-                build_scope_body(if_ptr->then_body, parent_scope_idx);
+                build_scope_body(if_ptr->then_body, parent_scope_idx, {});
 
                 if(if_ptr->else_branch != nullptr)
                 {
-                    build_scope_body(static_cast<IfStmt*>(
-                            if_ptr->else_branch.get())->then_body,
+                    build_statement(if_ptr->else_branch.get(), 
                         parent_scope_idx);
                 }
 
@@ -129,8 +218,8 @@ void SymbolTBlder::build_scope_body(ScopeBody &body, uint64_t parent_scope_idx)
             case StatementType::STRUCT_DECL:
 
                 build_struct(
-                    static_cast<StructDeclStmt*>(stmt.get())->decl.get(),
-                    scope_idx);
+                    static_cast<StructDeclStmt*>(ptr)->decl.get(),
+                    parent_scope_idx);
                 break; 
 
             case StatementType::VAR_DECL:
@@ -138,28 +227,57 @@ void SymbolTBlder::build_scope_body(ScopeBody &body, uint64_t parent_scope_idx)
                 uint64_t symbol_idx = get_next_symbol_idx();
 
                 VarDeclStmt * const var_ptr = 
-                    static_cast<VarDeclStmt*>(stmt.get());
+                    static_cast<VarDeclStmt*>(ptr);
 
                 var_ptr->symbol_idx = symbol_idx;
 
                 symbols.at(symbol_idx) = std::make_unique<VarSymbol>();
 
-                symbols.at(symbol_idx)->scope_idx = scope_idx;
+                symbols.at(symbol_idx)->scope_idx = parent_scope_idx;
+                
+                add_symbol_to_scope(parent_scope_idx, symbol_idx, 
+                    var_ptr->var_name, var_ptr->line, var_ptr->col,
+                    true);
                 break;
             }
 
             case StatementType::WHILE:
 
                 build_scope_body(
-                    static_cast<WhileStmt*>(stmt.get())->body,
-                    parent_scope_idx
-                );
+                    static_cast<WhileStmt*>(ptr)->body, parent_scope_idx, 
+                    {});
                 break;
 
             default:
 
                 break;
         }
+}
+
+void SymbolTBlder::build_scope_body(ScopeBody &body, 
+    uint64_t parent_scope_idx, std::optional<uint64_t> existing_scope)
+{
+    uint64_t scope_idx;
+
+    if(existing_scope.has_value())
+    {
+        scope_idx = existing_scope.value();
+        // parent_scope_idx of the existing scope should already be set.
+    }
+
+    else
+    {
+        scope_idx = get_next_scope_idx();
+        // Set our scope to point to our parent scope.
+        scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
+    }
+
+    body.scope_idx = scope_idx;
+    
+    // Parse statements
+    for(const std::unique_ptr<Statement> &stmt : body.statements)
+    {
+        build_statement(stmt.get(), scope_idx);
     }
 }
 
@@ -177,21 +295,8 @@ void SymbolTBlder::build_field(FieldDecl * const ptr,
 
     field_ptr->scope_idx = parent_scope_idx;
 
-    // Ensure this symbol name has not been defined already in the parent scope.
-    auto it = 
-        scopes.at(parent_scope_idx).sym_name_to_symbol_idx.find(ptr->name);
-
-    // This symbol has already been defined here.
-    if(it != scopes.at(parent_scope_idx).sym_name_to_symbol_idx.end())
-    {
-        std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col << 
-            ": Symbol already defined: " << ptr->name << '\n';
-        exit(1);
-    }
-
-    // Add our symbol the parent scope's symbol lookup.
-    scopes.at(parent_scope_idx).sym_name_to_symbol_idx[ptr->name] = 
-        symbol_idx;
+    add_symbol_to_scope(parent_scope_idx, symbol_idx, ptr->name,
+        ptr->line, ptr->col);
 }
 
 void SymbolTBlder::build_struct(StructDecl * const ptr,
@@ -213,21 +318,8 @@ void SymbolTBlder::build_struct(StructDecl * const ptr,
     // Set our scope to point to our parent scope.
     scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
 
-    // Ensure this symbol name has not been defined already in the parent scope.
-    auto it = 
-        scopes.at(parent_scope_idx).sym_name_to_symbol_idx.find(ptr->name);
-
-    // This symbol has already been defined here.
-    if(it != scopes.at(parent_scope_idx).sym_name_to_symbol_idx.end())
-    {
-        std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col << 
-            ": Symbol already defined: " << ptr->name << '\n';
-        exit(1);
-    }
-
-    // Add our symbol the parent scope's symbol lookup.
-    scopes.at(parent_scope_idx).sym_name_to_symbol_idx[ptr->name] = 
-        symbol_idx;
+    add_symbol_to_scope(parent_scope_idx, symbol_idx, ptr->name,
+        ptr->line, ptr->col);
 
     for(const std::unique_ptr<Declaration> &decl : ptr->decls)
     {
@@ -256,10 +348,9 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
     uint64_t parent_scope_idx)
 {
     uint64_t symbol_idx = get_next_symbol_idx();
-    uint64_t scope_idx = get_next_scope_idx();
+    // uint64_t scope_idx = get_next_scope_idx();
 
     ptr->symbol_idx = symbol_idx;
-    ptr->body.scope_idx = scope_idx;
     
     symbols.at(symbol_idx) = std::make_unique<FunctionSymbol>();
 
@@ -267,24 +358,15 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
         static_cast<FunctionSymbol*>(symbols.at(symbol_idx).get());
 
     func_ptr->scope_idx = parent_scope_idx;
-    func_ptr->created_scope_idx = scope_idx;
 
+    add_symbol_to_scope(parent_scope_idx, symbol_idx, ptr->name,
+        ptr->line, ptr->col);
 
-    // Ensure this symbol name has not been defined already in the parent scope.
-    auto it = 
-        scopes.at(parent_scope_idx).sym_name_to_symbol_idx.find(ptr->name);
+    uint64_t body_scope_idx = get_next_scope_idx();
 
-    // This symbol has already been defined here.
-    if(it != scopes.at(parent_scope_idx).sym_name_to_symbol_idx.end())
-    {
-        std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col << 
-            ": Symbol already defined: " << ptr->name << '\n';
-        exit(1);
-    }
+    scopes.at(body_scope_idx).parent_scope_idx = parent_scope_idx;
 
-    // Add our symbol the parent scope's symbol lookup.
-    scopes.at(parent_scope_idx).sym_name_to_symbol_idx[ptr->name] = 
-        symbol_idx;
+    func_ptr->created_scope_idx = body_scope_idx;
 
     // Parse receiver function if the function has one
     if(ptr->receiver_data.has_value())
@@ -298,7 +380,10 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
         VarSymbol * const var_ptr = 
             static_cast<VarSymbol*>(symbols.at(receiver_symbol_idx).get());
 
-        var_ptr->scope_idx = parent_scope_idx;
+        var_ptr->scope_idx = body_scope_idx;
+
+        add_symbol_to_scope(body_scope_idx, receiver_symbol_idx, 
+            ptr->receiver_data->receiver_name, ptr->line, ptr->col);
     }
 
     // Parse parameters
@@ -307,14 +392,16 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
         uint64_t param_symbol_idx = get_next_symbol_idx();
 
         p.symbol_idx.emplace(param_symbol_idx);
-        // p.symbol_idx.value() = param_symbol_idx;
 
         symbols.at(param_symbol_idx) = std::make_unique<VarSymbol>();
 
-        symbols.at(param_symbol_idx)->scope_idx = parent_scope_idx;
+        symbols.at(param_symbol_idx)->scope_idx = body_scope_idx;
+
+        add_symbol_to_scope(body_scope_idx, param_symbol_idx, p.name,
+            p.line, p.col);
     }
 
-    build_scope_body(ptr->body, parent_scope_idx);
+    build_scope_body(ptr->body, parent_scope_idx, body_scope_idx);
 }
 
 void SymbolTBlder::build_component(ComponentDecl * const ptr,
@@ -336,21 +423,8 @@ void SymbolTBlder::build_component(ComponentDecl * const ptr,
     // Set our scope to point to our parent scope.
     scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
 
-    // Ensure this symbol name has not been defined already in the parent scope.
-    auto it = 
-        scopes.at(parent_scope_idx).sym_name_to_symbol_idx.find(ptr->name);
-
-    // This symbol has already been defined here.
-    if(it != scopes.at(parent_scope_idx).sym_name_to_symbol_idx.end())
-    {
-        std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col << 
-            ": Symbol already defined: " << ptr->name << '\n';
-        exit(1);
-    }
-
-    // Add our symbol the parent scope's symbol lookup.
-    scopes.at(parent_scope_idx).sym_name_to_symbol_idx[ptr->name] = 
-        symbol_idx;
+    add_symbol_to_scope(parent_scope_idx, symbol_idx, 
+            ptr->name, ptr->line, ptr->col);
 
     for(const std::unique_ptr<Declaration> &decl : ptr->decls)
     {
@@ -406,21 +480,8 @@ void SymbolTBlder::build_module(ModuleDecl * const ptr,
     // Set our scope to point to our parent scope.
     scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
 
-    // Ensure this symbol name has not been defined already in the parent scope.
-    auto it = 
-        scopes.at(parent_scope_idx).sym_name_to_symbol_idx.find(ptr->name);
-
-    // This symbol has already been defined here.
-    if(it != scopes.at(parent_scope_idx).sym_name_to_symbol_idx.end())
-    {
-        std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col << 
-            ": Symbol already defined: " << ptr->name << '\n';
-        exit(1);
-    }
-
-    // Add our symbol the parent scope's symbol lookup.
-    scopes.at(parent_scope_idx).sym_name_to_symbol_idx[ptr->name] = 
-        symbol_idx;
+    add_symbol_to_scope(parent_scope_idx, symbol_idx, 
+            ptr->name, ptr->line, ptr->col);
     
     for(const std::unique_ptr<Declaration> &decl : ptr->decls)
     {
@@ -446,6 +507,12 @@ void SymbolTBlder::build_module(ModuleDecl * const ptr,
             case DeclKind::COMPONENT:
 
                 build_component(static_cast<ComponentDecl*>(decl.get()), 
+                    scope_idx);
+                break;
+
+            case DeclKind::FIELD:
+
+                build_field(static_cast<FieldDecl*>(decl.get()),
                     scope_idx);
                 break;
 

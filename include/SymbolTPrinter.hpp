@@ -32,9 +32,9 @@ void print_type_symbol(const TypeSymbol * const ptr, const SymbolTable &sym_t,
     std::cout << "Type Symbol:";
     handle_newline(tab_depth);
     std::cout << "{\n";
-    print_scope(&sym_t.scopes.at(ptr->created_scope_idx), sym_t, tab_depth);
+    print_scope(&sym_t.scopes.at(ptr->created_scope_idx), sym_t, tab_depth + 1);
     handle_tab_print(tab_depth);
-    std::cout << "}\n";
+    std::cout << "}\n\n";
 }
 
 void print_fn_symbol(const FunctionSymbol * const ptr, 
@@ -43,9 +43,9 @@ void print_fn_symbol(const FunctionSymbol * const ptr,
     std::cout << "Function Symbol:";
     handle_newline(tab_depth);
     std::cout << "{\n";
-    print_scope(&sym_t.scopes.at(ptr->created_scope_idx), sym_t, tab_depth);
+    print_scope(&sym_t.scopes.at(ptr->created_scope_idx), sym_t, tab_depth + 1);
     handle_tab_print(tab_depth);
-    std::cout << "}\n";
+    std::cout << "}\n\n";
 }
 
 void print_module_symbol(const ModuleSymbol * const ptr, 
@@ -54,9 +54,9 @@ void print_module_symbol(const ModuleSymbol * const ptr,
     std::cout << "Module Symbol:";
     handle_newline(tab_depth);
     std::cout << "{\n";
-    print_scope(&sym_t.scopes.at(ptr->created_scope_idx), sym_t, tab_depth);
+    print_scope(&sym_t.scopes.at(ptr->created_scope_idx), sym_t, tab_depth + 1);
     handle_tab_print(tab_depth);
-    std::cout << "}\n";
+    std::cout << "}\n\n";
 }
 
 void print_symbol(uint64_t sym_idx, const SymbolTable &sym_t, int tab_depth)
@@ -79,7 +79,7 @@ void print_symbol(uint64_t sym_idx, const SymbolTable &sym_t, int tab_depth)
 
         case SymbolType::VAR:
 
-            std::cout << "Var Symbol\n";
+            std::cout << "Var Symbol\n\n";
             break;
 
         case SymbolType::MODULE:
@@ -90,7 +90,7 @@ void print_symbol(uint64_t sym_idx, const SymbolTable &sym_t, int tab_depth)
 
         case SymbolType::FIELD:
 
-            std::cout << "Var Field\n";
+            std::cout << "Var Field\n\n";
             break;
 
         default:
@@ -105,19 +105,21 @@ void print_scope(const Scope * const ptr, const SymbolTable &sym_t,
 {
     if(ptr->sym_name_to_symbol_idx.size() == 0) return;
 
-    handle_tab_print(tab_depth);
-    std::cout << "{";
+    // handle_tab_print(tab_depth);
+    // std::cout << "{";
 
     for(const auto &elem : ptr->sym_name_to_symbol_idx)
     {
-        handle_newline(tab_depth);
+        handle_tab_print(tab_depth);
         std::cout << elem.first << " -> ";
-        print_symbol(elem.second, sym_t, tab_depth + 1);
+        print_symbol(elem.second, sym_t, tab_depth);
     }
 
-    handle_tab_print(tab_depth);
-    std::cout << "}\n";
+    // handle_tab_print(tab_depth);
+    // std::cout << "}\n";
 }
+
+
 
 
 }

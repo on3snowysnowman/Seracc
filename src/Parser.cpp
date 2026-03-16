@@ -77,7 +77,7 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
 
     if(check(TokenID::END_OF_FILE)) return nullptr;
 
-    if(check(TokenID::KW_NAMESPACE)) 
+    if(check(TokenID::KW_MODULE)) 
     {
         if(is_exported)
         {
@@ -102,7 +102,8 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
     }
 
     // Global variable
-    if(check(TokenID::IDENTIFIER)) return parse_field(is_exported);
+    if(check(TokenID::IDENTIFIER) || check(TokenID::KW_MUT)) 
+        return parse_field(is_exported);
 
     handle_unexpected_token(t);
     
@@ -116,7 +117,7 @@ std::unique_ptr<ModuleDecl> Parser::parse_module()
     ptr->line = peek().line;
     ptr->col = peek().col;
 
-    expect(TokenID::KW_NAMESPACE);
+    expect(TokenID::KW_MODULE);
     
     ptr->name = expect(TokenID::IDENTIFIER).text;
 
@@ -207,20 +208,20 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
     
     ptr->name = expect(TokenID::IDENTIFIER).text;
 
-    const auto it = defined_types.find(ptr->name);
+    // const auto it = defined_types.find(ptr->name);
 
-    // This struct has already been defined
-    if(it != defined_types.end())
-    {
-        print_error_location(ptr->line, ptr->col);
-        std::cerr << ": Type \"" << ptr->name << "\" has already been defined "
-            "here: " << it->second.file_defined << ":" << it->second.line << 
-            ":" << it->second.col << '\n';
-        exit(1);
-    }
+    // // This struct has already been defined
+    // if(it != defined_types.end())
+    // {
+    //     print_error_location(ptr->line, ptr->col);
+    //     std::cerr << ": Type \"" << ptr->name << "\" has already been defined "
+    //         "here: " << it->second.file_defined << ":" << it->second.line << 
+    //         ":" << it->second.col << '\n';
+    //     exit(1);
+    // }
 
-    // Otherwise, register this struct type as defined.
-    else defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
+    // // Otherwise, register this struct type as defined.
+    // else defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
 
     expect(TokenID::LBRACE);
 
@@ -255,20 +256,20 @@ std::unique_ptr<ComponentDecl> Parser::parse_component(bool is_pub)
 
     ptr->name = expect(TokenID::IDENTIFIER).text;
 
-    const auto it = defined_types.find(ptr->name);
+    // const auto it = defined_types.find(ptr->name);
 
-    // This component has already been defined
-    if(it != defined_types.end())
-    {
-        print_error_location(ptr->line, ptr->col);
-        std::cerr << ": Type \"" << ptr->name << "\" has already been defined "
-            "here: " << it->second.file_defined << ":" << it->second.line << 
-            ":" << it->second.col << '\n';
-        exit(1);
-    }
+    // // This component has already been defined
+    // if(it != defined_types.end())
+    // {
+    //     print_error_location(ptr->line, ptr->col);
+    //     std::cerr << ": Type \"" << ptr->name << "\" has already been defined "
+    //         "here: " << it->second.file_defined << ":" << it->second.line << 
+    //         ":" << it->second.col << '\n';
+    //     exit(1);
+    // }
 
-        // Otherwise, register this struct type as defined.
-    else defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
+    //     // Otherwise, register this struct type as defined.
+    // else defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
 
     expect(TokenID::LBRACE);
 
@@ -1196,6 +1197,13 @@ std::unique_ptr<FieldDecl> Parser::parse_field(bool is_pub)
     ptr->name = expect(TokenID::IDENTIFIER).text;
     expect(TokenID::COLON);
     ptr->type_decl = parse_type_decl();
+
+    // This field has an init expression
+    if(consume_if(TokenID::ASSIGN))
+    {
+        ptr->init_expr = parse_expression();
+    }
+
     expect(TokenID::SEMICOLON);
 
     return ptr;

@@ -29,7 +29,7 @@ struct Symbol
 {
     // std::string name;
     SymbolType sym_type = SymbolType::INVALID;
-    uint64_t scope_idx = 0;
+    std::optional<uint64_t> scope_idx {}; // Idx of the scope this symbol is in.
     virtual ~Symbol() = default;
 };
 
@@ -101,9 +101,16 @@ private:
     
     // Methods
 
+    void add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
+        std::string symbol_name, uint32_t symbol_line, uint32_t symbol_col, 
+        bool is_variable = false);
+
     void build_top_level(ModuleDecl * const ptr);
 
-    void build_scope_body(ScopeBody &body, uint64_t parent_scope_idx);
+    void build_statement(Statement * const ptr, uint64_t parent_scope_idx);
+
+    void build_scope_body(ScopeBody &body, uint64_t parent_scope_idx,
+        std::optional<uint64_t> existing_scope);
 
     void build_field(FieldDecl * const ptr, 
         uint64_t parent_scope_id);

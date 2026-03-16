@@ -1,6 +1,8 @@
 
 
 
+
+
 export type component SomeComponent
 {
     // Public
@@ -13,19 +15,40 @@ export type component SomeComponent
     }
 }
 
-module SomeNamespace {export fn do_thing(x: ref mut * int) -> void {}}
+mut x: int = 3;
+mut x: int = 3;
 
-export fn main() -> void
+module SomeModule 
+{
+
+mut x: int = 3;
+
+type struct SomeStruct
+{
+    mut x: int;
+}
+
+export fn do_thing(param: ref mut * int) -> void 
+{
+    // let x: int;
+}
+
+
+
+}
+
+export fn main(main_param: ref int) -> void
 {
     for(let mut i: u64; i < 5; ++i)
     {
         i -= 1;
     }
 
-
     let arr: int[3];
 
     let mut t: SomeStruct;
+
+    let mut x: int;
 
     t.x = 0;
 
