@@ -155,6 +155,7 @@ struct IdentExpr : Expression
 {
     IdentExpr() { exp_type = ExpressionType::IDENTIFIER; }
     std::string name;
+    std::optional<uint64_t> resolved_symbol_idx;
 };
 
 struct UnaryExpr : Expression
@@ -206,7 +207,6 @@ struct CallExpr : Expression
 
     std::unique_ptr<Expression> callee_expr;
     std::vector<std::unique_ptr<Expression>> args;
-    std::optional<uint64_t> resolved_symbol_idx;
 };
 
 struct SubscriptExpr : Expression
@@ -225,9 +225,6 @@ struct MemberAccExpr : Expression
 
     std::unique_ptr<Expression> base_expr;
     std::string member_name;
-
-    // Index into the symbol table of the resolved symbol.
-    std::optional<uint64_t> resolved_symbol_idx;
 };
 
 // STATEMENTS ==================================================================
@@ -270,7 +267,7 @@ struct VarDeclStmt : Statement
     std::unique_ptr<TypeDecl> type_decl;
     std::string var_name;
     std::unique_ptr<Expression> init_expr; // nullptr if none
-    uint64_t symbol_idx;
+    uint64_t symbol_idx; // Idx of the variable symbol, not type symbol
 };
 
 struct StructDeclStmt : Statement
@@ -278,7 +275,6 @@ struct StructDeclStmt : Statement
     StructDeclStmt() { stmt_type = StatementType::STRUCT_DECL; }
 
     std::unique_ptr<StructDecl> decl;
-    uint64_t symbol_idx;
 };
 
 struct ComponentDeclStmt : Statement
@@ -286,7 +282,6 @@ struct ComponentDeclStmt : Statement
     ComponentDeclStmt() { stmt_type = StatementType::COMPONENT_DECL; }
 
     std::unique_ptr<ComponentDecl> decl;
-    uint64_t  symbol_idx;
 };
 
 struct RetStmt : Statement
@@ -356,6 +351,7 @@ struct TypeDecl
     uint32_t line = 0;
     uint32_t col = 0;
     TypeKind kind = TypeKind::INVALID;
+    std::optional<uint64_t> resolved_symbol_idx;
 
     virtual ~TypeDecl() = default;
 };
@@ -391,7 +387,6 @@ struct ArrTypeDecl : TypeDecl
 
     std::unique_ptr<TypeDecl> element_type;
     std::vector<std::unique_ptr<Expression>> size_exprs;
-    std::optional<uint64_t> symbol_idx;
 };
 
 struct Parameter
@@ -403,7 +398,8 @@ struct Parameter
     bool is_binding_mutable = false;
     bool passed_by_copy = false;
     std::unique_ptr<TypeDecl> type_decl;
-    std::optional<uint64_t> symbol_idx;
+    std::optional<uint64_t> symbol_idx; // Idx of the parameter variable, not
+                                        // type symbol
 };
 
 struct FuncPtrDecl : TypeDecl
@@ -412,7 +408,6 @@ struct FuncPtrDecl : TypeDecl
 
     std::unique_ptr<TypeDecl> ret_type;
     std::vector<Parameter> param_types;
-    std::optional<uint64_t> symbol_idx;
 };
 
 enum class DeclKind
@@ -431,6 +426,7 @@ struct Declaration
     uint32_t col = 0;
     DeclKind kind = DeclKind::INVALID;
     std::string name;
+    std::optional<uint64_t> symbol_idx;
 
     virtual ~Declaration() = default;
 };
@@ -443,7 +439,6 @@ struct FieldDecl : Declaration
     bool is_pub = false;
     std::unique_ptr<TypeDecl> type_decl;
     std::unique_ptr<Expression> init_expr; // nullptr if none.
-    std::optional<uint64_t> symbol_idx;
 };
 
 // Data for the receiver parameter of a component receiver function
@@ -451,7 +446,6 @@ struct ReceiverData
 {
     std::unique_ptr<TypeDecl> receiver_type_decl;
     std::string receiver_name;
-    std::optional<uint64_t> symbol_idx;
 };
 
 struct FunctionDecl : Declaration
@@ -466,7 +460,6 @@ struct FunctionDecl : Declaration
     // Receiver component parameter, if this function is a receiver function.
     std::optional<ReceiverData> receiver_data;
     ScopeBody body;
-    std::optional<uint64_t> symbol_idx;
 };
 
 struct StructDecl : Declaration
@@ -476,7 +469,6 @@ struct StructDecl : Declaration
     bool is_pub = false;
 
     std::vector<std::unique_ptr<Declaration>> decls;
-    std::optional<uint64_t> symbol_idx;
 };
 
 struct ComponentDecl : Declaration
@@ -486,7 +478,6 @@ struct ComponentDecl : Declaration
     bool is_pub = false;
 
     std::vector<std::unique_ptr<Declaration>> decls;
-    std::optional<uint64_t> symbol_idx;
 };
 
 struct ModuleDecl : Declaration
@@ -494,6 +485,5 @@ struct ModuleDecl : Declaration
     ModuleDecl() { kind = DeclKind::MODULE; }
 
     std::vector<std::unique_ptr<Declaration>> decls;
-    std::optional<uint64_t> symbol_idx;
 };
 

@@ -208,21 +208,6 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
     
     ptr->name = expect(TokenID::IDENTIFIER).text;
 
-    // const auto it = defined_types.find(ptr->name);
-
-    // // This struct has already been defined
-    // if(it != defined_types.end())
-    // {
-    //     print_error_location(ptr->line, ptr->col);
-    //     std::cerr << ": Type \"" << ptr->name << "\" has already been defined "
-    //         "here: " << it->second.file_defined << ":" << it->second.line << 
-    //         ":" << it->second.col << '\n';
-    //     exit(1);
-    // }
-
-    // // Otherwise, register this struct type as defined.
-    // else defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
-
     expect(TokenID::LBRACE);
 
     // Parse struct body.

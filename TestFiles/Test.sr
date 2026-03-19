@@ -16,7 +16,6 @@ export type component SomeComponent
 }
 
 mut x: int = 3;
-mut x: int = 3;
 
 module SomeModule 
 {
@@ -47,8 +46,6 @@ export fn main(main_param: ref int) -> void
     let arr: int[3];
 
     let mut t: SomeStruct;
-
-    let mut x: int;
 
     t.x = 0;
 

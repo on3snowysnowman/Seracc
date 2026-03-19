@@ -1,0 +1,46 @@
+main -> Function Symbol:
+{
+   t -> Var Symbol
+
+   arr -> Var Symbol
+
+   main_param -> Var Symbol
+
+}
+
+SomeModule -> Module Symbol:
+{
+   do_thing -> Function Symbol:
+   {
+      param -> Var Symbol
+
+   }
+
+   SomeStruct -> Type Symbol:
+   {
+      x -> Var Field
+
+   }
+
+   x -> Var Field
+
+}
+
+x -> Var Field
+
+SomeComponent -> Type Symbol:
+{
+   SomeStruct -> Type Symbol:
+   {
+      x -> Var Field
+
+   }
+
+   some_func -> Function Symbol:
+   {
+      self -> Var Symbol
+
+   }
+
+}
+
