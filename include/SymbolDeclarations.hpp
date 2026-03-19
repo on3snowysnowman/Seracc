@@ -9,11 +9,15 @@
 #include <memory>
 #include <cstdint>
 
+#include "ASTDeclarations.hpp"
+
 enum class SymbolType
 {
-    TYPE,
+    STRUCT,
+    COMPONENT,
     FN,
     VAR,
+    PARAM,
     MODULE,
     FIELD,
     INVALID
@@ -22,29 +26,46 @@ enum class SymbolType
 
 struct Symbol
 {
-    // std::string name;
     SymbolType sym_type = SymbolType::INVALID;
     std::optional<uint64_t> scope_idx {}; // Idx of the scope this symbol is in.
     virtual ~Symbol() = default;
 };
 
-struct TypeSymbol : Symbol
+struct StructSymbol : Symbol
 {
-    TypeSymbol() { sym_type = SymbolType::TYPE; }
+    StructSymbol() { sym_type = SymbolType::STRUCT; }
 
     uint64_t created_scope_idx = 0;
+    StructDecl * ast_node_ptr = nullptr;
 };
+
+struct ComponentSymbol : Symbol
+{
+    ComponentSymbol() { sym_type = SymbolType::COMPONENT; }
+
+    uint64_t created_scope_idx = 0;
+    ComponentDecl * ast_node_ptr = nullptr;
+};
+
 
 struct FunctionSymbol : Symbol
 {
     FunctionSymbol() { sym_type = SymbolType::FN; }
 
     uint64_t created_scope_idx = 0;
+    FunctionDecl * ast_node_ptr;
 };
 
 struct VarSymbol : Symbol
 {
     VarSymbol() { sym_type = SymbolType::VAR; }
+    VarDeclStmt * ast_node_ptr = nullptr;
+};
+
+struct ParamSymbol : Symbol
+{
+    ParamSymbol() { sym_type = SymbolType::PARAM; }
+    Parameter * ast_node_ptr = nullptr;
 };
 
 struct ModuleSymbol : Symbol
@@ -52,11 +73,13 @@ struct ModuleSymbol : Symbol
     ModuleSymbol() { sym_type = SymbolType::MODULE; }
 
     uint64_t created_scope_idx = 0;
+    ModuleDecl * ast_node_ptr = nullptr;
 };
 
 struct FieldSymbol : Symbol
 {
     FieldSymbol() { sym_type = SymbolType::FIELD; }
+    FieldDecl * ast_node_ptr = nullptr;
 };
 
 struct Scope

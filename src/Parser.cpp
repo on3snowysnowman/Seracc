@@ -156,12 +156,29 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
     // This function has a receiver parameter
     if(consume_if(TokenID::LPAREN))
     {
-        ReceiverData r_data;
-        r_data.receiver_name = expect(TokenID::IDENTIFIER).text;
-        expect(TokenID::COLON);
-        r_data.receiver_type_decl = parse_type_decl();
+        if(check(TokenID::KW_MUT))
+        {
+            print_error_location(peek().line, peek().col);
+            std::cerr << ": Receiver parameter can't be marked mutable.\n";
+            exit(1);
+        }
 
-        ptr->receiver_data.emplace(std::move(r_data));
+        // ReceiverData r_data;
+        // r_data.receiver_name = expect(TokenID::IDENTIFIER).text;
+        // expect(TokenID::COLON);
+        // r_data.receiver_type_decl = parse_type_decl();
+
+        // ptr->receiver_data.emplace(std::move(r_data));
+
+        Parameter p;
+        p.is_binding_mutable = false;
+        p.is_unqual_param = false;
+        p.passed_by_copy = false;
+        p.name = expect(TokenID::IDENTIFIER).text;
+        expect(TokenID::COLON);
+        p.type_decl = parse_type_decl();
+
+        ptr->receiver_data = std::move(p);
 
         expect(TokenID::RPAREN);
     }

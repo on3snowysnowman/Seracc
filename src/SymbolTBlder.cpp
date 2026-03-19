@@ -97,6 +97,8 @@ void SymbolTBlder::build_top_level(ModuleDecl * const ptr)
     ModuleSymbol * const mod_sym_ptr = 
         static_cast<ModuleSymbol*>(symbols.at(top_symbol_idx).get());
 
+    mod_sym_ptr->ast_node_ptr = ptr;
+
     // ModuleSymbol does not belong to a scope, therefore it's scope index will
     // be left as optional default constructed.
     
@@ -188,6 +190,7 @@ void SymbolTBlder::build_statement(Statement * const ptr,
                         var_symbol_idx).get());
 
                     var_sym_ptr->scope_idx = for_scope_idx;
+                    var_sym_ptr->ast_node_ptr = var_init;
 
                     add_symbol_to_scope(for_scope_idx, var_symbol_idx, 
                         var_init->var_name, var_init->line, var_init->col, 
@@ -226,17 +229,21 @@ void SymbolTBlder::build_statement(Statement * const ptr,
             {
                 uint64_t symbol_idx = get_next_symbol_idx();
 
-                VarDeclStmt * const var_ptr = 
+                VarDeclStmt * const var_decl_ptr = 
                     static_cast<VarDeclStmt*>(ptr);
 
-                var_ptr->symbol_idx = symbol_idx;
+                var_decl_ptr->symbol_idx = symbol_idx;
 
                 symbols.at(symbol_idx) = std::make_unique<VarSymbol>();
 
-                symbols.at(symbol_idx)->scope_idx = parent_scope_idx;
-                
+                VarSymbol * const var_sym_ptr =
+                    static_cast<VarSymbol*>(symbols.at(symbol_idx).get());
+
+                var_sym_ptr->scope_idx = parent_scope_idx;
+                var_sym_ptr->ast_node_ptr = var_decl_ptr;
+
                 add_symbol_to_scope(parent_scope_idx, symbol_idx, 
-                    var_ptr->var_name, var_ptr->line, var_ptr->col,
+                    var_decl_ptr->var_name, var_decl_ptr->line, var_decl_ptr->col,
                     true);
                 break;
             }
@@ -294,6 +301,7 @@ void SymbolTBlder::build_field(FieldDecl * const ptr,
         static_cast<FieldSymbol*>(symbols.at(symbol_idx).get());
 
     field_ptr->scope_idx = parent_scope_idx;
+    field_ptr->ast_node_ptr = ptr;
 
     add_symbol_to_scope(parent_scope_idx, symbol_idx, ptr->name,
         ptr->line, ptr->col);
@@ -307,13 +315,14 @@ void SymbolTBlder::build_struct(StructDecl * const ptr,
 
     ptr->symbol_idx = symbol_idx;
 
-    symbols.at(symbol_idx) = std::make_unique<TypeSymbol>();
+    symbols.at(symbol_idx) = std::make_unique<StructSymbol>();
 
-    TypeSymbol * const type_ptr = 
-        static_cast<TypeSymbol*>(symbols.at(symbol_idx).get());
+    StructSymbol * const type_ptr = 
+        static_cast<StructSymbol*>(symbols.at(symbol_idx).get());
 
     type_ptr->scope_idx = parent_scope_idx;
     type_ptr->created_scope_idx = scope_idx;
+    type_ptr->ast_node_ptr = ptr;
 
     // Set our scope to point to our parent scope.
     scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
@@ -358,6 +367,7 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
         static_cast<FunctionSymbol*>(symbols.at(symbol_idx).get());
 
     func_ptr->scope_idx = parent_scope_idx;
+    func_ptr->ast_node_ptr = ptr;
 
     add_symbol_to_scope(parent_scope_idx, symbol_idx, ptr->name,
         ptr->line, ptr->col);
@@ -371,19 +381,34 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
     // Parse receiver function if the function has one
     if(ptr->receiver_data.has_value())
     {
+        // uint64_t receiver_symbol_idx = get_next_symbol_idx();
+
+        // ptr->receiver_data->symbol_idx = receiver_symbol_idx;
+
+        // symbols.at(receiver_symbol_idx) = std::make_unique<VarSymbol>();
+
+        // VarSymbol * const var_ptr = 
+        //     static_cast<VarSymbol*>(symbols.at(receiver_symbol_idx).get());
+
+        // var_ptr->scope_idx = body_scope_idx;
+
+        // add_symbol_to_scope(body_scope_idx, receiver_symbol_idx, 
+        //     ptr->receiver_data->receiver_name, ptr->line, ptr->col);
+
         uint64_t receiver_symbol_idx = get_next_symbol_idx();
 
         ptr->receiver_data->symbol_idx = receiver_symbol_idx;
 
-        symbols.at(receiver_symbol_idx) = std::make_unique<VarSymbol>();
+        symbols.at(receiver_symbol_idx) = std::make_unique<ParamSymbol>();
 
-        VarSymbol * const var_ptr = 
-            static_cast<VarSymbol*>(symbols.at(receiver_symbol_idx).get());
+        ParamSymbol * const param_sym_ptr = 
+            static_cast<ParamSymbol*>(symbols.at(receiver_symbol_idx).get());
 
-        var_ptr->scope_idx = body_scope_idx;
+        param_sym_ptr->ast_node_ptr = &ptr->receiver_data.value();
 
-        add_symbol_to_scope(body_scope_idx, receiver_symbol_idx, 
-            ptr->receiver_data->receiver_name, ptr->line, ptr->col);
+        add_symbol_to_scope(body_scope_idx, receiver_symbol_idx,
+            ptr->receiver_data->name, ptr->receiver_data->line, 
+            ptr->receiver_data->col);
     }
 
     // Parse parameters
@@ -393,9 +418,13 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
 
         p.symbol_idx.emplace(param_symbol_idx);
 
-        symbols.at(param_symbol_idx) = std::make_unique<VarSymbol>();
+        symbols.at(param_symbol_idx) = std::make_unique<ParamSymbol>();
 
-        symbols.at(param_symbol_idx)->scope_idx = body_scope_idx;
+        ParamSymbol * const param_sym_ptr = 
+            static_cast<ParamSymbol*>(symbols.at(param_symbol_idx).get());
+
+        param_sym_ptr->scope_idx = body_scope_idx;
+        param_sym_ptr->ast_node_ptr = &p;
 
         add_symbol_to_scope(body_scope_idx, param_symbol_idx, p.name,
             p.line, p.col);
@@ -412,13 +441,14 @@ void SymbolTBlder::build_component(ComponentDecl * const ptr,
 
     ptr->symbol_idx = symbol_idx;
 
-    symbols.at(symbol_idx) = std::make_unique<TypeSymbol>();
+    symbols.at(symbol_idx) = std::make_unique<ComponentSymbol>();
 
-    TypeSymbol * const type_ptr = 
-        static_cast<TypeSymbol*>(symbols.at(symbol_idx).get());
+    ComponentSymbol * const comp_sym_ptr = 
+        static_cast<ComponentSymbol*>(symbols.at(symbol_idx).get());
 
-    type_ptr->scope_idx = parent_scope_idx;
-    type_ptr->created_scope_idx = scope_idx;
+    comp_sym_ptr->scope_idx = parent_scope_idx;
+    comp_sym_ptr->created_scope_idx = scope_idx;
+    comp_sym_ptr->ast_node_ptr = ptr;
 
     // Set our scope to point to our parent scope.
     scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
@@ -476,6 +506,7 @@ void SymbolTBlder::build_module(ModuleDecl * const ptr,
 
     mod_ptr->scope_idx = parent_scope_idx;
     mod_ptr->created_scope_idx = scope_idx;
+    mod_ptr->ast_node_ptr = ptr;
 
     // Set our scope to point to our parent scope.
     scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;

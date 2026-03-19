@@ -225,6 +225,7 @@ struct MemberAccExpr : Expression
 
     std::unique_ptr<Expression> base_expr;
     std::string member_name;
+    std::optional<uint64_t> resolved_symbol_idx;
 };
 
 // STATEMENTS ==================================================================
@@ -446,6 +447,7 @@ struct ReceiverData
 {
     std::unique_ptr<TypeDecl> receiver_type_decl;
     std::string receiver_name;
+    std::optional<uint64_t> symbol_idx;
 };
 
 struct FunctionDecl : Declaration
@@ -458,7 +460,8 @@ struct FunctionDecl : Declaration
     std::vector<Parameter> params;
     
     // Receiver component parameter, if this function is a receiver function.
-    std::optional<ReceiverData> receiver_data;
+    // std::optional<ReceiverData> receiver_data;
+    std::optional<Parameter> receiver_data;
     ScopeBody body;
 };
 
