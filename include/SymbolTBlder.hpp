@@ -38,6 +38,11 @@ private:
         std::string symbol_name, uint32_t symbol_line, uint32_t symbol_col, 
         bool is_variable = false);
 
+    void add_builtin_symbol(uint64_t global_scope_idx, 
+        const std::string &symbol_name, BuiltinSymbol::BuiltinType b_type);
+
+    void add_builtin_symbols(uint64_t global_scope_idx);
+
     void build_top_level(ModuleDecl * const ptr);
 
     void build_statement(Statement * const ptr, uint64_t parent_scope_idx);

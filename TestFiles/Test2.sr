@@ -1,49 +1,46 @@
 
 
-module Serac
+module SomeSubModule
 {
 
-export fn exported_func(int z) -> void {}
-
-type struct MyStruct
+export type struct HiddenStruct
 {
-    type struct Nested
-    {
-        int x;
-    }
-
-    int x;
-    mut int y;
-    *mut int y_ptr;
-    mut * int x_ptr; 
-
-    ref int g;
-    ref mut int h;
-    ref mut * fn(int z)->u64 ref_to_func_ptr;
-
-    int[3] int_arr;
-    int[4][3] int_arr2D;
-
-    * Nested[4] nested_arr;
-
-    * fn(int z)->u64[5] func_ptr_arr;
-
-    * fn(int z)->u64 func_ptr; // Immutable pointer -> function
+    mut x: int;
 }
 
+export fn some_func() -> int
+{
+    let mut x: int = 0;
+
+    ret x;
+} 
+
+} // module SomeSubModule
+
+type struct Structy
+{
+    value: int;
 }
 
-fn main() -> int
+type component Compy
 {
-    Serac::MyStruct t;
+    pub value: int;
+}
 
-    t.func_ptr = &exported_func;
-    t.func_ptr(3); // Call exported_func with '3'
+fn main() -> void
+{
+    let obj: Structy = { .value = 0 };
+    // let obj2: HiddenStruct = { .x = 0 }; // Should error on SymbolResolver
 
-    t.y = 3;
+    let immut_ref: ref int = obj.value; 
 
-    t.y_ptr = &t.y;
-    t.x_ptr = &t.x;
+    (*(ptr + 1)).value = 0;
 
-    ret 0;
+    let result: int = 3 + 3.1;
+
+    // (obj + obj).value = 9;
+
+    let mut_ref: ref mut int = obj.value; // Should error on type checker
+
+    let mut some_int: int = 312;
 }

@@ -29,6 +29,7 @@ enum class ExpressionType
     BOOL_LITERAL,
     NULLPTR_LITERAL,
     IDENTIFIER,
+    STRUCT_INIT,
 
     UNARY,
     BINARY,
@@ -158,6 +159,13 @@ struct IdentExpr : Expression
     std::optional<uint64_t> resolved_symbol_idx;
 };
 
+struct StructInitExpr : Expression
+{
+    StructInitExpr() { exp_type = ExpressionType::STRUCT_INIT; }
+    std::vector<std::pair<std::string, std::unique_ptr<Expression>>> 
+        init_args;
+};
+
 struct UnaryExpr : Expression
 {
     UnaryExpr() { exp_type = ExpressionType::UNARY; }
@@ -225,7 +233,7 @@ struct MemberAccExpr : Expression
 
     std::unique_ptr<Expression> base_expr;
     std::string member_name;
-    std::optional<uint64_t> resolved_symbol_idx;
+    // std::optional<uint64_t> resolved_symbol_idx;
 };
 
 // STATEMENTS ==================================================================

@@ -3,8 +3,11 @@
 #include <fstream>
 
 // #include "LexerPrinter.hpp"
-// #include "ParserPrinter.hpp"
+#include "ParserPrinter.hpp"
 #include "SymbolTPrinter.hpp"
+#include "Parser.hpp"
+#include "SymbolTBlder.hpp"
+#include "SymbolResolver.hpp"
 
 
 int main(int argc, char **argv)
@@ -16,12 +19,19 @@ int main(int argc, char **argv)
     }
 
     const char *in_file_path = argv[1];
-    // const char *out_file_path = argv[2];
 
-    // print_lexer_output(in_file_path);
-    // print_parse_results(in_file_path);
+    print_parse_results(in_file_path);
 
-    print_symT_results(in_file_path);
+    // print_symT_results(in_file_path);
+
+    // Parser parser;
+    // Program prog = parser.parse(in_file_path);
+
+    // SymbolTBlder sym_t_blder;
+    // SymbolTable symbol_table = sym_t_blder.build(prog);
+
+    // SymbolResolver resolver;
+    // resolver.resolve(prog, symbol_table);
 
     return EXIT_SUCCESS;
 }

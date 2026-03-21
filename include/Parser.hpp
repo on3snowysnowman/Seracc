@@ -38,24 +38,27 @@ private:
     };
 
     // Map of defined type names to the line and column they were defined on.
-    // std::unordered_map<std::string, DefinedType> defined_types
-    // {
-    //     // Register initial builtins
-    //     {"int", {0, 0, "BUILTIN"}},
-    //     {"u8", {0, 0, "BUILTIN"}},
-    //     {"i8", {0, 0, "BUILTIN"}},
-    //     {"u16", {0, 0, "BUILTIN"}},
-    //     {"i16", {0, 0, "BUILTIN"}},
-    //     {"u32", {0, 0, "BUILTIN"}},
-    //     {"i32", {0, 0, "BUILTIN"}},
-    //     {"u64", {0, 0, "BUILTIN"}},
-    //     {"i64", {0, 0, "BUILTIN"}},
-    //     {"float", {0, 0, "BUILTIN"}},
-    //     {"double", {0, 0, "BUILTIN"}},
-    //     {"bool", {0, 0, "BUILTIN"}},
-    //     {"char", {0, 0, "BUILTIN"}}
-    // };
+    std::unordered_map<std::string, DefinedType> defined_types
+    {
+        // Register initial builtins
+        {"int", {0, 0, "BUILTIN"}},
+        {"u8", {0, 0, "BUILTIN"}},
+        {"i8", {0, 0, "BUILTIN"}},
+        {"u16", {0, 0, "BUILTIN"}},
+        {"i16", {0, 0, "BUILTIN"}},
+        {"u32", {0, 0, "BUILTIN"}},
+        {"i32", {0, 0, "BUILTIN"}},
+        {"u64", {0, 0, "BUILTIN"}},
+        {"i64", {0, 0, "BUILTIN"}},
+        {"float", {0, 0, "BUILTIN"}},
+        {"double", {0, 0, "BUILTIN"}},
+        {"bool", {0, 0, "BUILTIN"}},
+        {"char", {0, 0, "BUILTIN"}},
+        {"nullptr", {0, 0, "BUILTIN"}},
+        {"opaque", {0, 0, "BUILTIN"}}
+    };
 
+    
     // Methods
 
     void print_error_location(uint32_t line,uint32_t col) const;
@@ -70,6 +73,8 @@ private:
     std::unique_ptr<Statement> parse_statement();
 
     // Expression parsing functions
+
+    std::unique_ptr<Expression> parse_struct_init();
     std::unique_ptr<Expression> parse_expression();
     std::unique_ptr<Expression> parse_assignment();
     std::unique_ptr<Expression> parse_log_or();

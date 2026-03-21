@@ -39,8 +39,6 @@ Program Parser::parse(const char *in_file_path)
 
     tokens = l.lex(in_file_path);
 
-    // lexer.load(in_file_path);
-
     Program prog;
     prog.source_file_name = in_file_path;
     parsed_file = in_file_path;
@@ -56,9 +54,7 @@ Program Parser::parse(const char *in_file_path)
         prog.ast->decls.push_back(std::move(decl));
         decl = parse_top_level();
     }
-    // prog.ast = std::move(parse_top_level());
 
-    // lexer.close();
     parsed_file = nullptr;
 
     return prog;
@@ -334,7 +330,11 @@ std::unique_ptr<Statement> Parser::parse_statement()
         // Variable has assignment expression
         if(consume_if(TokenID::ASSIGN))
         {
-            reint_ptr->init_expr = parse_expression();
+            // Struct init
+            if(check(TokenID::LBRACE))
+                reint_ptr->init_expr = parse_struct_init();
+
+            else reint_ptr->init_expr = parse_expression();
         }
 
         expect(TokenID::SEMICOLON);
@@ -481,6 +481,37 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
     ptr->line = start_line;
     ptr->col = start_col;
+
+    return ptr;
+}
+
+std::unique_ptr<Expression> Parser::parse_struct_init()
+{
+    std::unique_ptr<StructInitExpr> ptr = std::make_unique<StructInitExpr>();
+
+    ptr->line = peek().line;
+    ptr->col = peek().col;
+
+    expect(TokenID::LBRACE);
+
+    while(consume_if(TokenID::DOT))
+    {
+        std::string member_name = expect(TokenID::IDENTIFIER).text;
+        expect(TokenID::ASSIGN);
+        std::unique_ptr<Expression> init_expr = parse_expression();
+
+        ptr->init_args.push_back({std::move(member_name), 
+            std::move(init_expr)});
+
+        if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
+        {
+            print_error_location(peek().line, peek().col);
+            std::cerr << ": Trailing comma in initialization list\n";
+            exit(1);
+        }
+    }
+
+    expect(TokenID::RBRACE);
 
     return ptr;
 }
@@ -1068,7 +1099,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
     
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
-
+    
     // Named 
     if(check(TokenID::IDENTIFIER))
     {
@@ -1078,7 +1109,43 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
 
         if(!error_on_invalid && !check(TokenID::IDENTIFIER)) return nullptr;
 
-        reint_ptr->type_name = expect(TokenID::IDENTIFIER).text;        
+        reint_ptr->type_name = expect(TokenID::IDENTIFIER).text;    
+        
+        ptr->line = start_line;
+        ptr->col = start_col;
+
+        // Check if this is an array type.
+        if(consume_if(TokenID::LBRACKET))
+        {
+            std::unique_ptr<ArrTypeDecl> arr_decl = std::make_unique<ArrTypeDecl>();
+        
+            arr_decl->kind = TypeKind::ARRAY;
+
+            arr_decl->line = ptr->line;
+            arr_decl->col = ptr->col;
+            arr_decl->depth = 1;
+
+            // The parsed type now becomes the type of the array.
+            arr_decl->element_type = std::move(ptr);
+        
+            // Get the expression of the first array.
+            arr_decl->size_exprs.push_back(parse_expression());
+
+            expect(TokenID::RBRACKET);
+
+            // Iterate through any further depths of the array.
+            while(check(TokenID::LBRACKET))
+            {
+                ++arr_decl->depth;
+                arr_decl->size_exprs.push_back(parse_expression());
+                expect(TokenID::RBRACKET);
+            }
+
+            return arr_decl; // Return our array declaration, 
+                             // not the main 'ptr' obj
+        }
+
+        else return ptr;
     }
 
     // Pointer 
@@ -1090,6 +1157,11 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
 
         reint_ptr->points_to_mutable = consume_if(TokenID::KW_MUT);
         reint_ptr->pointee = parse_type_decl();
+
+        ptr->line = start_line;
+        ptr->col = start_col;
+
+        return ptr;
     }
 
     // Reference
@@ -1101,6 +1173,11 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
 
         reint_ptr->ref_to_mutable = consume_if(TokenID::KW_MUT);
         reint_ptr->referred = parse_type_decl();
+
+        ptr->line = start_line;
+        ptr->col = start_col;
+
+        return ptr;
     }
 
     // Function pointer
@@ -1141,50 +1218,24 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
 
         // Read return type
         reint_ptr->ret_type = parse_type_decl();
+
+        ptr->line = start_line;
+        ptr->col = start_col;
+
+        return ptr;
     }
 
     else
     {
+        if(!error_on_invalid) return nullptr;
+
         print_error_location(peek().line, peek().col);
         std::cerr << ": Expecting type declaration but got token: \n" << peek() 
             << '\n';
         exit(1);
     }
 
-    ptr->line = start_line;
-    ptr->col = start_col;
-
-    // Check if after parsing the type, if this is an array of that type.
-    if(consume_if(TokenID::LBRACKET))
-    {
-        std::unique_ptr<ArrTypeDecl> arr_decl = std::make_unique<ArrTypeDecl>();
-    
-        arr_decl->kind = TypeKind::ARRAY;
-
-        arr_decl->line = ptr->line;
-        arr_decl->col = ptr->col;
-        arr_decl->depth = 1;
-
-        // The parsed type now becomes the type of the array.
-        arr_decl->element_type = std::move(ptr);
-    
-        // Get the expression of the first array.
-        arr_decl->size_exprs.push_back(parse_expression());
-
-        expect(TokenID::RBRACKET);
-
-        // Iterate through any further depths of the array.
-        while(check(TokenID::LBRACKET))
-        {
-            ++arr_decl->depth;
-            arr_decl->size_exprs.push_back(parse_expression());
-            expect(TokenID::RBRACKET);
-        }
-
-        return arr_decl; // Return our array declaration, not the main 'ptr' obj
-    }
-
-    return ptr; // Return nullptr for now until complete
+    return ptr; 
 }
 
 std::unique_ptr<FieldDecl> Parser::parse_field(bool is_pub) 

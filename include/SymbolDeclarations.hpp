@@ -11,8 +11,14 @@
 
 #include "ASTDeclarations.hpp"
 
+static const char * const INT_LIT_IDENT = "INT_LIT";
+static const char * const BIN_LIT_IDENT = "BIN_LIT";
+static const char * const HEX_LIT_IDENT = "HEX_LIT";
+static const char * const FLOAT_LIT_IDENT = "FLOAT_LIT";
+
 enum class SymbolType
 {
+    BUILTIN,
     STRUCT,
     COMPONENT,
     FN,
@@ -29,6 +35,35 @@ struct Symbol
     SymbolType sym_type = SymbolType::INVALID;
     std::optional<uint64_t> scope_idx {}; // Idx of the scope this symbol is in.
     virtual ~Symbol() = default;
+};
+
+struct BuiltinSymbol : Symbol
+{
+    BuiltinSymbol() { sym_type = SymbolType::BUILTIN; }
+
+    enum BuiltinType
+    {
+        U8, 
+        I8,
+        U16,
+        I16,
+        U32,
+        I32,
+        U64,
+        I64,
+        BOOL,
+        NULLPTR,
+        OPAQUE,
+        FLOAT,
+        DOUBLE,
+        INT_LIT,
+        BIN_LIT,
+        HEX_LIT,
+        FLOAT_LIT, 
+        INVALID
+    };
+
+    BuiltinType b_type = BuiltinType::INVALID;
 };
 
 struct StructSymbol : Symbol
@@ -53,7 +88,7 @@ struct FunctionSymbol : Symbol
     FunctionSymbol() { sym_type = SymbolType::FN; }
 
     uint64_t created_scope_idx = 0;
-    FunctionDecl * ast_node_ptr;
+    FunctionDecl * ast_node_ptr = nullptr;
 };
 
 struct VarSymbol : Symbol

@@ -14,39 +14,6 @@ Lexer::Lexer() {}
 
 // Public
 
-// void Lexer::load(const char *in_file_path)
-// {
-//     std::ifstream in_file(in_file_path);
-
-//     if(!in_file)
-//     {
-//         std::cerr << "Failed to open input file: " << in_file_path << '\n';
-//         exit(1);
-//     }
-
-//     std::ostringstream buffer;
-
-//     buffer << in_file.rdbuf();
-
-//     source = buffer.str();
-
-//     in_file.close();
-
-//     current_idx = 0;
-//     current_line = 1;
-//     current_col = 1;
-//     file_being_parsed = in_file_path;
-// }
-
-// void Lexer::close()
-// {
-//     source.clear();
-//     current_idx = 0;
-//     current_line = 1;
-//     current_col = 1;
-//     file_being_parsed = nullptr;
-// }
-
 std::vector<Token> Lexer::lex(const char *in_file_path)
 {
     std::ifstream in_file(in_file_path);
@@ -75,6 +42,8 @@ std::vector<Token> Lexer::lex(const char *in_file_path)
     {
         tokens.push_back(next_token());
     } while (tokens.back().id != TokenID::END_OF_FILE);
+
+    file_being_parsed = nullptr;
 
     return tokens;
 }

@@ -26,10 +26,21 @@ static void handle_newline(int tab_depth)
 void print_scope(const Scope * const ptr, const SymbolTable &sym_t,
     int tab_depth);
 
-void print_type_symbol(const TypeSymbol * const ptr, const SymbolTable &sym_t,
+void print_struct_symbol(const StructSymbol * const ptr, const SymbolTable &sym_t,
     int tab_depth)
 {
-    std::cout << "Type Symbol:";
+    std::cout << "Struct Symbol:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_scope(&sym_t.scopes.at(ptr->created_scope_idx), sym_t, tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n\n";
+}
+
+void print_component_symbol(const ComponentSymbol * const ptr, 
+    const SymbolTable &sym_t, int tab_depth)
+{
+    std::cout << "Component Symbol:";
     handle_newline(tab_depth);
     std::cout << "{\n";
     print_scope(&sym_t.scopes.at(ptr->created_scope_idx), sym_t, tab_depth + 1);
@@ -59,16 +70,23 @@ void print_module_symbol(const ModuleSymbol * const ptr,
     std::cout << "}\n\n";
 }
 
-void print_symbol(uint64_t sym_idx, const SymbolTable &sym_t, int tab_depth)
+void print_symbol(uint64_t sym_idx, const SymbolTable &sym_t, int tab_depth,
+    const std::string &sym_name)
 {
     const Symbol *sym = sym_t.symbols.at(sym_idx).get();
 
     switch(sym->sym_type)
     {
-        case SymbolType::TYPE:
+        case SymbolType::STRUCT:
             
-            print_type_symbol(
-                static_cast<const TypeSymbol*>(sym), sym_t, tab_depth);
+            print_struct_symbol(
+                static_cast<const StructSymbol*>(sym), sym_t, tab_depth);
+            break;
+
+        case SymbolType::COMPONENT:
+            
+            print_component_symbol(
+                static_cast<const ComponentSymbol*>(sym), sym_t, tab_depth);
             break;
 
         case SymbolType::FN:
@@ -93,9 +111,19 @@ void print_symbol(uint64_t sym_idx, const SymbolTable &sym_t, int tab_depth)
             std::cout << "Var Field\n\n";
             break;
 
+        case SymbolType::BUILTIN:
+
+            std::cout << "Builtin\n\n";
+            break;
+
+        case SymbolType::PARAM:
+
+            std::cout << "Param\n\n";
+            break;
+
         default:
 
-            std::cerr << "Invalid symbol type\n";
+            std::cerr << "Invalid symbol type: " << sym_name << '\n';
             exit(1);
     }
 }
@@ -112,11 +140,8 @@ void print_scope(const Scope * const ptr, const SymbolTable &sym_t,
     {
         handle_tab_print(tab_depth);
         std::cout << elem.first << " -> ";
-        print_symbol(elem.second, sym_t, tab_depth);
+        print_symbol(elem.second, sym_t, tab_depth, elem.first);
     }
-
-    // handle_tab_print(tab_depth);
-    // std::cout << "}\n";
 }
 
 

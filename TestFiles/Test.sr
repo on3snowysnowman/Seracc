@@ -1,72 +1,17 @@
 
-
-
-
-
-export type component SomeComponent
+type struct Structy
 {
-    // Public
-
-    pub fn (self: ref mut SomeComponent) some_func() -> void {}
-
-    type struct SomeStruct
-    {
-        mut x: int;
-    }
-}
-
-mut x: int = 3;
-
-module SomeModule 
-{
-
-mut x: int = 3;
-
-type struct SomeStruct
-{
-    mut x: int;
-}
-
-export fn do_thing(param: ref mut * int) -> void 
-{
-    // let x: int;
+    x: int;
 }
 
 
-
-}
-
-export fn main(main_param: ref int) -> void
+fn main() -> int
 {
-    for(let mut i: u64; i < 5; ++i)
-    {
-        i -= 1;
-    }
+    // let obj: * Structy;
 
-    let arr: int[3];
+    // let result: int = (*ptr + 1); 
 
-    let mut t: SomeStruct;
-
-    t.x = 0;
-
-    do_thing(&t.x + 3 - 12.3 / 4);
-
-    if(t.x == 0)
-    {
-        t.x = 1;
-    }
-
-    else if(t.x == -1)
-    {
-        t.x = 0;
-    }
-
-    for(let mut i: int = 0; i < 3; ++i)
-    {
-        ++t.x;
-    }
-
-    arr[t.x];
+    let arr: *mut int[1];
 
     ret 0;
 }

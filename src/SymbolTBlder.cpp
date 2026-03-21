@@ -30,6 +30,7 @@ SymbolTable SymbolTBlder::build(Program &p)
     return st;
 }
 
+
 // Private
 
 void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
@@ -66,7 +67,7 @@ void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
 
     else
     {
-        // Ensure this symbol name has not been defined already in a parent 
+        // Ensure this symbol name has not been defined already in the current 
         // scope.
         auto it = 
             scopes.at(scope_idx).sym_name_to_symbol_idx.find(symbol_name);
@@ -85,11 +86,45 @@ void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
         symbol_idx;
 }
 
+void SymbolTBlder::add_builtin_symbol(uint64_t global_scope_idx, 
+    const std::string &symbol_name, BuiltinSymbol::BuiltinType b_type)
+{
+    uint64_t symbol_idx = get_next_symbol_idx();
+    symbols.at(symbol_idx) = std::make_unique<BuiltinSymbol>();
+    static_cast<BuiltinSymbol*>(symbols.at(symbol_idx).get())->b_type =
+        b_type;
+    scopes.at(global_scope_idx).sym_name_to_symbol_idx.emplace(
+        symbol_name, symbol_idx);
+}
+
+void SymbolTBlder::add_builtin_symbols(uint64_t global_scope_idx)
+{   
+    add_builtin_symbol(global_scope_idx, "u8", BuiltinSymbol::U8);
+    add_builtin_symbol(global_scope_idx, "i8", BuiltinSymbol::I8);
+    add_builtin_symbol(global_scope_idx, "u16", BuiltinSymbol::U16);
+    add_builtin_symbol(global_scope_idx, "i16", BuiltinSymbol::I16);
+    add_builtin_symbol(global_scope_idx, "u32", BuiltinSymbol::U32);
+    add_builtin_symbol(global_scope_idx, "i32", BuiltinSymbol::I32);
+    add_builtin_symbol(global_scope_idx, "int", BuiltinSymbol::I32);
+    add_builtin_symbol(global_scope_idx, "u64", BuiltinSymbol::U64);
+    add_builtin_symbol(global_scope_idx, "i64", BuiltinSymbol::I64);
+    add_builtin_symbol(global_scope_idx, "bool", BuiltinSymbol::BOOL);
+    add_builtin_symbol(global_scope_idx, "nullptr", BuiltinSymbol::NULLPTR);
+    add_builtin_symbol(global_scope_idx, "opaque", BuiltinSymbol::OPAQUE);
+    add_builtin_symbol(global_scope_idx, "float", BuiltinSymbol::FLOAT);
+    add_builtin_symbol(global_scope_idx, "double", BuiltinSymbol::DOUBLE);
+    add_builtin_symbol(global_scope_idx, INT_LIT_IDENT, BuiltinSymbol::INT_LIT);
+    add_builtin_symbol(global_scope_idx, BIN_LIT_IDENT, BuiltinSymbol::BIN_LIT);
+    add_builtin_symbol(global_scope_idx, HEX_LIT_IDENT, BuiltinSymbol::HEX_LIT);
+    add_builtin_symbol(global_scope_idx, FLOAT_LIT_IDENT, 
+        BuiltinSymbol::FLOAT_LIT);
+}
+
 void SymbolTBlder::build_top_level(ModuleDecl * const ptr)
 {
     uint64_t top_symbol_idx = get_next_symbol_idx();
     uint64_t top_scope_idx = get_next_scope_idx();
-
+    
     ptr->symbol_idx = top_symbol_idx;
 
     symbols.at(top_symbol_idx) = std::make_unique<ModuleSymbol>();
@@ -98,11 +133,14 @@ void SymbolTBlder::build_top_level(ModuleDecl * const ptr)
         static_cast<ModuleSymbol*>(symbols.at(top_symbol_idx).get());
 
     mod_sym_ptr->ast_node_ptr = ptr;
+    mod_sym_ptr->scope_idx = top_scope_idx;
 
     // ModuleSymbol does not belong to a scope, therefore it's scope index will
     // be left as optional default constructed.
     
     mod_sym_ptr->created_scope_idx = top_scope_idx;
+
+    add_builtin_symbols(top_scope_idx);
 
     for(const std::unique_ptr<Declaration> &decl : ptr->decls)
     {

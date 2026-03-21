@@ -935,12 +935,12 @@ static void print_function(const FunctionDecl * const ptr,
         handle_newline(tab_depth);
         std::cout << "{";
         handle_newline(tab_depth);
-        std::cout << "   Name: " << ptr->receiver_data->receiver_name;
+        std::cout << "   Name: " << ptr->receiver_data->name;
         handle_newline(tab_depth);
         std::cout << "   Type:";
         handle_newline(tab_depth);
         std::cout << "   {\n";
-        print_type_decl(ptr->receiver_data->receiver_type_decl.get(), 
+        print_type_decl(ptr->receiver_data->type_decl.get(), 
             tab_depth + 2);
         handle_tab_print(tab_depth);
         std::cout << "   }";
