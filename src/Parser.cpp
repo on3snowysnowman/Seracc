@@ -1093,7 +1093,7 @@ std::unique_ptr<Expression> Parser::parse_primary()
     exit(1);    
 }
 
-std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid) 
+std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid) 
 {
     std::unique_ptr<TypeDecl> ptr = nullptr;
     
@@ -1107,45 +1107,9 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
         ptr->kind = TypeKind::NAMED;
         NamedTypeDecl *reint_ptr = static_cast<NamedTypeDecl*>(ptr.get());
 
-        if(!error_on_invalid && !check(TokenID::IDENTIFIER)) return nullptr;
+        if(!check(TokenID::IDENTIFIER)) return nullptr;
 
         reint_ptr->type_name = expect(TokenID::IDENTIFIER).text;    
-        
-        ptr->line = start_line;
-        ptr->col = start_col;
-
-        // Check if this is an array type.
-        if(consume_if(TokenID::LBRACKET))
-        {
-            std::unique_ptr<ArrTypeDecl> arr_decl = std::make_unique<ArrTypeDecl>();
-        
-            arr_decl->kind = TypeKind::ARRAY;
-
-            arr_decl->line = ptr->line;
-            arr_decl->col = ptr->col;
-            arr_decl->depth = 1;
-
-            // The parsed type now becomes the type of the array.
-            arr_decl->element_type = std::move(ptr);
-        
-            // Get the expression of the first array.
-            arr_decl->size_exprs.push_back(parse_expression());
-
-            expect(TokenID::RBRACKET);
-
-            // Iterate through any further depths of the array.
-            while(check(TokenID::LBRACKET))
-            {
-                ++arr_decl->depth;
-                arr_decl->size_exprs.push_back(parse_expression());
-                expect(TokenID::RBRACKET);
-            }
-
-            return arr_decl; // Return our array declaration, 
-                             // not the main 'ptr' obj
-        }
-
-        else return ptr;
     }
 
     // Pointer 
@@ -1157,11 +1121,6 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
 
         reint_ptr->points_to_mutable = consume_if(TokenID::KW_MUT);
         reint_ptr->pointee = parse_type_decl();
-
-        ptr->line = start_line;
-        ptr->col = start_col;
-
-        return ptr;
     }
 
     // Reference
@@ -1173,11 +1132,6 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
 
         reint_ptr->ref_to_mutable = consume_if(TokenID::KW_MUT);
         reint_ptr->referred = parse_type_decl();
-
-        ptr->line = start_line;
-        ptr->col = start_col;
-
-        return ptr;
     }
 
     // Function pointer
@@ -1187,11 +1141,11 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
         ptr->kind = TypeKind::FUNC_PTR;
         FuncPtrDecl *reint_ptr = static_cast<FuncPtrDecl*>(ptr.get());
 
-        if(!error_on_invalid && !check(TokenID::LPAREN)) return nullptr;
+        if(!check(TokenID::LPAREN)) return nullptr;
 
         expect(TokenID::LPAREN);
 
-        if(!error_on_invalid && !check(TokenID::LPAREN)) return nullptr;
+        if(!check(TokenID::LPAREN)) return nullptr;
 
         expect(TokenID::LPAREN);
 
@@ -1203,39 +1157,70 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
             // If the next token is not a comma, it must be a right paren
             if(!check(TokenID::COMMA))
             {
-                if(!error_on_invalid && check(TokenID::RPAREN)) return nullptr;
+                if(!check(TokenID::RPAREN)) return nullptr;
                 expect(TokenID::RPAREN);
                 break;
             }
 
-            // Comma present, read in next parameter
-            if(!error_on_invalid && check(TokenID::COMMA)) return nullptr;
             expect(TokenID::COMMA);
         }
 
-        if(!error_on_invalid && check(TokenID::ARROW)) return nullptr;
+        if(check(TokenID::ARROW)) return nullptr;
         expect(TokenID::ARROW);
 
         // Read return type
-        reint_ptr->ret_type = parse_type_decl();
-
-        ptr->line = start_line;
-        ptr->col = start_col;
-
-        return ptr;
+        reint_ptr->ret_type = parse_type_decl(error_on_invalid);
     }
 
-    else
+    else return nullptr;
+
+    ptr->line = start_line;
+    ptr->col = start_col;
+
+    return ptr;
+}
+
+std::unique_ptr<TypeDecl> Parser::parse_type_decl(
+    bool error_on_invalid)
+{
+    uint32_t start_line = peek().line;
+    uint32_t start_col = peek().col;
+
+    std::unique_ptr<TypeDecl> parsed_type = 
+        parse_type_decl_recurse(error_on_invalid);
+
+    // If the first time we parsed a type was a nullptr, we failed to parse
+    if(parsed_type == nullptr)
     {
-        if(!error_on_invalid) return nullptr;
+        if(error_on_invalid)
+        {
+            print_error_location(start_line, start_col);
+            std::cerr << ": Invalid type declaration.\n";
+            exit(1);
+        }
 
-        print_error_location(peek().line, peek().col);
-        std::cerr << ": Expecting type declaration but got token: \n" << peek() 
-            << '\n';
-        exit(1);
+        return nullptr; // Return nullptr to signal we failed to parse type decl
     }
 
-    return ptr; 
+    std::unique_ptr<TypeDecl> got_next_parsed = 
+
+    // After parsing the type declaration, check if this is an array of that 
+    // type.
+    if(!check(TokenID::LBRACKET)) return parsed_type;
+
+    std::unique_ptr<ArrTypeDecl> arr_decl = std::make_unique<ArrTypeDecl>();
+    arr_decl->line = parsed_type->line;
+    arr_decl->col = parsed_type->col;
+    arr_decl->element_type = std::move(parsed_type);
+
+    while(consume_if(TokenID::LBRACKET))
+    {
+        arr_decl->size_exprs.push_back(std::move(parse_expression()));
+        ++arr_decl->depth;
+        expect(TokenID::RBRACKET);
+    }
+
+    return arr_decl;
 }
 
 std::unique_ptr<FieldDecl> Parser::parse_field(bool is_pub) 

@@ -58,7 +58,7 @@ Declarations:
                Line: 14
                Col: 19
                Type Kind: ARRAY
-               Depth: 1
+               Depth: 2
                Type: 
                {
                   Line: 14

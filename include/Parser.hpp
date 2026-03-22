@@ -87,8 +87,10 @@ private:
     std::unique_ptr<Expression> parse_postfix();
     std::unique_ptr<Expression> parse_primary();
 
+    std::unique_ptr<TypeDecl> parse_type_decl_recurse(bool error_on_invalid = true);
     // If error_on_invalid is false, returns nullptr instead of crashing.
-    std::unique_ptr<TypeDecl> parse_type_decl(bool error_on_invalid = true);
+    std::unique_ptr<TypeDecl> parse_type_decl(
+        bool error_on_invalid = true);
     std::unique_ptr<FieldDecl> parse_field(bool is_pub);
     ScopeBody parse_scope();
     Parameter parse_param();
