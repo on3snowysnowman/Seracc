@@ -20,18 +20,14 @@ int main(int argc, char **argv)
 
     const char *in_file_path = argv[1];
 
-    print_parse_results(in_file_path);
+    Parser parser;
+    Program prog = parser.parse(in_file_path);
 
-    // print_symT_results(in_file_path);
+    SymbolTBlder sym_t_blder;
+    SymbolTable symbol_table = sym_t_blder.build(prog);
 
-    // Parser parser;
-    // Program prog = parser.parse(in_file_path);
-
-    // SymbolTBlder sym_t_blder;
-    // SymbolTable symbol_table = sym_t_blder.build(prog);
-
-    // SymbolResolver resolver;
-    // resolver.resolve(prog, symbol_table);
+    SymbolResolver resolver;
+    resolver.resolve(prog, symbol_table);
 
     return EXIT_SUCCESS;
 }

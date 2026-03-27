@@ -10,27 +10,6 @@ Parser::Parser() {}
 
 // Public
 
-void Parser::print_error_location(uint32_t line, uint32_t col) const
-{
-    std::cerr << parsed_file << ":" << line << ':' << col;
-}
-
-void Parser::handle_tok_mismatch(const Token &got_tok, TokenID expected) 
-{
-    print_error_location(got_tok.line, got_tok.col);
-    std::cerr << ": Expect token of type: " << 
-        tokID_readable[static_cast<int>(expected)] << " but got token:\n" << 
-        got_tok << '\n';
-    exit(1);
-}
-
-void Parser::handle_unexpected_token(const Token &got_tok)
-{
-    print_error_location(got_tok.line, got_tok.col);
-    std::cerr << ": Unexpected token:\n" << got_tok;
-    exit(1);
-}
-
 Program Parser::parse(const char *in_file_path) 
 {
     current_token_idx = 0;
@@ -62,6 +41,46 @@ Program Parser::parse(const char *in_file_path)
 
 
 // Private
+
+void Parser::print_error_location(uint32_t line, uint32_t col) const
+{
+    std::cerr << parsed_file << ":" << line << ':' << col;
+}
+
+void Parser::handle_tok_mismatch(const Token &got_tok, TokenID expected) 
+{
+    print_error_location(got_tok.line, got_tok.col);
+    std::cerr << ": Expect token of type: " << 
+        tokID_readable[static_cast<int>(expected)] << " but got token:\n" << 
+        got_tok << '\n';
+    exit(1);
+}
+
+void Parser::handle_unexpected_token(const Token &got_tok)
+{
+    print_error_location(got_tok.line, got_tok.col);
+    std::cerr << ": Unexpected token:\n" << got_tok;
+    exit(1);
+}
+
+void Parser::handle_register_type(const std::string &name, uint32_t line,
+    uint32_t col)
+{
+    auto it  = defined_types.find(name);
+
+    // This type has already been defined.
+    if(it != defined_types.end())
+    {
+        print_error_location(line, col);
+        std::cerr << ": Struct type: \"" << name << "\" already defined here: "
+            << it->second.file_defined << ':' << it->second.line << ':' << 
+            it->second.col << ".\n";
+        exit(1);
+    }
+
+    // Register this type as defined.
+    defined_types.emplace(name, DefinedType{line, col, parsed_file});
+}
 
 std::unique_ptr<Declaration> Parser::parse_top_level() 
 {
@@ -217,9 +236,14 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
     ptr->line = peek().line;
     ptr->col = peek().col;
 
-    expect(TokenID::KW_STRUCT);
-    
+    expect(TokenID::KW_STRUCT);  
+
+    uint32_t ident_line = peek().line;
+    uint32_t ident_col = peek().col;
+
     ptr->name = expect(TokenID::IDENTIFIER).text;
+    
+    handle_register_type(ptr->name, ident_line, ident_col);
 
     expect(TokenID::LBRACE);
 
@@ -252,23 +276,13 @@ std::unique_ptr<ComponentDecl> Parser::parse_component(bool is_pub)
 
     expect(TokenID::KW_COMPONENT);
 
+    uint32_t ident_line = peek().line;
+    uint32_t ident_col = peek().col;
+
     ptr->name = expect(TokenID::IDENTIFIER).text;
-
-    // const auto it = defined_types.find(ptr->name);
-
-    // // This component has already been defined
-    // if(it != defined_types.end())
-    // {
-    //     print_error_location(ptr->line, ptr->col);
-    //     std::cerr << ": Type \"" << ptr->name << "\" has already been defined "
-    //         "here: " << it->second.file_defined << ":" << it->second.line << 
-    //         ":" << it->second.col << '\n';
-    //     exit(1);
-    // }
-
-    //     // Otherwise, register this struct type as defined.
-    // else defined_types.insert({ptr->name, {ptr->line, ptr->col, parsed_file}});
-
+    
+    handle_register_type(ptr->name, ident_line, ident_col);
+    
     expect(TokenID::LBRACE);
 
     // Parse component body
@@ -306,6 +320,38 @@ std::unique_ptr<ComponentDecl> Parser::parse_component(bool is_pub)
     return ptr;
 }
 
+std::unique_ptr<VarDeclStmt> Parser::parse_var_decl_stmt()
+{
+    auto ptr = std::make_unique<VarDeclStmt>();
+
+    ptr->line = peek().line;
+    ptr->col = peek().col;
+
+    VarDeclStmt *reint_ptr = 
+        static_cast<VarDeclStmt*>(ptr.get());
+
+    reint_ptr->is_binding_mutable = consume_if(TokenID::KW_MUT);
+    reint_ptr->var_name = expect(TokenID::IDENTIFIER).text;
+
+    expect(TokenID::COLON);
+
+    reint_ptr->type_decl = parse_type_decl();
+
+    // Variable has assignment expression
+    if(consume_if(TokenID::ASSIGN))
+    {
+        // Struct init
+        if(check(TokenID::LBRACE))
+            reint_ptr->init_expr = parse_struct_init();
+
+        else reint_ptr->init_expr = parse_expression();
+    }
+
+    expect(TokenID::SEMICOLON);
+
+    return ptr;
+}
+
 std::unique_ptr<Statement> Parser::parse_statement() 
 {
     std::unique_ptr<Statement> ptr = nullptr;
@@ -316,28 +362,30 @@ std::unique_ptr<Statement> Parser::parse_statement()
     // Variable declaration
     if(consume_if(TokenID::KW_LET))
     {
-        ptr = std::make_unique<VarDeclStmt>();
-        VarDeclStmt *reint_ptr = 
-            static_cast<VarDeclStmt*>(ptr.get());
+        // ptr = std::make_unique<VarDeclStmt>();
+        // VarDeclStmt *reint_ptr = 
+        //     static_cast<VarDeclStmt*>(ptr.get());
 
-        reint_ptr->is_binding_mutable = consume_if(TokenID::KW_MUT);
-        reint_ptr->var_name = expect(TokenID::IDENTIFIER).text;
+        // reint_ptr->is_binding_mutable = consume_if(TokenID::KW_MUT);
+        // reint_ptr->var_name = expect(TokenID::IDENTIFIER).text;
 
-        expect(TokenID::COLON);
+        // expect(TokenID::COLON);
 
-        reint_ptr->type_decl = parse_type_decl();
+        // reint_ptr->type_decl = parse_type_decl();
 
-        // Variable has assignment expression
-        if(consume_if(TokenID::ASSIGN))
-        {
-            // Struct init
-            if(check(TokenID::LBRACE))
-                reint_ptr->init_expr = parse_struct_init();
+        // // Variable has assignment expression
+        // if(consume_if(TokenID::ASSIGN))
+        // {
+        //     // Struct init
+        //     if(check(TokenID::LBRACE))
+        //         reint_ptr->init_expr = parse_struct_init();
 
-            else reint_ptr->init_expr = parse_expression();
-        }
+        //     else reint_ptr->init_expr = parse_expression();
+        // }
 
-        expect(TokenID::SEMICOLON);
+        // expect(TokenID::SEMICOLON);
+    
+        return parse_var_decl_stmt();
     }
 
     // Container declaration
@@ -825,8 +873,11 @@ std::unique_ptr<Expression> Parser::parse_unary()
         // a type, and this is a cast
         if(type_ptr != nullptr) 
         {
+            std::cerr << "The type was parsed as a type: " << parsed_file << ':' << type_ptr->line << 
+                ":" << type_ptr->col << '\n'; 
+            
             auto expr_ptr = std::make_unique<CastExpr>();
-
+            
             expr_ptr->to_cast_type = std::move(type_ptr); 
             expr_ptr->line = t.line;
             expr_ptr->col = t.col;
@@ -837,7 +888,14 @@ std::unique_ptr<Expression> Parser::parse_unary()
 
         // If the type parsing failed, rewind to the token before we starting
         // attempting to consume the non type.
-        else rewind(saved_tok_idx);
+        rewind(saved_tok_idx);
+        
+        auto parenthesized_expr = parse_expression();
+
+        expect(TokenID::RPAREN);
+
+        return parenthesized_expr;
+
     }
 
     return parse_postfix();
@@ -1109,7 +1167,25 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
 
         if(!check(TokenID::IDENTIFIER)) return nullptr;
 
+        uint32_t ident_line = peek().line;
+        uint32_t ident_col = peek().col;
+
         reint_ptr->type_name = expect(TokenID::IDENTIFIER).text;    
+    
+        // The identifier is not a type symbol, so this can't be a type.
+        if(defined_types.find(reint_ptr->type_name) == defined_types.end())
+        {
+            if(error_on_invalid)
+            {
+                print_error_location(ident_line, ident_col);
+                std::cerr << ": \"" << reint_ptr->type_name << "\" is not a " 
+                    "defined type.\n";
+                exit(1);
+            }
+
+            return nullptr;
+        }
+
     }
 
     // Pointer 
@@ -1120,7 +1196,12 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
         PtrTypeDecl *reint_ptr = static_cast<PtrTypeDecl*>(ptr.get());
 
         reint_ptr->points_to_mutable = consume_if(TokenID::KW_MUT);
-        reint_ptr->pointee = parse_type_decl();
+
+        auto pointee = parse_type_decl_recurse();
+
+        if(pointee == nullptr) return nullptr;
+
+        reint_ptr->pointee = std::move(pointee);
     }
 
     // Reference
@@ -1131,7 +1212,12 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
         RefTypeDecl *reint_ptr = static_cast<RefTypeDecl*>(ptr.get());
 
         reint_ptr->ref_to_mutable = consume_if(TokenID::KW_MUT);
-        reint_ptr->referred = parse_type_decl();
+
+        auto pointee = parse_type_decl_recurse();
+
+        if(pointee == nullptr) return nullptr;
+
+        reint_ptr->referred = std::move(pointee);
     }
 
     // Function pointer
@@ -1169,7 +1255,12 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
         expect(TokenID::ARROW);
 
         // Read return type
-        reint_ptr->ret_type = parse_type_decl(error_on_invalid);
+
+        auto ret_type = parse_type_decl(error_on_invalid);
+
+        if(ret_type == nullptr) return nullptr;
+
+        reint_ptr->ret_type = std::move(ret_type);
     }
 
     else return nullptr;
@@ -1201,8 +1292,6 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(
 
         return nullptr; // Return nullptr to signal we failed to parse type decl
     }
-
-    std::unique_ptr<TypeDecl> got_next_parsed = 
 
     // After parsing the type declaration, check if this is an array of that 
     // type.

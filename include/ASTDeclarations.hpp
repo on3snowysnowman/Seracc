@@ -392,7 +392,7 @@ struct ArrTypeDecl : TypeDecl
 {
     ArrTypeDecl() { kind = TypeKind::ARRAY; }
 
-    uint8_t depth = 1;
+    uint8_t depth = 0;
 
     std::unique_ptr<TypeDecl> element_type;
     std::vector<std::unique_ptr<Expression>> size_exprs;
@@ -439,6 +439,7 @@ struct Declaration
 
     virtual ~Declaration() = default;
 };
+
 
 struct FieldDecl : Declaration
 {

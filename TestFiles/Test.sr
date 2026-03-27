@@ -1,17 +1,19 @@
 
 type struct Structy
 {
-    x: int;
+    mut x: int;
 }
 
-
-fn main() -> int
+export fn main() -> int
 {
-    // let obj: * Structy;
+    let obj: * Structy = nullptr;
 
-    // let result: int = (*ptr + 1); 
+    let mut num: int = obj->x;
+    let ptr: * int = &num;
 
-    let arr: *mut int[1];
+    let result: int = (((*++ptr) / *ptr) + 1); 
+
+    let arr: *mut * *mut * int[1][2];
 
     ret 0;
 }
