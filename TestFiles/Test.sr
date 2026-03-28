@@ -1,19 +1,36 @@
 
-type struct Structy
+// type struct Structy
+// {
+//     mut x: int;
+// }
+
+type component Compon
 {
-    mut x: int;
+    num: int;
+}
+
+type component Compony
+{
+    pub num: int;
+
+    pub fn (self: ref mut Compony) func() -> int 
+    {
+        self.num = (u8)3;
+    }
 }
 
 export fn main() -> int
 {
-    let obj: * Structy = nullptr;
+    // let obj: * Structy = nullptr;
 
-    let mut num: int = obj->x;
-    let ptr: * int = &num;
+    // let mut num: int = obj->x;
+    // let ptr: * int = &num;
 
-    let result: int = (((*++ptr) / *ptr) + 1); 
+    // let result: int = (((*++ptr) / *ptr) + 1); 
 
-    let arr: *mut * *mut * int[1][2];
+    // let arr: *mut * *mut * int[1][2];
+
+    let num: int;
 
     ret 0;
 }

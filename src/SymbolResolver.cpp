@@ -122,6 +122,7 @@ void SymbolResolver::resolve_type_decl(TypeDecl * const ptr,
             reint_ptr->resolved_symbol_idx = 
                 find_symbol_idx(reint_ptr->type_name, scope_idx, ptr->line,
                 ptr->col);
+
             break;
         }
 
@@ -149,7 +150,8 @@ void SymbolResolver::resolve_type_decl(TypeDecl * const ptr,
 
         default:
 
-            std::cerr << "Invalid TypeKind for type declaration\n";
+            std::cerr << "Invalid TypeKind for type declaration: "
+                << parsed_file << ':' << ptr->line << ':' << ptr->col << "\n";
             exit(1);
             break;
     }
@@ -498,7 +500,7 @@ std::optional<uint64_t> SymbolResolver::symbol_idx_from_expr(
 
 uint64_t SymbolResolver::find_symbol_idx(const std::string &ident, 
     uint64_t scope_idx, uint64_t symbol_line, uint64_t symbol_col)
-{
+{   
     const Scope * parsed_scope = &s_table_ptr->scopes.at(scope_idx);
 
     for(const auto &elem: parsed_scope->sym_name_to_symbol_idx)

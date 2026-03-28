@@ -2,10 +2,15 @@
 
 #include "Parser.hpp"
 
+#include "SeracBuiltins.hpp"
+
 
 // Ctors / Dtor
 
-Parser::Parser() {}
+Parser::Parser() 
+{
+    register_builtin_types();
+}
 
 
 // Public
@@ -41,6 +46,15 @@ Program Parser::parse(const char *in_file_path)
 
 
 // Private
+
+void Parser::register_builtin_types()
+{
+    for(int i = 0; i < readable_to_builtin.size(); ++i)
+    {
+        defined_types.emplace(readable_to_builtin.at(i).first,
+            DefinedType{0, 0, "BUILTIN"});
+    }
+}
 
 void Parser::print_error_location(uint32_t line, uint32_t col) const
 {
@@ -873,9 +887,6 @@ std::unique_ptr<Expression> Parser::parse_unary()
         // a type, and this is a cast
         if(type_ptr != nullptr) 
         {
-            std::cerr << "The type was parsed as a type: " << parsed_file << ':' << type_ptr->line << 
-                ":" << type_ptr->col << '\n'; 
-            
             auto expr_ptr = std::make_unique<CastExpr>();
             
             expr_ptr->to_cast_type = std::move(type_ptr); 

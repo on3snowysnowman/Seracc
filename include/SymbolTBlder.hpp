@@ -39,7 +39,7 @@ private:
         bool is_variable = false);
 
     void add_builtin_symbol(uint64_t global_scope_idx, 
-        const std::string &symbol_name, BuiltinSymbol::BuiltinType b_type);
+        const std::string &symbol_name, BuiltinType b_type);
 
     void add_builtin_symbols(uint64_t global_scope_idx);
 

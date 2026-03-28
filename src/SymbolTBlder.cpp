@@ -87,7 +87,7 @@ void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
 }
 
 void SymbolTBlder::add_builtin_symbol(uint64_t global_scope_idx, 
-    const std::string &symbol_name, BuiltinSymbol::BuiltinType b_type)
+    const std::string &symbol_name, BuiltinType b_type)
 {
     uint64_t symbol_idx = get_next_symbol_idx();
     symbols.at(symbol_idx) = std::make_unique<BuiltinSymbol>();
@@ -99,25 +99,11 @@ void SymbolTBlder::add_builtin_symbol(uint64_t global_scope_idx,
 
 void SymbolTBlder::add_builtin_symbols(uint64_t global_scope_idx)
 {   
-    add_builtin_symbol(global_scope_idx, "u8", BuiltinSymbol::U8);
-    add_builtin_symbol(global_scope_idx, "i8", BuiltinSymbol::I8);
-    add_builtin_symbol(global_scope_idx, "u16", BuiltinSymbol::U16);
-    add_builtin_symbol(global_scope_idx, "i16", BuiltinSymbol::I16);
-    add_builtin_symbol(global_scope_idx, "u32", BuiltinSymbol::U32);
-    add_builtin_symbol(global_scope_idx, "i32", BuiltinSymbol::I32);
-    add_builtin_symbol(global_scope_idx, "int", BuiltinSymbol::I32);
-    add_builtin_symbol(global_scope_idx, "u64", BuiltinSymbol::U64);
-    add_builtin_symbol(global_scope_idx, "i64", BuiltinSymbol::I64);
-    add_builtin_symbol(global_scope_idx, "bool", BuiltinSymbol::BOOL);
-    add_builtin_symbol(global_scope_idx, "nullptr", BuiltinSymbol::NULLPTR);
-    add_builtin_symbol(global_scope_idx, "opaque", BuiltinSymbol::OPAQUE);
-    add_builtin_symbol(global_scope_idx, "float", BuiltinSymbol::FLOAT);
-    add_builtin_symbol(global_scope_idx, "double", BuiltinSymbol::DOUBLE);
-    add_builtin_symbol(global_scope_idx, INT_LIT_IDENT, BuiltinSymbol::INT_LIT);
-    add_builtin_symbol(global_scope_idx, BIN_LIT_IDENT, BuiltinSymbol::BIN_LIT);
-    add_builtin_symbol(global_scope_idx, HEX_LIT_IDENT, BuiltinSymbol::HEX_LIT);
-    add_builtin_symbol(global_scope_idx, FLOAT_LIT_IDENT, 
-        BuiltinSymbol::FLOAT_LIT);
+    for(const auto &elem : readable_to_builtin)
+    {
+        add_builtin_symbol(global_scope_idx,
+            elem.first, elem.second);
+    }
 }
 
 void SymbolTBlder::build_top_level(ModuleDecl * const ptr)

@@ -26,6 +26,72 @@ void TypeChecker::type_check(const Program &p, const SymbolTable &sym_table)
 
 // Private
 
+void TypeChecker::print_error_location(uint32_t line, uint32_t col) const
+{
+    std::cerr << parsed_file << ":" << line << ':' << col;
+}
+
+uint64_t TypeChecker::get_resolved_idx_from_type_decl(
+    const TypeDecl * const ptr) const
+{
+    switch(ptr->kind)
+    {
+        case TypeKind::ARRAY:
+        {
+            const ArrTypeDecl * const reint_ptr = 
+                static_cast<const ArrTypeDecl*>(ptr);
+
+            return get_resolved_idx_from_type_decl(
+                reint_ptr->element_type.get());
+        }
+
+        case TypeKind::FUNC_PTR:
+        {
+            std::cerr << "Func ptr not implemented for type decl symbol "
+                "fetching\n";
+            exit(1);
+        }
+
+        case TypeKind::NAMED:
+        {
+            const NamedTypeDecl * const reint_ptr = 
+                static_cast<const NamedTypeDecl*>(ptr);
+
+            if(!reint_ptr->resolved_symbol_idx.has_value())
+            {
+                print_error_location(reint_ptr->line , reint_ptr->col);
+                std::cerr << ": Attempted to get resolved index of named type "
+                    "decl but it doesn't have one.\n";
+                exit(1);
+            }
+
+            return reint_ptr->resolved_symbol_idx.value();
+        };
+
+        case TypeKind::PTR:
+        {
+            const PtrTypeDecl * const reint_ptr = 
+                static_cast<const PtrTypeDecl*>(ptr);
+
+            return get_resolved_idx_from_type_decl(reint_ptr->pointee.get());
+        }
+
+        case TypeKind::REF:
+        {
+            const RefTypeDecl * const reint_ptr = 
+                static_cast<const RefTypeDecl*>(ptr);
+
+            return get_resolved_idx_from_type_decl(reint_ptr->referred.get());
+        }
+
+        default:
+
+            print_error_location(ptr->line, ptr->col);
+            std::cerr << ": Invalid TypeKind for TypeDecl\n";
+            exit(1);
+    }
+}
+
 void TypeChecker::check_module(ModuleDecl * const ptr)
 {
     for(const auto &decl : ptr->decls)
@@ -41,11 +107,34 @@ void TypeChecker::check_struct(StructDecl * const ptr)
 void TypeChecker::check_component(ComponentDecl * const ptr)
 {
     for(const auto &decl: ptr->decls)
-        check_declaration(decl.get());
+        check_declaration(decl.get(), std::optional<ComponentDecl*>{ptr});
 }
 
-void TypeChecker::check_function(FunctionDecl * const ptr)
+void TypeChecker::check_function(FunctionDecl * const ptr, 
+    std::optional<ComponentDecl*> enclosing_component)
 {
+    if(ptr->receiver_data.has_value())
+    {
+        if(!enclosing_component.has_value())
+        {
+            print_error_location(ptr->receiver_data->type_decl->line,
+                ptr->receiver_data->type_decl->col);
+            std::cerr << ": Receiver function declared outside of Component "
+                "scope\n";
+            exit(1);
+        }
+
+        if(get_resolved_idx_from_type_decl(ptr->receiver_data->type_decl.get()) 
+            != enclosing_component.value()->symbol_idx)
+        {
+            print_error_location(ptr->receiver_data->type_decl->line,
+                ptr->receiver_data->type_decl->col);
+            std::cerr << ": Component receiver object type does not match the "
+            "enclosing Component type.\n";
+            exit(1);
+        }
+    }
+
     for(Parameter &p : ptr->params)
         check_param(&p);
 }
@@ -161,7 +250,8 @@ void TypeChecker::check_type_decl(TypeDecl * const ptr)
     ;
 }
 
-void TypeChecker::check_declaration(Declaration * const ptr)
+void TypeChecker::check_declaration(Declaration * const ptr,
+    std::optional<ComponentDecl*> enclosing_component)
 {   
     switch(ptr->kind)
     {
@@ -177,7 +267,8 @@ void TypeChecker::check_declaration(Declaration * const ptr)
 
         case DeclKind::FUNCTION:
 
-            check_function(static_cast<FunctionDecl*>(ptr));
+            check_function(static_cast<FunctionDecl*>(ptr), 
+                enclosing_component);
             break;
 
         case DeclKind::MODULE:

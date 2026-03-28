@@ -10,11 +10,7 @@
 #include <cstdint>
 
 #include "ASTDeclarations.hpp"
-
-static const char * const INT_LIT_IDENT = "INT_LIT";
-static const char * const BIN_LIT_IDENT = "BIN_LIT";
-static const char * const HEX_LIT_IDENT = "HEX_LIT";
-static const char * const FLOAT_LIT_IDENT = "FLOAT_LIT";
+#include "SeracBuiltins.hpp"
 
 enum class SymbolType
 {
@@ -40,28 +36,6 @@ struct Symbol
 struct BuiltinSymbol : Symbol
 {
     BuiltinSymbol() { sym_type = SymbolType::BUILTIN; }
-
-    enum BuiltinType
-    {
-        U8, 
-        I8,
-        U16,
-        I16,
-        U32,
-        I32,
-        U64,
-        I64,
-        BOOL,
-        NULLPTR,
-        OPAQUE,
-        FLOAT,
-        DOUBLE,
-        INT_LIT,
-        BIN_LIT,
-        HEX_LIT,
-        FLOAT_LIT, 
-        INVALID
-    };
 
     BuiltinType b_type = BuiltinType::INVALID;
 };

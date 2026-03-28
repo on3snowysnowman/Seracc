@@ -8,6 +8,7 @@
 #include "Parser.hpp"
 #include "SymbolTBlder.hpp"
 #include "SymbolResolver.hpp"
+#include "TypeChecker.hpp"
 
 
 int main(int argc, char **argv)
@@ -28,6 +29,9 @@ int main(int argc, char **argv)
 
     SymbolResolver resolver;
     resolver.resolve(prog, symbol_table);
+
+    TypeChecker checker;
+    checker.type_check(prog, symbol_table);
 
     return EXIT_SUCCESS;
 }
