@@ -62,6 +62,7 @@ enum class TokenID
     TILDE,
 
     // Operators
+    SCOPE_RESOLUTION,
     ARROW,
     ASSIGN,
     PLUS,
@@ -144,6 +145,7 @@ const char * const tokID_readable[]
     "TILDE",
 
     // Operators
+    "SCOPE_RESOLUTION",
     "ARROW",
     "ASSIGN",
     "PLUS",

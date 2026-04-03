@@ -38,31 +38,14 @@ private:
     };
 
     // Map of defined type names to the line and column they were defined on.
-    std::unordered_map<std::string, DefinedType> defined_types
-    {
-        // Register initial builtins
-        // {"int", {0, 0, "BUILTIN"}},
-        // {"u8", {0, 0, "BUILTIN"}},
-        // {"i8", {0, 0, "BUILTIN"}},
-        // {"u16", {0, 0, "BUILTIN"}},
-        // {"i16", {0, 0, "BUILTIN"}},
-        // {"u32", {0, 0, "BUILTIN"}},
-        // {"i32", {0, 0, "BUILTIN"}},
-        // {"u64", {0, 0, "BUILTIN"}},
-        // {"i64", {0, 0, "BUILTIN"}},
-        // {"float", {0, 0, "BUILTIN"}},
-        // {"double", {0, 0, "BUILTIN"}},
-        // {"bool", {0, 0, "BUILTIN"}},
-        // {"char", {0, 0, "BUILTIN"}},
-        // {"nullptr", {0, 0, "BUILTIN"}},
-        // {"opaque", {0, 0, "BUILTIN"}}
-    };
+    std::unordered_map<std::string, DefinedType> defined_types;
 
-    
+
     // Methods
 
     void register_builtin_types();
 
+    void print_ident_path(const std::vector<std::string> &ident_path) const;
     void print_error_location(uint32_t line,uint32_t col) const;
     void handle_tok_mismatch(const Token &got_tok, TokenID expected);
     void handle_unexpected_token(const Token &got_tok);

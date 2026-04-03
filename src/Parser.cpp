@@ -27,7 +27,7 @@ Program Parser::parse(const char *in_file_path)
     prog.source_file_name = in_file_path;
     parsed_file = in_file_path;
 
-    prog.ast->name = "global";
+    prog.ast->ident.push_back("global");
     prog.ast->line = 0;
     prog.ast->col = 0;
 
@@ -53,6 +53,24 @@ void Parser::register_builtin_types()
     {
         defined_types.emplace(readable_to_builtin.at(i).first,
             DefinedType{0, 0, "BUILTIN"});
+    }
+}
+
+void Parser::print_ident_path(const std::vector<std::string> &ident_path) const
+{
+    if(ident_path.size() == 0) return;
+
+    size_t i = 0;
+
+    while(true)
+    {
+        std::cerr << ident_path.at(i);
+
+        ++i;
+
+        if(i >= ident_path.size()) break;
+
+        std::cerr << "::";
     }
 }
 
@@ -147,8 +165,13 @@ std::unique_ptr<ModuleDecl> Parser::parse_module()
     ptr->col = peek().col;
 
     expect(TokenID::KW_MODULE);
-    
-    ptr->name = expect(TokenID::IDENTIFIER).text;
+
+    ptr->ident.push_back(expect(TokenID::IDENTIFIER).text);
+
+    while(consume_if(TokenID::SCOPE_RESOLUTION))
+    {
+        ptr->ident.push_back(expect(TokenID::IDENTIFIER).text);
+    }
 
     expect(TokenID::LBRACE);
 
@@ -159,9 +182,11 @@ std::unique_ptr<ModuleDecl> Parser::parse_module()
         if(!decl)
         {
             std::cerr << parsed_file << ": Reached end of file expecting '}' "
-                "for module: \"" << ptr->name << "\" found here: ";
-                print_error_location(ptr->line, ptr->col);
-                std::cerr << '\n';
+                "for module: \""; 
+            print_ident_path(ptr->ident);
+            std::cerr << "\" found here: ";
+            print_error_location(ptr->line, ptr->col);
+            std::cerr << '\n';
             exit(1);
         }
 
@@ -1153,7 +1178,14 @@ std::unique_ptr<Expression> Parser::parse_primary()
 
         ptr->line = peek().line;
         ptr->col = peek().col;
-        reint_ptr->name = expect(TokenID::IDENTIFIER).text;
+
+        reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
+
+        while(consume_if(TokenID::SCOPE_RESOLUTION))
+        {
+            reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
+        }
+
         return ptr;
     }
 
@@ -1181,16 +1213,23 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
         uint32_t ident_line = peek().line;
         uint32_t ident_col = peek().col;
 
-        reint_ptr->type_name = expect(TokenID::IDENTIFIER).text;    
+        reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
     
+        while(consume_if(TokenID::SCOPE_RESOLUTION))
+        {
+            reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
+        }
+
         // The identifier is not a type symbol, so this can't be a type.
-        if(defined_types.find(reint_ptr->type_name) == defined_types.end())
+        if(defined_types.find(*(--reint_ptr->ident_path.end())) 
+            == defined_types.end())
         {
             if(error_on_invalid)
             {
                 print_error_location(ident_line, ident_col);
-                std::cerr << ": \"" << reint_ptr->type_name << "\" is not a " 
-                    "defined type.\n";
+                std::cerr << ": \"";
+                print_ident_path(reint_ptr->ident_path);
+                std::cerr << "\" is not a defined type.\n";
                 exit(1);
             }
 

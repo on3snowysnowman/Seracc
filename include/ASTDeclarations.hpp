@@ -14,6 +14,24 @@ struct FunctionDecl;
 struct ComponentDecl;
 struct StructDecl;
 
+static void print_ident_path(const std::vector<std::string> &ident_path)
+{
+    if(ident_path.size() == 0) return; 
+
+    size_t i = 0;
+
+    while(true)
+    {
+        std::cout << ident_path.at(i);
+
+        ++i;
+
+        if(i >= ident_path.size()) break;
+
+        std::cout << "::";
+    }
+}
+
 
 // EXPRESSIONS =================================================================
 
@@ -155,7 +173,8 @@ struct NullptrLitExpr : Expression
 struct IdentExpr : Expression
 {
     IdentExpr() { exp_type = ExpressionType::IDENTIFIER; }
-    std::string name;
+    // std::string name;
+    std::vector<std::string> ident_path;
     std::optional<uint64_t> resolved_symbol_idx;
 };
 
@@ -369,7 +388,8 @@ struct NamedTypeDecl : TypeDecl
 {
     NamedTypeDecl() { kind = TypeKind::NAMED; }
 
-    std::string type_name;
+    // std::string type_name;
+    std::vector<std::string> ident_path;
 };
 
 struct PtrTypeDecl : TypeDecl
@@ -434,7 +454,6 @@ struct Declaration
     uint32_t line = 0;
     uint32_t col = 0;
     DeclKind kind = DeclKind::INVALID;
-    std::string name;
     std::optional<uint64_t> symbol_idx;
 
     virtual ~Declaration() = default;
@@ -447,6 +466,7 @@ struct FieldDecl : Declaration
 
     bool is_binding_mutable = false;
     bool is_pub = false;
+    std::string name;
     std::unique_ptr<TypeDecl> type_decl;
     std::unique_ptr<Expression> init_expr; // nullptr if none.
 };
@@ -467,7 +487,8 @@ struct FunctionDecl : Declaration
 
     std::unique_ptr<TypeDecl> ret_type;
     std::vector<Parameter> params;
-    
+    std::string name;
+
     // Receiver component parameter, if this function is a receiver function.
     // std::optional<ReceiverData> receiver_data;
     std::optional<Parameter> receiver_data;
@@ -479,7 +500,7 @@ struct StructDecl : Declaration
     StructDecl() { kind = DeclKind::STRUCT; }
 
     bool is_pub = false;
-
+    std::string name;
     std::vector<std::unique_ptr<Declaration>> decls;
 };
 
@@ -488,14 +509,18 @@ struct ComponentDecl : Declaration
     ComponentDecl() { kind = DeclKind::COMPONENT; }
 
     bool is_pub = false;
-
+    std::string name;
     std::vector<std::unique_ptr<Declaration>> decls;
 };
 
 struct ModuleDecl : Declaration
 {
     ModuleDecl() { kind = DeclKind::MODULE; }
-
+    
+    // Module names can be scoped with the "::" token, so we store the different
+    // segments in a vector. SomeModule::Nested becomes 
+    // ["SomeModule", "Nested"]
+    std::vector<std::string> ident;
     std::vector<std::unique_ptr<Declaration>> decls;
 };
 

@@ -8,7 +8,6 @@ namespace ParserPrinter
 
 static void print_expression(const Expression * const ptr, int tab_depth);
 
-
 static void handle_tab_print(int tab_depth)
 {
     for(int i = 0; i < tab_depth; ++i)
@@ -27,7 +26,9 @@ static void print_named_type(const NamedTypeDecl * const ptr,
     int tab_depth)
 {
     handle_tab_print(tab_depth);
-    std::cout << "Name: " << ptr->type_name << '\n';
+    std::cout << "Name: "; 
+    print_ident_path(ptr->ident_path);
+    std::cout << '\n';
 }
 
 static void print_type_decl(const TypeDecl * const ptr,
@@ -312,7 +313,9 @@ static void print_ident_expr(const IdentExpr * const ptr, int tab_depth)
     handle_newline(tab_depth);
     std::cout << "Col: " << ptr->col;
     handle_newline(tab_depth);
-    std::cout << "Identifier: " << ptr->name << '\n';
+    std::cout << "Identifier: ";
+    print_ident_path(ptr->ident_path);
+    std::cout << '\n';
 }
 
 static void print_unary_expr(const UnaryExpr* const ptr, int tab_depth) 
@@ -1051,7 +1054,8 @@ static void print_module(const ModuleDecl * const ptr,
     handle_tab_print(tab_depth);
     std::cout << "-- MODULE --";
     handle_newline(tab_depth);
-    std::cout << "Name: " << ptr->name;
+    std::cout << "Name: ";
+    print_ident_path(ptr->ident);
     handle_newline(tab_depth);
     std::cout << "Line: " << ptr->line;
     handle_newline(tab_depth);

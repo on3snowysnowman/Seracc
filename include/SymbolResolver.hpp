@@ -6,7 +6,6 @@
 #include "Program.hpp"
 #include "SymbolDeclarations.hpp"
 
-
 class SymbolResolver
 {
 
@@ -31,8 +30,8 @@ private:
     
     void resolve_expression(Expression * const ptr, uint64_t scope_idx);
 
-    uint64_t find_symbol_idx(const std::string &ident, uint64_t scope_idx,
-        uint64_t symbol_line, uint64_t symbol_col);
+    uint64_t find_symbol_idx(const std::vector<std::string> &ident_path, 
+        uint64_t scope_idx, uint32_t symbol_line, uint32_t symbol_col);
 
     // Given an expression, gets the index of the symbol the expression results
     // in. Returns default optional if the expression does not result in a type

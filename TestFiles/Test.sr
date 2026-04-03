@@ -1,8 +1,12 @@
 
-// type struct Structy
-// {
-//     mut x: int;
-// }
+module SomeModule
+{
+
+
+type struct Structy
+{
+    mut x: int;
+}
 
 type component Compon
 {
@@ -19,18 +23,18 @@ type component Compony
     }
 }
 
+}
+
 export fn main() -> int
 {
-    // let obj: * Structy = nullptr;
+    let obj: * SomeModule::Structy = nullptr;
 
-    // let mut num: int = obj->x;
-    // let ptr: * int = &num;
+    let mut num: int = obj->x;
+    let ptr: * int = &num;
 
-    // let result: int = (((*++ptr) / *ptr) + 1); 
+    let result: int = (((*++ptr) / *ptr) + 1); 
 
-    // let arr: *mut * *mut * int[1][2];
-
-    let num: int;
+    let arr: *mut * *mut * int[1][2];
 
     ret 0;
 }

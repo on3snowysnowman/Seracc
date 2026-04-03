@@ -63,10 +63,9 @@ void SymbolResolver::resolve_module(ModuleDecl * const ptr)
 
             default:
 
-                std::cerr << "Invalid declaration type found for: " << ptr->name
-                    << '\n';
+                std::cerr << "Invalid declaration type found for declaration."
+                    "\n";
                 exit(1); 
-                break;
         }
     }
 }
@@ -498,22 +497,33 @@ std::optional<uint64_t> SymbolResolver::symbol_idx_from_expr(
     return {};
 }
 
-uint64_t SymbolResolver::find_symbol_idx(const std::string &ident, 
-    uint64_t scope_idx, uint64_t symbol_line, uint64_t symbol_col)
+uint64_t SymbolResolver::find_symbol_idx(
+    const std::vector<std::string> &ident_path, uint64_t scope_idx, 
+    uint32_t symbol_line, uint32_t symbol_col)
 {   
-    const Scope * parsed_scope = &s_table_ptr->scopes.at(scope_idx);
-
-    for(const auto &elem: parsed_scope->sym_name_to_symbol_idx)
+    // Single identifier, search in the current scope, then 
+    if(ident_path.size() == 0)
     {
-        if(elem.first == ident) return elem.second;
+
+
+
     }
 
-    if(parsed_scope->parent_scope_idx.has_value()) 
-        return find_symbol_idx(ident, parsed_scope->parent_scope_idx.value(),
-            symbol_line, symbol_col);
+    return 0;
 
-    // Didn't find the symbol.
-    std::cerr << parsed_file << ":" << symbol_line << ":" << symbol_col << 
-        ": Undefined symbol: " << ident << '\n';
-    exit(1);
+    // const Scope * parsed_scope = &s_table_ptr->scopes.at(scope_idx);
+
+    // for(const auto &elem: parsed_scope->sym_name_to_symbol_idx)
+    // {
+    //     if(elem.first == ident) return elem.second;
+    // }
+
+    // if(parsed_scope->parent_scope_idx.has_value()) 
+    //     return find_symbol_idx(ident, parsed_scope->parent_scope_idx.value(),
+    //         symbol_line, symbol_col);
+
+    // // Didn't find the symbol.
+    // std::cerr << parsed_file << ":" << symbol_line << ":" << symbol_col << 
+    //     ": Undefined symbol: " << ident << '\n';
+    // exit(1);
 } 

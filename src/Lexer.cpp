@@ -499,6 +499,19 @@ void Lexer::parse_non_ident_or_number(Token &t)
         return;
     }
 
+    else if(c == ':')
+    {
+        // Check for "::"
+        if(peek() == ':')
+        {
+            advance(); // Consume ':'
+            t.id = TokenID::SCOPE_RESOLUTION;
+            return;
+        }
+
+        t.id = TokenID::COLON;
+    }
+
     switch(c)
     {
         case '(':
@@ -546,36 +559,15 @@ void Lexer::parse_non_ident_or_number(Token &t)
             t.id = TokenID::DOT;
             break;
 
-
-        case ':':
-
-            t.id = TokenID::COLON;
-            break;
-
         case '@':
 
             t.id = TokenID::AT;
             break;
 
-        // case '*':
-
-        //     t.id = TokenID::ASTERISK;
-        //     break;
-
-        // case '/':
-
-        //     t.id = TokenID::FORW_SLASH;
-        //     break;
-
         case '\\':
 
             t.id = TokenID::BACK_SLASH;
             break;
-
-        // case '%':
-
-        //     t.id = TokenID::MODULO;
-        //     break;
 
         case '~':
 
