@@ -119,7 +119,7 @@ void SymbolResolver::resolve_type_decl(TypeDecl * const ptr,
                 static_cast<NamedTypeDecl*>(ptr);
 
             reint_ptr->resolved_symbol_idx = 
-                find_symbol_idx(reint_ptr->type_name, scope_idx, ptr->line,
+                find_symbol_idx(reint_ptr->ident_path, scope_idx, ptr->line,
                 ptr->col);
 
             break;
@@ -349,7 +349,7 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
                 static_cast<IdentExpr*>(ptr);
 
             reint_ptr->resolved_symbol_idx = 
-                find_symbol_idx(reint_ptr->name, scope_idx, reint_ptr->line,
+                find_symbol_idx(reint_ptr->ident_path, scope_idx, reint_ptr->line,
                     reint_ptr->col);
             break;
         }
@@ -405,9 +405,13 @@ std::optional<uint64_t> SymbolResolver::symbol_idx_from_expr(
     switch(ptr->exp_type)
     {
         case ExpressionType::BIN_LITERAL:
+        {
+            std::vector<std::string> temp_ident_path;
+            temp_ident_path.push_back(BIN_LIT_IDENT);
 
-            return find_symbol_idx(BIN_LIT_IDENT, scope_idx, ptr->line, 
+            return find_symbol_idx(temp_ident_path, scope_idx, ptr->line, 
                 ptr->col);
+        }
 
         case ExpressionType::BINARY:
         {
@@ -500,17 +504,79 @@ std::optional<uint64_t> SymbolResolver::symbol_idx_from_expr(
 uint64_t SymbolResolver::find_symbol_idx(
     const std::vector<std::string> &ident_path, uint64_t scope_idx, 
     uint32_t symbol_line, uint32_t symbol_col)
-{   
-    // Single identifier, search in the current scope, then 
+{ 
     if(ident_path.size() == 0)
     {
-
-
-
+        std::cerr << "Passed an ident path of size 0 to find_symboL_idx.\n";
+        exit(1);
     }
 
-    return 0;
+    // Only a single identifier is provided. Search the current scope upward 
+    // until we've searched the global scope.
+    if(ident_path.size() == 1)
+    {   
+        const Scope *parsed_scope = &s_table_ptr->scopes.at(scope_idx);
+    
+        while(true)
+        {
+            // We don't want to search Component fields, just skip it.
+            if(parsed_scope->owning_symbol_type != SymbolType::COMPONENT)
+            {
+                for(const auto &elem: parsed_scope->sym_name_to_symbol_idx)
+                {
+                    // Identifier match.
+                    if(elem.first == ident_path[0]) return elem.second;
+                }
+            }
 
+            // There are no more scopes above this, we failed to find the 
+            // symbol.
+            if(!parsed_scope->parent_scope_idx)
+            {
+                std::cerr << parsed_file << ":" << symbol_line << ":" << 
+                symbol_col << ": Undefined symbol: " << ident_path[0] << '\n';
+                exit(1);
+            }
+
+            // Parse the scope above this one.
+            parsed_scope = &s_table_ptr->scopes.at(
+                *parsed_scope->parent_scope_idx);
+        }
+    }
+
+    // We have a scope chain, start from the global namespace and search for
+    // the target scope.
+
+    const Scope *parsed_scope = &s_table_ptr->scopes.at(
+        s_table_ptr->symbols.at(s_table_ptr->global_symbol_idx)->
+        scope_idx.value());
+
+    const std::string *targ_ident = &ident_path[0];
+
+    uint64_t target_scope_idx;
+
+    while(true)
+    {
+        bool match = false;
+        
+        for(const auto &elem: parsed_scope->sym_name_to_symbol_idx)
+        {
+            // Identifier match.
+            if(elem.first == *targ_ident)
+            {
+                // We need to make sure the symbol we've found is a module, and
+                // not just a random symbol.
+
+                match = true; 
+                break;
+            }
+        }
+
+        if(match) break;
+
+        // We didn't find one of the module names in the scope chain.
+    }
+    
     // const Scope * parsed_scope = &s_table_ptr->scopes.at(scope_idx);
 
     // for(const auto &elem: parsed_scope->sym_name_to_symbol_idx)

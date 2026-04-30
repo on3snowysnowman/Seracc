@@ -1055,7 +1055,8 @@ static void print_module(const ModuleDecl * const ptr,
     std::cout << "-- MODULE --";
     handle_newline(tab_depth);
     std::cout << "Name: ";
-    print_ident_path(ptr->ident);
+    // print_ident_path(ptr->ident);
+    std::cerr << ptr->ident;
     handle_newline(tab_depth);
     std::cout << "Line: " << ptr->line;
     handle_newline(tab_depth);

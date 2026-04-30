@@ -22,6 +22,7 @@ enum class SymbolType
     PARAM,
     MODULE,
     FIELD,
+    SCOPE,
     INVALID
 };
 
@@ -82,7 +83,11 @@ struct ModuleSymbol : Symbol
     ModuleSymbol() { sym_type = SymbolType::MODULE; }
 
     uint64_t created_scope_idx = 0;
-    ModuleDecl * ast_node_ptr = nullptr;
+    // ModuleDecl * ast_node_ptr = nullptr;
+
+    // We have a vector of pointers here since we allow multiple definitions 
+    // for the same module name.
+    std::vector<ModuleDecl*> ast_node_ptrs;
 };
 
 struct FieldSymbol : Symbol
@@ -93,6 +98,8 @@ struct FieldSymbol : Symbol
 
 struct Scope
 {
+    // Type of the symbol that owns this scope.
+    SymbolType owning_symbol_type = SymbolType::INVALID; 
     std::optional<uint64_t> parent_scope_idx;
     std::unordered_map<std::string, uint64_t> sym_name_to_symbol_idx;
 };
@@ -102,6 +109,7 @@ struct Scope
 
 struct SymbolTable
 {
+    uint64_t global_symbol_idx = 0;
     std::vector<std::unique_ptr<Symbol>> symbols;
     std::vector<Scope> scopes;
 };

@@ -30,19 +30,26 @@ private:
     void check_component(ComponentDecl * const ptr);
     void check_function(FunctionDecl * const ptr, 
         std::optional<ComponentDecl*> owning_component = {});
-    void check_block(ScopeBody * const ptr);
+    void check_block(ScopeBody * const ptr, 
+        std::optional<const TypeDecl*> expected_ret_type = {});
 
     // Given an expression, returns the index of the type symbol the expression
     // results in.
-    uint64_t resolve_type_from_expr(Expression * const ptr);
+    // uint64_t resolve_type_from_expr(Express`ion * const ptr);
+
     void check_field(FieldDecl * const ptr);
     void check_param(Parameter * const ptr);
     void check_var_decl(VarDeclStmt * const ptr);
     void check_type_decl(TypeDecl * const ptr);
     void check_declaration(Declaration * const ptr, 
         std::optional<ComponentDecl*> enclosing_component = {});
-    void check_statement(Statement * const ptr);
-    void check_expression(Expression * const ptr);
+    void check_statement(Statement * const ptr, 
+        std::optional<const TypeDecl*> expected_ret_type = {});
+
+    void print_type_decl(const TypeDecl *decl);
+    void cmp_type_decls(const TypeDecl *first, const TypeDecl *second);
+
+    const TypeDecl* check_expression(const Expression * const ptr);
 
     const char * parsed_file = nullptr;
     const SymbolTable * s_table = nullptr;

@@ -19,9 +19,9 @@ SymbolTable SymbolTBlder::build(Program &p)
 
     parsed_file = p.source_file_name;
 
-    build_top_level(p.ast.get());
-
     SymbolTable st;
+    
+    st.global_symbol_idx = build_top_level(p.ast.get());
     st.symbols = std::move(symbols);
     st.scopes = std::move(scopes);
 
@@ -32,6 +32,11 @@ SymbolTable SymbolTBlder::build(Program &p)
 
 
 // Private
+
+void SymbolTBlder::print_error_location(uint32_t line, uint32_t col) const
+{
+    std::cerr << parsed_file << ':' << line << ':' << col;
+}
 
 void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
     std::string symbol_name, uint32_t symbol_line, uint32_t symbol_col,
@@ -106,25 +111,25 @@ void SymbolTBlder::add_builtin_symbols(uint64_t global_scope_idx)
     }
 }
 
-void SymbolTBlder::build_top_level(ModuleDecl * const ptr)
+uint64_t SymbolTBlder::build_top_level(ModuleDecl * const ptr)
 {
     uint64_t top_symbol_idx = get_next_symbol_idx();
-    uint64_t top_scope_idx = get_next_scope_idx();
-    
+    uint64_t top_scope_idx = get_next_scope_idx(SymbolType::MODULE);
+
     ptr->symbol_idx = top_symbol_idx;
 
     symbols.at(top_symbol_idx) = std::make_unique<ModuleSymbol>();
 
-    ModuleSymbol * const mod_sym_ptr = 
+    ModuleSymbol * const top_level_ptr = 
         static_cast<ModuleSymbol*>(symbols.at(top_symbol_idx).get());
 
-    mod_sym_ptr->ast_node_ptr = ptr;
-    mod_sym_ptr->scope_idx = top_scope_idx;
+    top_level_ptr->ast_node_ptrs.push_back(ptr);
+    top_level_ptr->scope_idx = top_scope_idx;
 
     // ModuleSymbol does not belong to a scope, therefore it's scope index will
     // be left as optional default constructed.
     
-    mod_sym_ptr->created_scope_idx = top_scope_idx;
+    top_level_ptr->created_scope_idx = top_scope_idx;
 
     add_builtin_symbols(top_scope_idx);
 
@@ -164,11 +169,14 @@ void SymbolTBlder::build_top_level(ModuleDecl * const ptr)
 
             default:
 
-                std::cerr << "Symbol Table Builder parsed incorrect "
-                    "declaration for module: " << decl->name << '\n';
+                std::cerr << parsed_file << ':' << decl->line << ':' <<
+                    decl->col << ": Symbol Table Builder parsed incorrect "
+                    "declaration for module: " << '\n';
                 exit(1);
         }
     }
+
+    return top_symbol_idx;
 }
 
 void SymbolTBlder::build_statement(Statement * const ptr, 
@@ -194,7 +202,7 @@ void SymbolTBlder::build_statement(Statement * const ptr,
             {
                 ForStmt * const for_ptr = static_cast<ForStmt*>(ptr);
 
-                uint64_t for_scope_idx = get_next_scope_idx();
+                uint64_t for_scope_idx = get_next_scope_idx(SymbolType::SCOPE);
 
                 scopes.at(for_scope_idx).parent_scope_idx = parent_scope_idx;
 
@@ -298,7 +306,7 @@ void SymbolTBlder::build_scope_body(ScopeBody &body,
 
     else
     {
-        scope_idx = get_next_scope_idx();
+        scope_idx = get_next_scope_idx(SymbolType::SCOPE);
         // Set our scope to point to our parent scope.
         scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
     }
@@ -335,7 +343,7 @@ void SymbolTBlder::build_struct(StructDecl * const ptr,
     uint64_t parent_scope_idx)
 {
     uint64_t symbol_idx = get_next_symbol_idx();
-    uint64_t scope_idx = get_next_scope_idx();
+    uint64_t scope_idx = get_next_scope_idx(SymbolType::STRUCT);
 
     ptr->symbol_idx = symbol_idx;
 
@@ -370,8 +378,9 @@ void SymbolTBlder::build_struct(StructDecl * const ptr,
 
             default:
 
-                std::cerr << "Symbol Table Builder parsed incorrect "
-                    " declaration for struct: " << decl->name << '\n';
+                print_error_location(decl->line, decl->col);
+                std::cerr << ": Symbol Table Builder parsed incorrect "
+                    " declaration for struct: " << '\n';
                 exit(1);
         }
     }
@@ -396,7 +405,7 @@ void SymbolTBlder::build_function(FunctionDecl * const ptr,
     add_symbol_to_scope(parent_scope_idx, symbol_idx, ptr->name,
         ptr->line, ptr->col);
 
-    uint64_t body_scope_idx = get_next_scope_idx();
+    uint64_t body_scope_idx = get_next_scope_idx(SymbolType::FN);
 
     scopes.at(body_scope_idx).parent_scope_idx = parent_scope_idx;
 
@@ -461,7 +470,7 @@ void SymbolTBlder::build_component(ComponentDecl * const ptr,
     uint64_t parent_scope_idx)
 {
     uint64_t symbol_idx = get_next_symbol_idx();
-    uint64_t scope_idx = get_next_scope_idx();
+    uint64_t scope_idx = get_next_scope_idx(SymbolType::COMPONENT);
 
     ptr->symbol_idx = symbol_idx;
 
@@ -508,8 +517,9 @@ void SymbolTBlder::build_component(ComponentDecl * const ptr,
 
             default:
 
+                print_error_location(decl->line, decl->col);
                 std::cerr << "Symbol Table Builder parsed incorrect "
-                    " declaration for component: " << decl->name << '\n';
+                    " declaration for component: "  << '\n';
                 exit(1);
         }
     }
@@ -518,26 +528,57 @@ void SymbolTBlder::build_component(ComponentDecl * const ptr,
 void SymbolTBlder::build_module(ModuleDecl * const ptr,
     uint64_t parent_scope_idx)
 {
-    uint64_t symbol_idx = get_next_symbol_idx();
-    uint64_t scope_idx = get_next_scope_idx();
+    // See if this module has already been declared in this scope.
+    auto it = 
+        scopes.at(parent_scope_idx).sym_name_to_symbol_idx.find(ptr->ident);
+
+
+    uint64_t symbol_idx;
+    uint64_t scope_idx;
+
+    // This module already exists in this scope.
+    if(it != scopes.at(parent_scope_idx).sym_name_to_symbol_idx.end())
+    {
+        // We allow adding declarations to already existing modules by providing
+        // an additional definition of them somewhere, so instead of creating a 
+        // new scope and symbol in our symbol table, we just address the one 
+        // that already exists.
+
+        // Get a handle to the already created symbol.
+        ModuleSymbol *existing_symbol = 
+            static_cast<ModuleSymbol*>(symbols.at(it->second).get());
+
+        existing_symbol->ast_node_ptrs.push_back(ptr);
+
+        symbol_idx = it->second;
+        scope_idx = existing_symbol->scope_idx.value();
+    }
+
+    // This is a new module, not already existing in this scope. Create a new 
+    // entry in our symbol table (and create a scope for it).
+    else
+    {
+        symbol_idx = get_next_symbol_idx();
+        scope_idx = get_next_scope_idx(SymbolType::MODULE);
+
+        symbols.at(symbol_idx) = std::make_unique<ModuleSymbol>();
+
+        ModuleSymbol * const new_symbol = 
+            static_cast<ModuleSymbol*>(symbols.at(symbol_idx).get());
+
+        new_symbol->scope_idx = parent_scope_idx;
+        new_symbol->created_scope_idx = scope_idx;
+        new_symbol->ast_node_ptrs.push_back(ptr);
+
+        // Set our scope to point to our parent scope.
+        scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
+
+        add_symbol_to_scope(parent_scope_idx, symbol_idx, 
+            ptr->ident, ptr->line, ptr->col);
+    }
 
     ptr->symbol_idx = symbol_idx;
 
-    symbols.at(symbol_idx) = std::make_unique<ModuleSymbol>();
-
-    ModuleSymbol * const mod_ptr = 
-        static_cast<ModuleSymbol*>(symbols.at(symbol_idx).get());
-
-    mod_ptr->scope_idx = parent_scope_idx;
-    mod_ptr->created_scope_idx = scope_idx;
-    mod_ptr->ast_node_ptr = ptr;
-
-    // Set our scope to point to our parent scope.
-    scopes.at(scope_idx).parent_scope_idx = parent_scope_idx;
-
-    add_symbol_to_scope(parent_scope_idx, symbol_idx, 
-            ptr->name, ptr->line, ptr->col);
-    
     for(const std::unique_ptr<Declaration> &decl : ptr->decls)
     {
         switch(decl->kind)
@@ -573,16 +614,19 @@ void SymbolTBlder::build_module(ModuleDecl * const ptr,
 
             default:
 
+                print_error_location(decl->line, decl->col);
                 std::cerr << "Symbol Table Builder parsed incorrect "
-                    " declaration for module: " << decl->name << '\n';
+                    " declaration for module.\n";
                 exit(1);
         }
     }
 }
 
-uint64_t SymbolTBlder::get_next_scope_idx()
+uint64_t SymbolTBlder::get_next_scope_idx(SymbolType owning_symbol_type)
 {
     scopes.emplace_back();
+
+    scopes.back().owning_symbol_type = owning_symbol_type;
 
     return scopes.size() - 1;
 }

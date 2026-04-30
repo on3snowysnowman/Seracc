@@ -94,6 +94,8 @@ uint64_t TypeChecker::get_resolved_idx_from_type_decl(
 
 void TypeChecker::check_module(ModuleDecl * const ptr)
 {
+    std::cerr << "Checking: " << ptr->ident << '\n';
+
     for(const auto &decl : ptr->decls)
         check_declaration(decl.get());
 }
@@ -113,8 +115,12 @@ void TypeChecker::check_component(ComponentDecl * const ptr)
 void TypeChecker::check_function(FunctionDecl * const ptr, 
     std::optional<ComponentDecl*> enclosing_component)
 {
+    std::cerr << "Checking function: " << ptr->name << '\n';
+
     if(ptr->receiver_data.has_value())
     {
+        std::cerr << "Checking receiver value\n";
+
         if(!enclosing_component.has_value())
         {
             print_error_location(ptr->receiver_data->type_decl->line,
@@ -137,112 +143,148 @@ void TypeChecker::check_function(FunctionDecl * const ptr,
 
     for(Parameter &p : ptr->params)
         check_param(&p);
+
+    check_block(&ptr->body, std::optional<TypeDecl*>(ptr->ret_type.get()));
 }
 
-void TypeChecker::check_block(ScopeBody * const ptr)
+void TypeChecker::check_block(ScopeBody * const ptr, 
+    std::optional<const TypeDecl*> expected_ret_type)
 {
+    std::cerr << "Checking block\n";
+
     for(const auto &stmt: ptr->statements)
-        check_statement(stmt.get());
+        check_statement(stmt.get(), expected_ret_type);
 }
 
-uint64_t TypeChecker::resolve_type_from_expr(Expression * const ptr)
-{
-    switch(ptr->exp_type)
-    {
-        case ExpressionType::ASSIGN:
+// uint64_t TypeChecker::resolve_type_from_expr(Expression * const ptr)
+// {
+//     switch(ptr->exp_type)
+//     {
+//         case ExpressionType::ASSIGN:
 
-            break;
+//             break;
 
-        case ExpressionType::BIN_LITERAL:
+//         case ExpressionType::BIN_LITERAL:
 
-            break;
+//             break;
 
-        case ExpressionType::BINARY:
+//         case ExpressionType::BINARY:
 
-            break;
+//             break;
 
-        case ExpressionType::BOOL_LITERAL:
+//         case ExpressionType::BOOL_LITERAL:
 
-            break;
+//             break;
 
-        case ExpressionType::CALL:
+//         case ExpressionType::CALL:
 
-            break;
+//             break;
 
-        case ExpressionType::CAST:
+//         case ExpressionType::CAST:
 
-            break;
+//             break;
 
-        case ExpressionType::CHAR_LITERAL:
+//         case ExpressionType::CHAR_LITERAL:
 
-            break;
+//             break;
 
-        case ExpressionType::FLOAT_LITERAL:
+//         case ExpressionType::FLOAT_LITERAL:
 
-            break;
+//             break;
 
-        case ExpressionType::HEX_LITERAL:
+//         case ExpressionType::HEX_LITERAL:
 
-            break;
+//             break;
 
-        case ExpressionType::IDENTIFIER:
+//         case ExpressionType::IDENTIFIER:
 
-            break;
+//             break;
 
-        case ExpressionType::INT_LITERAL:
+//         case ExpressionType::INT_LITERAL:
 
-            break;
+//             break;
 
-        case ExpressionType::MEMBER_ACCESS:
+//         case ExpressionType::MEMBER_ACCESS:
 
-            break;
+//             break;
 
-        case ExpressionType::NULLPTR_LITERAL:
+//         case ExpressionType::NULLPTR_LITERAL:
 
-            break;
+//             break;
 
-        case ExpressionType::STR_LITERAL:
+//         case ExpressionType::STR_LITERAL:
 
-            break;
+//             break;
 
-        case ExpressionType::STRUCT_INIT:
+//         case ExpressionType::STRUCT_INIT:
 
-            break;
+//             break;
 
-        case ExpressionType::SUBSCRIPT:
+//         case ExpressionType::SUBSCRIPT:
 
-            break;
+//             break;
 
-        case ExpressionType::TERNARY:
+//         case ExpressionType::TERNARY:
 
-            break;
+//             break;
 
-        case ExpressionType::UNARY:
+//         case ExpressionType::UNARY:
 
-            break;
+//             break;
 
-        default:
+//         default:
 
-            break;
-    }
+//             break;
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
 
 void TypeChecker::check_field(FieldDecl * const ptr)
 {
-    ;
+    const FieldSymbol * f_sym = 
+        static_cast<FieldSymbol*>(s_table->symbols.at(*ptr->symbol_idx).get());
+
+    // If this field has an init expression.
+    if(ptr->init_expr != nullptr)
+    {
+        if(s_table->scopes.at(*f_sym->scope_idx).owning_symbol_type != 
+            SymbolType::MODULE)
+        {
+            print_error_location(ptr->line, ptr->col);
+            std::cerr << ": This field declaration cannot have an "
+                "initialization expression.\n";
+            exit(1);
+        }
+
+        // This is a global variable with an init expression.
+        check_expression(ptr->init_expr.get());
+    }
+
+    
 }
 
 void TypeChecker::check_param(Parameter * const ptr)
 {
-    ;
+    std::cerr << "Check param\n";
 }
 
 void TypeChecker::check_var_decl(VarDeclStmt * const ptr)
-{
-    ;
+{   
+    std::cerr << "Checking Variable declaration\n";
+    const TypeDecl * const variable_type = 
+        ptr->type_decl.get();
+
+    if(ptr->init_expr != nullptr)
+    {
+        std::cerr << "Checking declaration init expression\n";
+
+        const TypeDecl * const init_expr_type = 
+            check_expression(ptr->init_expr.get());
+
+        cmp_type_decls(variable_type, init_expr_type);
+    }
 }
 
 void TypeChecker::check_type_decl(TypeDecl * const ptr)
@@ -289,27 +331,35 @@ void TypeChecker::check_declaration(Declaration * const ptr,
     }
 }
 
-void TypeChecker::check_statement(Statement * const ptr)
+void TypeChecker::check_statement(Statement * const ptr,
+    std::optional<const TypeDecl*> expected_ret_type)
 {
+    std::cerr << "Checking statement of type: ";
+
     switch(ptr->stmt_type)
     {
         case StatementType::BLOCK:
 
-            check_block(&static_cast<BlockStmt*>(ptr)->block_decl);
+            std::cerr << "Block\n";
+            check_block(&static_cast<BlockStmt*>(ptr)->block_decl, 
+                expected_ret_type);
             break;
 
         case StatementType::COMPONENT_DECL:
 
+            std::cerr << "Component\n";
             check_component(static_cast<ComponentDeclStmt*>(ptr)->decl.get());
             break;
 
         case StatementType::EXPR:
 
+            std::cerr << "Expression\n";
             check_expression(static_cast<ExprStmt*>(ptr)->expr.get());
             break;
 
         case StatementType::FOR:
         {
+            std::cerr << "For\n";
             ForStmt * const reint_ptr = 
                 static_cast<ForStmt*>(ptr);
 
@@ -322,6 +372,7 @@ void TypeChecker::check_statement(Statement * const ptr)
 
         case StatementType::IF:
         {
+            std::cerr << "If\n";
             IfStmt * const reint_ptr =
                 static_cast<IfStmt*>(ptr);
 
@@ -337,22 +388,38 @@ void TypeChecker::check_statement(Statement * const ptr)
         }
                 
         case StatementType::RETURN:
+        {
+            std::cerr << "Return\n";
+            // We are not expecting a return statement.
+            if(!expected_ret_type.has_value())
+            {
+                print_error_location(ptr->line, ptr->col);
+                std::cerr << ": Unexpected return statement.\n";
+                exit(1);
+            }
 
-            check_expression(static_cast<RetStmt*>(ptr)->ret_expr.get());
+            const TypeDecl * got_ret_type = 
+                check_expression(static_cast<RetStmt*>(ptr)->ret_expr.get());
+
+            cmp_type_decls(got_ret_type, *expected_ret_type);
             break;
+        }
 
         case StatementType::STRUCT_DECL:
 
+            std::cerr << "Struct\n";
             check_struct(static_cast<StructDeclStmt*>(ptr)->decl.get());
             break;
 
         case StatementType::VAR_DECL:
         
+            std::cerr << "Var declaration\n";
             check_var_decl(static_cast<VarDeclStmt*>(ptr));
             break;
 
         case StatementType::WHILE:
         {
+            std::cerr << "While\n";
             WhileStmt * const reint_ptr =   
                 static_cast<WhileStmt*>(ptr);
 
@@ -363,11 +430,256 @@ void TypeChecker::check_statement(Statement * const ptr)
             
     default:
 
-        break;
+        print_error_location(ptr->line, ptr->col);
+        std::cerr << ": Invalid StatementType found\n";
+        exit(1);
     }
 }
 
-void TypeChecker::check_expression(Expression * const ptr)
+void TypeChecker::print_type_decl(const TypeDecl* decl)
 {
+    switch(decl->kind)
+    {
+        case TypeKind::ARRAY:
+        {
+            const ArrTypeDecl *reint_ptr = 
+                static_cast<const ArrTypeDecl*>(decl); 
 
+            print_type_decl(reint_ptr->element_type.get());
+
+            for(int i = 0; i < reint_ptr->depth; ++i)
+            {
+                std::cerr << "[]";
+            }
+
+            break;
+        }
+
+        case TypeKind::FUNC_PTR:
+        {
+
+            break;
+        }
+
+        case TypeKind::NAMED:
+        {
+            const NamedTypeDecl *reint_ptr = 
+                static_cast<const NamedTypeDecl*>(decl); 
+
+            break;
+        }
+
+        case TypeKind::PTR:
+        {
+
+            break;
+        }
+
+        case TypeKind::REF:
+        {
+
+            break;
+        }
+
+        default:
+
+            
+            std::cerr << "Invalid type found for TypeDecl:";
+            break;
+    }
+}
+
+void TypeChecker::cmp_type_decls(const TypeDecl *first, const TypeDecl *second)
+{
+    std::cerr << "Comparing type decls: ";
+    print_type_decl(first);
+    std::cerr << " and ";
+    print_type_decl(second);
+    std::cerr << '\n';
+
+    if(first->kind != second->kind)
+    {
+        print_error_location(second->line, second->col);
+        std::cerr << ": Got type: \"";
+        print_type_decl(first);
+        std::cerr << "\" expected type: \"";
+        print_type_decl(second);
+        std::cerr << "\"\n";
+        exit(1);
+    }
+
+    switch(first->kind)
+    {
+        case TypeKind::ARRAY:
+        {
+            const ArrTypeDecl * reint_first = 
+                static_cast<const ArrTypeDecl*>(first);
+            const ArrTypeDecl * reint_second = 
+                static_cast<const ArrTypeDecl*>(second);
+
+            if(reint_first->depth != reint_second->depth)
+            {
+                print_error_location(reint_second->line, reint_second->line);
+                std::cerr << "Expected array type of dimension: \"" << 
+                    reint_first->depth << "\" but got an array type of "
+                    "dimension: \"" << reint_second->depth << "\"\n";
+                exit(1);
+            }
+            
+            
+
+            break;
+        }
+
+        case TypeKind::FUNC_PTR:
+        {
+
+
+            break;
+        }
+
+        case TypeKind::INVALID:
+        {
+            break;
+        }
+
+        case TypeKind::NAMED:
+        {
+            break;
+        }
+
+        case TypeKind::PTR:
+
+            break;
+
+        case TypeKind::REF:
+
+            break;
+
+        default:
+
+            print_error_location(first->line, first->col);
+            std::cerr << ": Invalid TypeKind found.\n";
+            exit(1);
+    }
+}
+
+const TypeDecl* TypeChecker::check_expression(const Expression * const ptr)
+{
+    std::cerr << "Checking expression of type: ";
+
+    switch(ptr->exp_type)
+    {
+        case ExpressionType::ASSIGN:
+        {
+            std::cerr << "Assignment\n";
+            const AssignExpr * const reint_ptr = 
+                static_cast<const AssignExpr*>(ptr);
+
+            const TypeDecl * lhs_type = 
+                check_expression(reint_ptr->lhs.get());
+            const TypeDecl * rhs_type = 
+                check_expression(reint_ptr->rhs.get());
+
+            // Make sure the rhs matches the type of the lhs
+            cmp_type_decls(lhs_type, rhs_type);
+
+            break;
+        }
+
+        case ExpressionType::BIN_LITERAL:
+        {
+            
+            
+            break;
+        }
+
+        case ExpressionType::BINARY:
+        {
+            break;
+        }
+
+        case ExpressionType::BOOL_LITERAL:
+        {
+            break;
+        }
+
+        case ExpressionType::CALL:
+        {
+            break;
+        }
+
+        case ExpressionType::CAST:
+        {
+            break;
+        }
+
+        case ExpressionType::CHAR_LITERAL:
+        {
+            break;
+        }
+
+        case ExpressionType::FLOAT_LITERAL:
+        {
+            break;
+        }
+
+        case ExpressionType::HEX_LITERAL:
+        {
+            break;
+        }
+
+        case ExpressionType::IDENTIFIER:
+        {
+            break;
+        }
+
+        case ExpressionType::INT_LITERAL:
+        {
+            break;
+        }
+
+        case ExpressionType::MEMBER_ACCESS:
+        {
+            break;
+        }
+
+        case ExpressionType::NULLPTR_LITERAL:
+        {
+            break;
+        }
+
+        case ExpressionType::STR_LITERAL:
+        {
+            break;
+        }
+
+        case ExpressionType::STRUCT_INIT:
+        {
+            break;
+        }
+
+        case ExpressionType::SUBSCRIPT:
+        {
+            break;
+        }
+
+        case ExpressionType::TERNARY:
+        {
+            break;
+        }
+
+        case ExpressionType::UNARY:
+        {
+            break;
+        }
+
+        default: 
+        
+            print_error_location(ptr->line, ptr->col);
+            std::cerr << ": Invalid type found for expression\n";
+            exit(1);
+    }
+
+    return nullptr;
 }

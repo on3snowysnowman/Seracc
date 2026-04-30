@@ -27,7 +27,7 @@ Program Parser::parse(const char *in_file_path)
     prog.source_file_name = in_file_path;
     parsed_file = in_file_path;
 
-    prog.ast->ident.push_back("global");
+    prog.ast->ident = "global";
     prog.ast->line = 0;
     prog.ast->col = 0;
 
@@ -159,19 +159,53 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
 
 std::unique_ptr<ModuleDecl> Parser::parse_module() 
 {
-    std::unique_ptr<ModuleDecl> ptr = std::make_unique<ModuleDecl>();
+    // We need to handle modules that are defined with a scope chain such as 
+    // "TopScope::NestedScope::AnotherNestedScope{}". The "TopScope" ast node
+    // is the one we are retuning, and that is the "top_level_mod" below.
 
-    ptr->line = peek().line;
-    ptr->col = peek().col;
+    std::unique_ptr<ModuleDecl> top_level_mod = 
+        std::make_unique<ModuleDecl>();
 
+    // This module ptr points to the module that contains the declarations of 
+    // the potentially scope chained module. If this is a just a single scope
+    // defined module, module_to_fill will simply be the same as top level mod.
+    // However, if this is a scope chained module, then we need to return the 
+    // top level module, but build a scoped-chain of module ast nodes and only
+    // fill the last one, since that is the last defined scope of the module 
+    // and it contains the declarations to parse.
+    ModuleDecl * module_to_fill = top_level_mod.get();
     expect(TokenID::KW_MODULE);
 
-    ptr->ident.push_back(expect(TokenID::IDENTIFIER).text);
+    top_level_mod->line = peek().line;
+    top_level_mod->col = peek().col;
 
+
+    top_level_mod->ident = expect(TokenID::IDENTIFIER).text;
+
+    // Iterate through any scope chain this module has
     while(consume_if(TokenID::SCOPE_RESOLUTION))
     {
-        ptr->ident.push_back(expect(TokenID::IDENTIFIER).text);
+        // Create a new module
+        std::unique_ptr<ModuleDecl> nested_ptr = std::make_unique<ModuleDecl>();
+        nested_ptr->line = peek().line;
+        nested_ptr->col = peek().col;   
+        nested_ptr->ident = expect(TokenID::IDENTIFIER).text;
+
+        // Save the nested ptr
+        ModuleDecl * raw_nested_ptr = nested_ptr.get();
+        
+        // Move the nested pointer into the declarations of the last constructed
+        // module in the scope chain.
+        module_to_fill->decls.push_back(std::move(nested_ptr));
+        
+        // Set the module to fill to be the last constructed module in the scope
+        // chain, which was the nested ptr we just made.
+        module_to_fill = raw_nested_ptr;
     }
+    
+    // If there was a scope chain, module_to_fill now points to the deepest 
+    // nested ModuleDecl. If there was no scope chain, there's just one module
+    // and it's top_level_module.
 
     expect(TokenID::LBRACE);
 
@@ -183,18 +217,18 @@ std::unique_ptr<ModuleDecl> Parser::parse_module()
         {
             std::cerr << parsed_file << ": Reached end of file expecting '}' "
                 "for module: \""; 
-            print_ident_path(ptr->ident);
+            std::cerr << top_level_mod->ident;
             std::cerr << "\" found here: ";
-            print_error_location(ptr->line, ptr->col);
+            print_error_location(top_level_mod->line, top_level_mod->col);
             std::cerr << '\n';
             exit(1);
         }
 
-        ptr->decls.push_back(std::move(decl));
+        top_level_mod->decls.push_back(std::move(decl));
     }
 
     expect(TokenID::RBRACE);
-    return ptr;
+    return top_level_mod;
 }
 
 std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub) 

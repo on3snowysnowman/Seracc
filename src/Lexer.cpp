@@ -510,6 +510,7 @@ void Lexer::parse_non_ident_or_number(Token &t)
         }
 
         t.id = TokenID::COLON;
+        return;
     }
 
     switch(c)

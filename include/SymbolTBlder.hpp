@@ -34,6 +34,8 @@ private:
     
     // Methods
 
+    void print_error_location(uint32_t line, uint32_t col) const;
+
     void add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
         std::string symbol_name, uint32_t symbol_line, uint32_t symbol_col, 
         bool is_variable = false);
@@ -43,7 +45,8 @@ private:
 
     void add_builtin_symbols(uint64_t global_scope_idx);
 
-    void build_top_level(ModuleDecl * const ptr);
+    // Returns the idx of the global module symbol
+    uint64_t build_top_level(ModuleDecl * const ptr);
 
     void build_statement(Statement * const ptr, uint64_t parent_scope_idx);
 
@@ -65,6 +68,6 @@ private:
     void build_module(ModuleDecl * const ptr, 
         uint64_t parent_scope_id);
 
-    uint64_t get_next_scope_idx();
+    uint64_t get_next_scope_idx(SymbolType owning_symbol_type);
     uint64_t get_next_symbol_idx();
 };

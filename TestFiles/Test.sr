@@ -1,40 +1,10 @@
 
-module SomeModule
-{
-
-
-type struct Structy
-{
-    mut x: int;
-}
-
-type component Compon
-{
-    num: int;
-}
-
-type component Compony
-{
-    pub num: int;
-
-    pub fn (self: ref mut Compony) func() -> int 
-    {
-        self.num = (u8)3;
-    }
-}
-
-}
 
 export fn main() -> int
 {
-    let obj: * SomeModule::Structy = nullptr;
-
-    let mut num: int = obj->x;
-    let ptr: * int = &num;
-
-    let result: int = (((*++ptr) / *ptr) + 1); 
-
-    let arr: *mut * *mut * int[1][2];
-
+    let mut num: int = 3;
+  
+    let mut arr: int[3][4][1];
+    
     ret 0;
 }

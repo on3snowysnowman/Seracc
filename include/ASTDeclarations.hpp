@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <optional>
+#include <iostream>
 
 // Forward Decls
 struct TypeDecl;
@@ -517,10 +518,7 @@ struct ModuleDecl : Declaration
 {
     ModuleDecl() { kind = DeclKind::MODULE; }
     
-    // Module names can be scoped with the "::" token, so we store the different
-    // segments in a vector. SomeModule::Nested becomes 
-    // ["SomeModule", "Nested"]
-    std::vector<std::string> ident;
+    std::string ident;
     std::vector<std::unique_ptr<Declaration>> decls;
 };
 

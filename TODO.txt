@@ -1,0 +1,4 @@
+
+Don't allow component receiver functions to access member variables by external 
+    scope search 
+
