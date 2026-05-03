@@ -633,6 +633,15 @@ Token Lexer::next_token()
         return t;
     }
 
+    // Test for negative integer
+    if(c == '-' && std::isdigit(peek(1)))
+    {
+        t.text.push_back('-');
+        advance();
+        parse_int_or_flt_literal(t);
+        return t;
+    }
+
     // Could be int, float, hex or bin literal
     if(std::isdigit(c))
     {       

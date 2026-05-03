@@ -96,6 +96,8 @@ void SymbolResolver::resolve_function(FunctionDecl * const ptr,
     if(ptr->receiver_data.has_value())
         resolve_type_decl(ptr->receiver_data->type_decl.get(), scope_idx);
 
+    resolve_type_decl(ptr->ret_type.get(), scope_idx);
+
     resolve_block(&ptr->body);
 }
 

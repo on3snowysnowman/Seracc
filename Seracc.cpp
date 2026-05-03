@@ -2,9 +2,6 @@
 #include <iostream>
 #include <fstream>
 
-// #include "LexerPrinter.hpp"
-#include "ParserPrinter.hpp"
-#include "SymbolTPrinter.hpp"
 #include "Parser.hpp"
 #include "SymbolTBlder.hpp"
 #include "SymbolResolver.hpp"

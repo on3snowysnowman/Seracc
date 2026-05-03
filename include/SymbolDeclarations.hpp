@@ -26,6 +26,64 @@ enum class SymbolType
     INVALID
 };
 
+static inline std::ostream& operator<<(std::ostream &os, SymbolType type)
+{
+    switch(type)
+    {
+        case SymbolType::BUILTIN:
+
+            os << "BUILTIN";
+            break;
+            
+        case SymbolType::COMPONENT:
+
+            os << "COMPONENT";
+            break;
+
+        case SymbolType::FIELD:
+
+            os << "FIELD";
+            break;
+
+        case SymbolType::FN:
+
+            os << "FN";
+            break;
+
+        case SymbolType::INVALID:
+
+            os << "INVALID";
+            break;
+
+        case SymbolType::MODULE:
+
+            os << "MODULE";
+            break;
+
+        case SymbolType::PARAM:
+
+            os << "PARAM";
+            break;
+
+        case SymbolType::SCOPE:
+
+            os << "SCOPE";
+            break;
+
+        case SymbolType::STRUCT:
+
+            os << "STRUCT";
+            break;
+
+        case SymbolType::VAR:
+
+            os << "VAR";
+            break;
+    }
+
+    return os;
+}
+
 
 struct Symbol
 {
@@ -112,4 +170,5 @@ struct SymbolTable
     uint64_t global_symbol_idx = 0;
     std::vector<std::unique_ptr<Symbol>> symbols;
     std::vector<Scope> scopes;
+    std::unordered_map<std::string, uint64_t> builtin_to_id;
 };

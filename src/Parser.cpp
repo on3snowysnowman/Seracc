@@ -413,9 +413,13 @@ std::unique_ptr<VarDeclStmt> Parser::parse_var_decl_stmt()
     // Variable has assignment expression
     if(consume_if(TokenID::ASSIGN))
     {
-        // Struct init
+        // Struct or Array init.
         if(check(TokenID::LBRACE))
-            reint_ptr->init_expr = parse_struct_init();
+        {
+            if(reint_ptr->type_decl->kind == TypeKind::NAMED)
+                reint_ptr->init_expr = parse_struct_init(); 
+            else reint_ptr->init_expr = parse_arr_init();
+        }
 
         else reint_ptr->init_expr = parse_expression();
     }
@@ -602,6 +606,33 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
     ptr->line = start_line;
     ptr->col = start_col;
+
+    return ptr;
+}
+
+std::unique_ptr<Expression> Parser::parse_arr_init()
+{
+    std::unique_ptr<ArrInitExpr> ptr = std::make_unique<ArrInitExpr>();
+
+    ptr->line = peek().line;
+    ptr->col = peek().col;
+
+    expect(TokenID::LBRACE);
+
+    while(!check(TokenID::RBRACE))
+    {
+        ptr->init_args.push_back(parse_expression());
+
+        // Trailing comma 
+        if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
+        {
+            print_error_location(peek().line, peek().col);
+            std::cerr << ": Trailing comma in initialization list\n";
+            exit(1);
+        }
+    }
+
+    expect(TokenID::RBRACE);
 
     return ptr;
 }

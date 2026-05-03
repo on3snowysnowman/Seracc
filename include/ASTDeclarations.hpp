@@ -9,6 +9,8 @@
 #include <optional>
 #include <iostream>
 
+#include "SeracBuiltins.hpp"
+
 // Forward Decls
 struct TypeDecl;
 struct FunctionDecl;
@@ -49,6 +51,7 @@ enum class ExpressionType
     NULLPTR_LITERAL,
     IDENTIFIER,
     STRUCT_INIT,
+    ARR_INIT,
 
     UNARY,
     BINARY,
@@ -60,6 +63,114 @@ enum class ExpressionType
     SUBSCRIPT,
     MEMBER_ACCESS
 };
+
+static inline std::ostream& operator<<(std::ostream &os, ExpressionType type)
+{
+    switch(type)
+    {
+        case ExpressionType::ASSIGN:
+
+            os << "ASSIGN";
+            break;
+
+        case ExpressionType::BIN_LITERAL:
+
+            os << "BIN_LITERAL";
+            break;
+
+        case ExpressionType::BINARY:
+
+            os << "BINARY";
+            break;
+
+        case ExpressionType::BOOL_LITERAL:
+
+            os << "BOOL_LITERAL";
+            break;
+        
+        case ExpressionType::CALL:
+
+            os << "CALL";
+            break;
+
+        case ExpressionType::CAST:
+
+            os << "CAST";
+            break;
+
+        case ExpressionType::CHAR_LITERAL:
+
+            os << "CHAR_LITERAL";
+            break;
+        
+        case ExpressionType::FLOAT_LITERAL:
+
+            os << "FLOAT_LITERAL";
+            break;
+
+        case ExpressionType::HEX_LITERAL:
+
+            os << "HEX_LITERAL";
+            break;
+
+        case ExpressionType::IDENTIFIER:
+
+            os << "IDENTIFIER";
+            break;
+
+        case ExpressionType::INT_LITERAL:
+
+            os << "INT_LITERAL";
+            break;
+
+        case ExpressionType::INVALID:
+
+            os << "INVALID";
+            break;
+
+        case ExpressionType::MEMBER_ACCESS:
+
+            os << "MEMBER_ACCESS";
+            break;
+
+        case ExpressionType::NULLPTR_LITERAL:
+
+            os << "NULLPTR_LITERAL";
+            break;
+
+        case ExpressionType::STR_LITERAL:
+
+            os << "STR_LITERAL";
+            break;
+
+        case ExpressionType::STRUCT_INIT:
+
+            os << "STRUCT_INIT";
+            break;
+
+        case ExpressionType::ARR_INIT:
+
+            os << "ARR_INIT";
+            break;
+
+        case ExpressionType::SUBSCRIPT:
+
+            os << "SUBSCRIPT";
+            break;
+
+        case ExpressionType::TERNARY:
+
+            os << "TERNARY";
+            break;
+
+        case ExpressionType::UNARY:
+
+            os << "UNARY";
+            break;
+    }
+
+    return os;
+}
 
 enum class UnaryOp
 {
@@ -174,7 +285,6 @@ struct NullptrLitExpr : Expression
 struct IdentExpr : Expression
 {
     IdentExpr() { exp_type = ExpressionType::IDENTIFIER; }
-    // std::string name;
     std::vector<std::string> ident_path;
     std::optional<uint64_t> resolved_symbol_idx;
 };
@@ -184,6 +294,12 @@ struct StructInitExpr : Expression
     StructInitExpr() { exp_type = ExpressionType::STRUCT_INIT; }
     std::vector<std::pair<std::string, std::unique_ptr<Expression>>> 
         init_args;
+};
+
+struct ArrInitExpr : Expression
+{
+    ArrInitExpr() { exp_type = ExpressionType::ARR_INIT; }
+    std::vector<std::unique_ptr<Expression>> init_args;
 };
 
 struct UnaryExpr : Expression
@@ -379,8 +495,8 @@ struct TypeDecl
 {
     uint32_t line = 0;
     uint32_t col = 0;
+    // bool is_literal = false;
     TypeKind kind = TypeKind::INVALID;
-    std::optional<uint64_t> resolved_symbol_idx;
 
     virtual ~TypeDecl() = default;
 };
@@ -388,9 +504,15 @@ struct TypeDecl
 struct NamedTypeDecl : TypeDecl
 {
     NamedTypeDecl() { kind = TypeKind::NAMED; }
-
-    // std::string type_name;
     std::vector<std::string> ident_path;
+    std::optional<uint64_t> resolved_symbol_idx;
+    std::optional<BuiltinType> builtin_type;
+};
+
+enum class BuiltinPtrType
+{
+    NULLPTR,
+    CSTR_PTR
 };
 
 struct PtrTypeDecl : TypeDecl
@@ -399,6 +521,7 @@ struct PtrTypeDecl : TypeDecl
 
     bool points_to_mutable = false;
     std::unique_ptr<TypeDecl> pointee;
+    std::optional<BuiltinPtrType> builtin_type;
 };
 
 struct RefTypeDecl : TypeDecl

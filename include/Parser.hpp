@@ -62,6 +62,7 @@ private:
 
     // Expression parsing functions
 
+    std::unique_ptr<Expression> parse_arr_init();
     std::unique_ptr<Expression> parse_struct_init();
     std::unique_ptr<Expression> parse_expression();
     std::unique_ptr<Expression> parse_assignment();

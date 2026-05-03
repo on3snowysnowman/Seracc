@@ -24,10 +24,16 @@ SymbolTable SymbolTBlder::build(Program &p)
     st.global_symbol_idx = build_top_level(p.ast.get());
     st.symbols = std::move(symbols);
     st.scopes = std::move(scopes);
+    st.builtin_to_id = std::move(builtin_to_symbol_id);
 
     parsed_file = nullptr;
 
     return st;
+}
+
+uint64_t SymbolTBlder::get_builtin_id(const std::string &builtin_name)
+{
+    return builtin_to_symbol_id.at(builtin_name);
 }
 
 
@@ -95,6 +101,7 @@ void SymbolTBlder::add_builtin_symbol(uint64_t global_scope_idx,
     const std::string &symbol_name, BuiltinType b_type)
 {
     uint64_t symbol_idx = get_next_symbol_idx();
+    builtin_to_symbol_id.emplace(symbol_name, symbol_idx);
     symbols.at(symbol_idx) = std::make_unique<BuiltinSymbol>();
     static_cast<BuiltinSymbol*>(symbols.at(symbol_idx).get())->b_type =
         b_type;
@@ -183,114 +190,114 @@ void SymbolTBlder::build_statement(Statement * const ptr,
     uint64_t parent_scope_idx)
 {
     switch(ptr->stmt_type)
+    {
+        case StatementType::BLOCK:
+
+            build_scope_body(
+                static_cast<BlockStmt*>(ptr)->block_decl,
+                parent_scope_idx, {});
+            break;
+
+        case StatementType::COMPONENT_DECL:
+
+            build_component(
+                static_cast<ComponentDeclStmt*>(ptr)->decl.get(),
+                parent_scope_idx);
+            break;
+
+        case StatementType::FOR:
         {
-            case StatementType::BLOCK:
+            ForStmt * const for_ptr = static_cast<ForStmt*>(ptr);
 
-                build_scope_body(
-                    static_cast<BlockStmt*>(ptr)->block_decl,
-                    parent_scope_idx, {});
-                break;
+            uint64_t for_scope_idx = get_next_scope_idx(SymbolType::SCOPE);
 
-            case StatementType::COMPONENT_DECL:
+            scopes.at(for_scope_idx).parent_scope_idx = parent_scope_idx;
 
-                build_component(
-                    static_cast<ComponentDeclStmt*>(ptr)->decl.get(),
-                    parent_scope_idx);
-                break;
-
-            case StatementType::FOR:
+            // If this for statement has an init declaration, this needs to
+            // be added inside the scope body.
+            if(for_ptr->init_stmt != nullptr)
             {
-                ForStmt * const for_ptr = static_cast<ForStmt*>(ptr);
+                VarDeclStmt * var_init = 
+                    static_cast<VarDeclStmt*>(for_ptr->init_stmt.get());
 
-                uint64_t for_scope_idx = get_next_scope_idx(SymbolType::SCOPE);
+                uint64_t var_symbol_idx = get_next_symbol_idx();
 
-                scopes.at(for_scope_idx).parent_scope_idx = parent_scope_idx;
+                symbols.at(var_symbol_idx) = std::make_unique<VarSymbol>();
 
-                // If this for statement has an init declaration, this needs to
-                // be added inside the scope body.
-                if(for_ptr->init_stmt != nullptr)
-                {
-                    VarDeclStmt * var_init = 
-                        static_cast<VarDeclStmt*>(for_ptr->init_stmt.get());
+                VarSymbol * const var_sym_ptr = 
+                    static_cast<VarSymbol*>(symbols.at(
+                    var_symbol_idx).get());
 
-                    uint64_t var_symbol_idx = get_next_symbol_idx();
+                var_sym_ptr->scope_idx = for_scope_idx;
+                var_sym_ptr->ast_node_ptr = var_init;
 
-                    symbols.at(var_symbol_idx) = std::make_unique<VarSymbol>();
-
-                    VarSymbol * const var_sym_ptr = 
-                        static_cast<VarSymbol*>(symbols.at(
-                        var_symbol_idx).get());
-
-                    var_sym_ptr->scope_idx = for_scope_idx;
-                    var_sym_ptr->ast_node_ptr = var_init;
-
-                    add_symbol_to_scope(for_scope_idx, var_symbol_idx, 
-                        var_init->var_name, var_init->line, var_init->col, 
-                        true);
-                }
-
-                build_scope_body(for_ptr->body, parent_scope_idx, 
-                    for_scope_idx);
-
-                break;
-            }
-
-            case StatementType::IF:
-            {
-                IfStmt * const if_ptr = static_cast<IfStmt*>(ptr);
-
-                build_scope_body(if_ptr->then_body, parent_scope_idx, {});
-
-                if(if_ptr->else_branch != nullptr)
-                {
-                    build_statement(if_ptr->else_branch.get(), 
-                        parent_scope_idx);
-                }
-
-                break;
-            }
-
-            case StatementType::STRUCT_DECL:
-
-                build_struct(
-                    static_cast<StructDeclStmt*>(ptr)->decl.get(),
-                    parent_scope_idx);
-                break; 
-
-            case StatementType::VAR_DECL:
-            {
-                uint64_t symbol_idx = get_next_symbol_idx();
-
-                VarDeclStmt * const var_decl_ptr = 
-                    static_cast<VarDeclStmt*>(ptr);
-
-                var_decl_ptr->symbol_idx = symbol_idx;
-
-                symbols.at(symbol_idx) = std::make_unique<VarSymbol>();
-
-                VarSymbol * const var_sym_ptr =
-                    static_cast<VarSymbol*>(symbols.at(symbol_idx).get());
-
-                var_sym_ptr->scope_idx = parent_scope_idx;
-                var_sym_ptr->ast_node_ptr = var_decl_ptr;
-
-                add_symbol_to_scope(parent_scope_idx, symbol_idx, 
-                    var_decl_ptr->var_name, var_decl_ptr->line, var_decl_ptr->col,
+                add_symbol_to_scope(for_scope_idx, var_symbol_idx, 
+                    var_init->var_name, var_init->line, var_init->col, 
                     true);
-                break;
             }
 
-            case StatementType::WHILE:
+            build_scope_body(for_ptr->body, parent_scope_idx, 
+                for_scope_idx);
 
-                build_scope_body(
-                    static_cast<WhileStmt*>(ptr)->body, parent_scope_idx, 
-                    {});
-                break;
-
-            default:
-
-                break;
+            break;
         }
+
+        case StatementType::IF:
+        {
+            IfStmt * const if_ptr = static_cast<IfStmt*>(ptr);
+
+            build_scope_body(if_ptr->then_body, parent_scope_idx, {});
+
+            if(if_ptr->else_branch != nullptr)
+            {
+                build_statement(if_ptr->else_branch.get(), 
+                    parent_scope_idx);
+            }
+
+            break;
+        }
+
+        case StatementType::STRUCT_DECL:
+
+            build_struct(
+                static_cast<StructDeclStmt*>(ptr)->decl.get(),
+                parent_scope_idx);
+            break; 
+
+        case StatementType::VAR_DECL:
+        {
+            uint64_t symbol_idx = get_next_symbol_idx();
+
+            VarDeclStmt * const var_decl_ptr = 
+                static_cast<VarDeclStmt*>(ptr);
+
+            var_decl_ptr->symbol_idx = symbol_idx;
+
+            symbols.at(symbol_idx) = std::make_unique<VarSymbol>();
+
+            VarSymbol * const var_sym_ptr =
+                static_cast<VarSymbol*>(symbols.at(symbol_idx).get());
+
+            var_sym_ptr->scope_idx = parent_scope_idx;
+            var_sym_ptr->ast_node_ptr = var_decl_ptr;
+
+            add_symbol_to_scope(parent_scope_idx, symbol_idx, 
+                var_decl_ptr->var_name, var_decl_ptr->line, var_decl_ptr->col,
+                true);
+            break;
+        }
+
+        case StatementType::WHILE:
+
+            build_scope_body(
+                static_cast<WhileStmt*>(ptr)->body, parent_scope_idx, 
+                {});
+            break;
+
+        default:
+
+            break;
+    }
 }
 
 void SymbolTBlder::build_scope_body(ScopeBody &body, 

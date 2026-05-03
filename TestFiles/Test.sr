@@ -1,10 +1,20 @@
 
 
-export fn main() -> int
+export fn main(param: int) -> int
 {
-    let mut num: int = 3;
-  
-    let mut arr: int[3][4][1];
-    
+    // let arr: int[3] = {1, 2, 3};
+
+    let num_u8: u8 = (u8)param;
+
+    param = num_u8;
+
+    let ptr: * u8 = &num_u8;
+
+    let mutptr: *mut u8 = (*mut u8)ptr;
+
+    // let num_i8: i8 = (u8)num_u8;
+
+    let bptr: *bool = &false; // Illegal
+
     ret 0;
 }

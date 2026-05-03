@@ -22,6 +22,8 @@ public:
 
     SymbolTable build(Program &p);
 
+    uint64_t get_builtin_id(const std::string &builtin_name);
+
 private:
 
     // Members
@@ -31,7 +33,10 @@ private:
     std::vector<std::unique_ptr<Symbol>> symbols;
     std::vector<Scope> scopes;
 
-    
+    // Readable builtins to their constructed symbol id.
+    std::unordered_map<std::string, uint64_t> builtin_to_symbol_id;
+
+
     // Methods
 
     void print_error_location(uint32_t line, uint32_t col) const;
