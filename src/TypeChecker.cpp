@@ -207,8 +207,9 @@ void TypeChecker::check_var_decl(VarDeclStmt * const ptr)
     {
         std::cerr << "Checking declaration init expression\n";
 
-        const TypeDecl * const init_expr_type = 
-            check_expression(ptr->init_expr.get());
+        CheckExprResult res = check_expression(ptr->init_expr.get());
+
+        const TypeDecl * const init_expr_type = res.type_ptr;
 
         cmp_type_decls(variable_type, init_expr_type, ptr->init_expr->line,
             ptr->init_expr->col);
@@ -324,9 +325,10 @@ void TypeChecker::check_statement(Statement * const ptr,
 
             const RetStmt * ret_stmt_expr = static_cast<const RetStmt*>(ptr);
 
-            const TypeDecl * got_ret_type = 
-                check_expression(ret_stmt_expr->ret_expr.get());
+            CheckExprResult res = check_expression(
+                ret_stmt_expr->ret_expr.get());
 
+            const TypeDecl * got_ret_type = res.type_ptr;
 
             cmp_type_decls(*expected_ret_type, got_ret_type, 
                 ret_stmt_expr->line, ret_stmt_expr->col);
@@ -681,7 +683,7 @@ void TypeChecker::cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
         // {
 
 
-        //     break;
+        //     break; 
         // }
 
         case TypeKind::INVALID:
@@ -690,15 +692,18 @@ void TypeChecker::cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
         }
 
         case TypeKind::NAMED:
-        {
+        
             cmp_named_decls(static_cast<const NamedTypeDecl*>(first), 
                 static_cast<const NamedTypeDecl*>(second), expr_line, expr_col);
             break;
-        }
+        
 
-        // case TypeKind::PTR:
+        case TypeKind::PTR:
 
-        //     break;
+            cmp_ptr_decls(static_cast<const PtrTypeDecl*>(first),
+                static_cast<const PtrTypeDecl*>(second), expr_line, expr_col);
+
+            break;
 
         // case TypeKind::REF:
 
@@ -712,6 +717,52 @@ void TypeChecker::cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
     }
 }
 
+bool TypeChecker::is_symbol_mutable(const Symbol *ptr, uint32_t symbol_line, 
+    uint32_t symbol_col) const
+{
+    switch(ptr->sym_type)
+    {
+        case SymbolType::BUILTIN:
+
+            return false;
+
+        default:
+
+            std::cerr << "TypeChecker::is_symbol_mutable() -> Invalid type "
+                "found for symbol.\n";
+    }
+}
+
+bool TypeChecker::is_type_mutable(const TypeDecl *ptr) const
+{
+    switch(ptr->kind)
+    {
+        case TypeKind::ARRAY:
+        {
+            const ArrTypeDecl * reint_ptr = 
+                static_cast<const ArrTypeDecl*>(ptr);
+
+            return is_type_mutable(reint_ptr->element_type.get());
+        }
+
+        case TypeKind::NAMED:
+        {
+            const NamedTypeDecl * reint_ptr = 
+                static_cast<const NamedTypeDecl*>(ptr);
+
+            return is_symbol_mutable(s_table->symbols.at(
+                reint_ptr->resolved_symbol_idx.value()).get());
+        }
+
+        default:
+
+            print_error_location(ptr->line, ptr->col);
+            std::cerr << ": TypeChecker::is_type_mutable() -> Invalid kind "
+                "found for type.\n";
+            exit(1);
+    }
+}
+
 // Returns true if the number in the string can fit in type 'T'
 template <typename T>
 bool fits_in(const std::string& s, T& out) 
@@ -721,8 +772,11 @@ bool fits_in(const std::string& s, T& out)
     return ec == std::errc() && ptr == s.data() + s.size();
 }
 
-const TypeDecl* TypeChecker::check_ident_expr(const IdentExpr * const ptr)
+TypeChecker::CheckExprResult TypeChecker::check_ident_expr(
+    const IdentExpr * const ptr)
 {
+    CheckExprResult res;
+
     std::cerr << "Checking Ident Expr\n";
 
     // Get the symbol that this IdentExpr points to.
@@ -739,7 +793,10 @@ const TypeDecl* TypeChecker::check_ident_expr(const IdentExpr * const ptr)
             const VarDeclStmt * const var_stmt = 
                 static_cast<const VarSymbol*>(sym_ptr)->ast_node_ptr;
 
-            return var_stmt->type_decl.get();
+            res.type_ptr = var_stmt->type_decl.get();
+            res.is_type_mutable = var_stmt->is_binding_mutable;
+
+            return res;
         }
 
         case SymbolType::PARAM:
@@ -748,7 +805,10 @@ const TypeDecl* TypeChecker::check_ident_expr(const IdentExpr * const ptr)
             const Parameter * param = 
                 static_cast<const ParamSymbol*>(sym_ptr)->ast_node_ptr;
             
-            return param->type_decl.get();
+            res.type_ptr = param->type_decl.get();
+            res.is_type_mutable = param->is_binding_mutable;
+
+            return res;
         }
 
         default:
@@ -813,13 +873,13 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
             CheckExprResult res;
             res.type_ptr = type_decl;
-            res.is_type_mutable = true; // Literals bools are mutable.
+            res.is_type_mutable = false; 
 
             type_decl->builtin_type.emplace(BuiltinType::BOOL);
             type_decl->resolved_symbol_idx.emplace(
                 s_table->builtin_to_id.at("bool"));
             type_decl->ident_path.push_back("bool");
-            return type_decl;
+            return res;
         }
 
         // case ExpressionType::CALL:
@@ -829,27 +889,32 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
         case ExpressionType::CAST:
         {
-            const CastExpr *reint_ptr = static_cast<const CastExpr*>(ptr);
+            const CastExpr * reint_ptr = 
+                static_cast<const CastExpr*>(ptr);
             
-            cmp_type_decls(reint_ptr->to_cast_type.get(), 
-                check_expression(reint_ptr->expr_to_cast.get()), 
-                reint_ptr->expr_to_cast->line, reint_ptr->expr_to_cast->col);
-            return reint_ptr->to_cast_type.get();
+            CheckExprResult res;
+            
+
         }
 
         case ExpressionType::CHAR_LITERAL:
         {
             const CharLitExpr * const reint_ptr = 
                 static_cast<const CharLitExpr*>(ptr);
+            
+            CheckExprResult res;
 
             NamedTypeDecl *type_decl = new NamedTypeDecl();
             // TODO: Implement some way of deleting this memory.
+
+            res.type_ptr = type_decl;
+            res.is_type_mutable = false;
 
             type_decl->builtin_type.emplace(BuiltinType::U8);
             type_decl->resolved_symbol_idx.emplace(
                 s_table->builtin_to_id.at("u8"));
             type_decl->ident_path.push_back("u8");
-            return type_decl;
+            return res;
         }
 
         // case ExpressionType::FLOAT_LITERAL:
@@ -863,12 +928,9 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
         // }
 
         case ExpressionType::IDENTIFIER:
-        {
-            const IdentExpr * reint_ptr = 
-                static_cast<const IdentExpr*>(ptr);
-
-            return check_ident_expr(reint_ptr);
-        }
+        
+            return check_ident_expr(static_cast<const IdentExpr*>(ptr));
+        
 
         case ExpressionType::INT_LITERAL:
         {
@@ -877,6 +939,11 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
             NamedTypeDecl *type_decl = new NamedTypeDecl();
             // TODO: Implement some way of deleting this memory.
+
+            CheckExprResult res;
+
+            res.is_type_mutable = false;
+            res.type_ptr = type_decl;
 
             // type_decl->is_literal = true;
 
@@ -888,7 +955,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
                     s_table->builtin_to_id.at("u8"));
                 type_decl->builtin_type.emplace(BuiltinType::U8);
                 type_decl->ident_path.push_back("u8");
-                return type_decl;
+                return res;
             }
 
             int8_t vali8;
@@ -899,7 +966,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
                     s_table->builtin_to_id.at("i8"));
                 type_decl->builtin_type.emplace(BuiltinType::I8);
                 type_decl->ident_path.push_back("i8");
-                return type_decl;
+                return res;
             }
 
             uint16_t valu16;
@@ -910,7 +977,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
                     s_table->builtin_to_id.at("u16"));
                 type_decl->builtin_type.emplace(BuiltinType::U16);
                 type_decl->ident_path.push_back("u16");
-                return type_decl;
+                return res;
             }
 
             int16_t vali16;
@@ -921,7 +988,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
                     s_table->builtin_to_id.at("i16"));
                 type_decl->builtin_type.emplace(BuiltinType::I16);
                 type_decl->ident_path.push_back("i16");
-                return type_decl;
+                return res;
             }
 
             uint32_t valu32;
@@ -932,7 +999,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
                     s_table->builtin_to_id.at("u32"));
                 type_decl->builtin_type.emplace(BuiltinType::U32);
                 type_decl->ident_path.push_back("u32");
-                return type_decl;
+                return res;
             }
 
             int valint;
@@ -943,7 +1010,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
                     s_table->builtin_to_id.at("i32"));
                 type_decl->builtin_type.emplace(BuiltinType::I32);
                 type_decl->ident_path.push_back("i32");
-                return type_decl;
+                return res;
             }
 
             uint64_t valu64;
@@ -954,7 +1021,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
                     s_table->builtin_to_id.at("u64"));
                 type_decl->builtin_type.emplace(BuiltinType::U64);
                 type_decl->ident_path.push_back("u64");
-                return type_decl;
+                return res;
             }
 
             int64_t vali64;
@@ -965,7 +1032,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
                     s_table->builtin_to_id.at("i64"));
                 type_decl->builtin_type.emplace(BuiltinType::I64);
                 type_decl->ident_path.push_back("i64");
-                return type_decl;
+                return res;
             }
 
             std::cerr << "Could not convert text to INT_LITERAL: "
@@ -986,7 +1053,11 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
             type_decl->builtin_type.emplace(BuiltinPtrType::NULLPTR);
 
-            return type_decl;
+            CheckExprResult res;
+            res.type_ptr = type_decl;
+            res.is_type_mutable = false;
+
+            return res;
         }
 
         case ExpressionType::STR_LITERAL:
@@ -996,7 +1067,11 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             
             type_decl->builtin_type.emplace(BuiltinPtrType::CSTR_PTR);
 
-            return type_decl;
+            CheckExprResult res;
+            res.type_ptr = type_decl;
+            res.is_type_mutable = false;
+
+            return res;
         }
 
         // case ExpressionType::STRUCT_INIT:
@@ -1026,5 +1101,5 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             exit(1);
     }
 
-    return nullptr;
+    return CheckExprResult {.type_ptr = nullptr, .is_type_mutable = false};
 }

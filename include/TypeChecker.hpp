@@ -63,8 +63,11 @@ private:
     void cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
         uint32_t expr_line, uint32_t expr_col);
 
-    const TypeDecl* check_ident_expr(const IdentExpr * const ptr);
+    bool is_symbol_mutable(const Symbol *ptr, uint32_t symbol_line,
+        uint32_t symbol_col) const;
+    bool is_type_mutable(const TypeDecl *ptr) const;
 
+    CheckExprResult check_ident_expr(const IdentExpr * const ptr);
     CheckExprResult check_expression(const Expression * const ptr);
 
     const char * parsed_file = nullptr;

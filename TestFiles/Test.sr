@@ -10,7 +10,7 @@ export fn main(param: int) -> int
 
     let ptr: * u8 = &num_u8;
 
-    let mutptr: *mut u8 = (*mut u8)ptr;
+    let mutptr: *mut u8 = (*mut u8)ptr; // Illegal 
 
     // let num_i8: i8 = (u8)num_u8;
 
