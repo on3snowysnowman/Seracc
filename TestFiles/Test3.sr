@@ -12,17 +12,9 @@
 
 export fn main() -> int
 {
-    // let t2: *opaque = nullptr;
+    // let t0: int = 1++;
 
-    let t1: bool = false;
-    let t2: * bool = &t1;
+    let t0: int = 1 // Fix infinite while
 
-    let t3: * opaque = (* opaque)t2;
-
-    // let t3: * opaque = (* opaque)t2; // Valid
-    // let t4: *mut bool = (*mut bool)t3; // Valid
-
-    // let t5: int = (int)3; // Valid
-
-    ret 1 + 1;
+    ret 0;
 }

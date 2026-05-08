@@ -73,6 +73,8 @@ private:
     bool is_var_mutable(const NamedTypeDecl *ptr) const;
     bool is_ptr_opaque_ptr(const TypeDecl *ptr) const;
 
+    CheckExprResult check_post_unary_expr(const UnaryExpr * const ptr,
+        bool is_post_increment);
     CheckExprResult check_addr_of_unary_expr(const UnaryExpr * const ptr);
     CheckExprResult check_unary_expr(const UnaryExpr * const ptr);
     CheckExprResult check_ident_expr(const IdentExpr * const ptr);

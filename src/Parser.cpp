@@ -653,7 +653,16 @@ std::unique_ptr<Expression> Parser::parse_struct_init()
 
 std::unique_ptr<Expression> Parser::parse_expression()
 {
-    return parse_assignment(nullptr);
+    std::unique_ptr<Expression> result = parse_assignment(nullptr);
+
+    while(!check(TokenID::SEMICOLON))
+    {
+        result = parse_assignment(std::move(result));
+    }
+
+    return result;
+
+    // return parse_assignment(nullptr);
 }
 
 std::unique_ptr<Expression> Parser::parse_assignment(

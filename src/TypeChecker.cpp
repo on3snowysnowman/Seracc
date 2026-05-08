@@ -576,6 +576,8 @@ void TypeChecker::cmp_named_decls(const NamedTypeDecl *first,
         {
             std::cerr << "lhs is an u8\n";
             acceptable_types.push_back(BuiltinType::U8);
+            acceptable_types.push_back(BuiltinType::FLOAT);
+            acceptable_types.push_back(BuiltinType::DOUBLE);
         }
 
         else if(first_sym_idx == s_table->builtin_to_id.at("i8"))
@@ -676,6 +678,35 @@ void TypeChecker::cmp_named_decls(const NamedTypeDecl *first,
             std::cerr << "lhs is a char\n";
             // acceptable_types.push_back("u8");
             acceptable_types.push_back(BuiltinType::U8);
+        }
+
+        else if(first_sym_idx == s_table->builtin_to_id.at("float"))
+        {
+            std::cerr << "lhs is a float\n";
+            acceptable_types.push_back(BuiltinType::FLOAT);
+            acceptable_types.push_back(BuiltinType::U8);
+            acceptable_types.push_back(BuiltinType::I8);
+            acceptable_types.push_back(BuiltinType::U16);
+            acceptable_types.push_back(BuiltinType::I16);
+            acceptable_types.push_back(BuiltinType::I32);
+            acceptable_types.push_back(BuiltinType::U32);
+            acceptable_types.push_back(BuiltinType::U64);
+            acceptable_types.push_back(BuiltinType::I64);
+        }
+
+        else if(first_sym_idx == s_table->builtin_to_id.at("double"))
+        {
+            std::cerr << "lhs is a double\n";
+            acceptable_types.push_back(BuiltinType::FLOAT);
+            acceptable_types.push_back(BuiltinType::DOUBLE);
+            acceptable_types.push_back(BuiltinType::U8);
+            acceptable_types.push_back(BuiltinType::I8);
+            acceptable_types.push_back(BuiltinType::U16);
+            acceptable_types.push_back(BuiltinType::I16);
+            acceptable_types.push_back(BuiltinType::I32);
+            acceptable_types.push_back(BuiltinType::U32);
+            acceptable_types.push_back(BuiltinType::U64);
+            acceptable_types.push_back(BuiltinType::I64);
         }
 
         else
@@ -896,6 +927,34 @@ bool fits_in(const std::string& s, T& out)
     return res.ec == std::errc() && res.ptr == s.data() + s.size();
 }
 
+TypeChecker::CheckExprResult TypeChecker::check_post_unary_expr(
+    const UnaryExpr * const ptr, bool is_post_increment)
+{
+    CheckExprResult res = check_expression(ptr->operand.get());
+    
+    const char * behavior = (is_post_increment ? "increment" : "decrement");
+
+    if(!res.is_lvalue)
+    {
+        print_error_location(ptr->line, ptr->col);
+        std::cerr << " -> Can only post " << behavior << " lvalues\n";
+        exit(1);
+    }
+
+    if(!res.is_var_mutable)
+    {
+        print_error_location(ptr->line, ptr->col);
+        std::cerr << " -> Cannot post " << behavior << 
+            " unmutable variables.\n";
+        exit(1);
+    }
+
+    exit(0);
+
+    // All pointer types allow post increment and decrement
+    if(res.type_ptr->kind == TypeKind::PTR) return res;
+}
+
 TypeChecker::CheckExprResult TypeChecker::check_addr_of_unary_expr(
     const UnaryExpr * const ptr)
 {
@@ -938,21 +997,41 @@ TypeChecker::CheckExprResult TypeChecker::check_unary_expr(
     {
         case UnaryOp::ADDRESS_OF: return check_addr_of_unary_expr(ptr);
 
-        // case UnaryOp::BIT_NOT:
+        case UnaryOp::BIT_NOT: return check_expression(ptr->operand.get());
 
-        //     break;
+        case UnaryOp::DEREF:
+        {
+            CheckExprResult operand_res = 
+                check_expression(ptr->operand.get());
 
-        // case UnaryOp::DEREF:
+            if(operand_res.type_ptr->kind != TypeKind::PTR)
+            {
+                print_error_location(ptr->line, ptr->col);
+                std::cerr << " -> Can't dereference a non pointer type\n";
+                exit(1);
+            }
 
-        //     break;
+            const PtrTypeDecl * operand_reint_ptr = 
+                static_cast<const PtrTypeDecl*>(operand_res.type_ptr);
 
-        // case UnaryOp::LOG_NOT:
+            if(operand_reint_ptr->builtin_type.has_value() && 
+                *operand_reint_ptr->builtin_type == BuiltinPtrType::NULL_PTR)
+            {
+                print_error_location(ptr->line, ptr->col);
+                std::cerr << " -> Can't dereference a nullptr\n";
+                exit(1);
+            }
+                
+            CheckExprResult final_res;
+            final_res.type_ptr = operand_reint_ptr->pointee.get();
+            final_res.is_lvalue = true;
+            final_res.is_var_mutable = operand_reint_ptr->points_to_mutable;
+            return final_res;
+        }
 
-        //     break;
+        case UnaryOp::LOG_NOT: return check_expression(ptr->operand.get());
 
-        // case UnaryOp::NEGATE:
-
-        //     break;
+        case UnaryOp::NEGATE: return check_expression(ptr->operand.get());
 
         // case UnaryOp::POST_DEC:
 
@@ -1059,7 +1138,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             if(!lhs_res.is_var_mutable)
             {
                 print_error_location(reint_ptr->line, reint_ptr->col);
-                std::cerr << " -> Cannot assign an immutable variable.\n";
+                std::cerr << " -> Cannot assign to an immutable variable.\n";
                 exit(1);
             }
 
@@ -1111,21 +1190,28 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             const CastExpr * reint_ptr = 
                 static_cast<const CastExpr*>(ptr);
             
-            CheckExprResult lhs_res;
-            lhs_res.type_ptr = reint_ptr->to_cast_type.get();
-            lhs_res.is_lvalue = false;
-            lhs_res.is_var_mutable = false;
+            // CheckExprResult lhs_res;
+            // lhs_res.type_ptr = reint_ptr->to_cast_type.get();
+            // lhs_res.is_lvalue = false;
+            // lhs_res.is_var_mutable = false;
 
-            if(is_ptr_opaque_ptr(lhs_res.type_ptr))
-            {
-                lhs_res.builtin_ptr_type.emplace(BuiltinPtrType::OPAQUE_PTR);
-            }
+            // if(is_ptr_opaque_ptr(lhs_res.type_ptr))
+            // {
+            //     lhs_res.builtin_ptr_type.emplace(BuiltinPtrType::OPAQUE_PTR);
+            // }
 
             CheckExprResult rhs_res = 
                 check_expression(reint_ptr->expr_to_cast.get());
 
-            return check_cast(
-                lhs_res, rhs_res, reint_ptr->line, reint_ptr->col);
+            CheckExprResult final_res;
+            final_res.type_ptr = reint_ptr->to_cast_type.get();
+            final_res.builtin_ptr_type = rhs_res.builtin_ptr_type;
+            final_res.is_lvalue = rhs_res.is_lvalue;
+            final_res.is_var_mutable = rhs_res.is_var_mutable;
+
+            // return check_cast(
+            //     lhs_res, rhs_res, reint_ptr->line, reint_ptr->col);
+            return final_res;
         }
 
         case ExpressionType::CHAR_LITERAL:
@@ -1286,6 +1372,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
             CheckExprResult res;
             res.type_ptr = type_decl;
+            res.is_lvalue = false;
             res.is_var_mutable = false;
 
             return res;
