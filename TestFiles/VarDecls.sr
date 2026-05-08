@@ -1,0 +1,32 @@
+
+
+
+export fn main() -> int
+{
+    let mut mut_num: int = 0;
+    let immut_num: int = 3; 
+
+    mut_num = 3; // Valid
+    // immut_num = 0; // Invalid
+
+    let mut mut_ptr_mut_num: *mut int = &mut_num;
+    let ptr_mut_num: *mut int = &mut_num;
+    let mut mut_ptr_num: * int = &immut_num;
+    let ptr_num: * int = &immut_num;
+
+    *mut_ptr_mut_num = 1; // Valid
+    mut_ptr_mut_num = nullptr; // Valid
+
+    *ptr_mut_num = 3; // Valid
+    ptr_mut_num = nullptr; // Invalid
+
+    *mut_ptr_num = 3; // Invalid
+    mut_ptr_num = nullptr; // Valid
+
+    *ptr_num = 3; // Invalid
+    ptr_num = nullptr; // Invalid
+
+
+
+    ret 0;
+}

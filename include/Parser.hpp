@@ -65,15 +65,24 @@ private:
     std::unique_ptr<Expression> parse_arr_init();
     std::unique_ptr<Expression> parse_struct_init();
     std::unique_ptr<Expression> parse_expression();
-    std::unique_ptr<Expression> parse_assignment();
-    std::unique_ptr<Expression> parse_log_or();
-    std::unique_ptr<Expression> parse_log_and();
-    std::unique_ptr<Expression> parse_equality();
-    std::unique_ptr<Expression> parse_relational();
-    std::unique_ptr<Expression> parse_additive();
-    std::unique_ptr<Expression> parse_multiplicative();
-    std::unique_ptr<Expression> parse_unary();
-    std::unique_ptr<Expression> parse_postfix();
+    std::unique_ptr<Expression> parse_assignment(
+        std::unique_ptr<Expression> pre_expr);
+    std::unique_ptr<Expression> parse_log_or(
+        std::unique_ptr<Expression> pre_expr);
+    std::unique_ptr<Expression> parse_log_and(
+        std::unique_ptr<Expression> pre_expr);
+    std::unique_ptr<Expression> parse_equality(
+        std::unique_ptr<Expression> pre_expr);
+    std::unique_ptr<Expression> parse_relational(
+        std::unique_ptr<Expression> pre_expr);
+    std::unique_ptr<Expression> parse_additive(
+        std::unique_ptr<Expression> pre_expr);
+    std::unique_ptr<Expression> parse_multiplicative(
+        std::unique_ptr<Expression> pre_expr);
+    std::unique_ptr<Expression> parse_unary(
+        std::unique_ptr<Expression> pre_expr);
+    std::unique_ptr<Expression> parse_postfix(
+        std::unique_ptr<Expression> pre_expr);
     std::unique_ptr<Expression> parse_primary();
 
     std::unique_ptr<TypeDecl> parse_type_decl_recurse(bool error_on_invalid = true);

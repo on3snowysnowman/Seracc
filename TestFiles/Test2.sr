@@ -5,14 +5,14 @@ module SomeSubModule
 
 export type struct HiddenStruct
 {
-    mut x: int;
+    mut x: u8;
 }
 
 export fn some_func() -> int
 {
-    let mut x: int = 0;
+    let mut y: int = 0;
 
-    ret x;
+    ret y;
 } 
 
 } // module SomeSubModule
@@ -29,18 +29,21 @@ type component Compy
 
 fn main() -> void
 {
-    let obj: Structy = { .value = 0 };
-    // let obj2: HiddenStruct = { .x = 0 }; // Should error on SymbolResolver
+    // let obj: Structy = { .value = 0 };
+    let obj2: SomeSubModule::HiddenStruct = { .x = 0 }; // Should error on SymbolResolver
+    // let obj3: SomeSubModule::F = { .x = 0 }; // Should error on SymbolResolver
 
-    let immut_ref: ref int = obj.value; 
+    // let immut_ref: ref int = obj.value; 
 
-    (*(ptr + 1)).value = 0;
+    // (*(ptr + 1)) = 0;
 
-    let result: int = 3 + 3.1;
+    // (*(ptr + 1)).value = 0;
 
-    // (obj + obj).value = 9;
+//     let result: int = 3 + 3.1;
 
-    let mut_ref: ref mut int = obj.value; // Should error on type checker
+//     // (obj + obj).value = 9;
 
-    let mut some_int: int = 312;
+//     let mut_ref: ref mut int = obj.value; // Should error on type checker
+
+//     let mut some_int: int = 312;
 }

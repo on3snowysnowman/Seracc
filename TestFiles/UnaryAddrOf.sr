@@ -1,0 +1,31 @@
+
+// type struct Structy
+// {
+//     num: int;
+// }
+
+
+// fn func(obj: ref Structy) -> void
+// {
+//     ret;
+// }
+
+export fn main() -> void
+{
+    let t1: bool = false;
+    let t2: * bool = &t1; // Invalid
+
+    let t3: * opaque = (* opaque)t2; // Valid
+    let t4: *mut bool = (*mut bool)t3; // Valid
+
+    let t5: int = (int)3; // Valid
+
+    // let t3: opaque = nullptr;
+
+    // let num: int = 1 + 1;
+    // let t1: *int = &num;
+    // let t2: *int = &(num + 1);
+    // let t2: Structy = { .num = 3 };
+
+    ret 0;
+}

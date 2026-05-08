@@ -437,33 +437,7 @@ std::unique_ptr<Statement> Parser::parse_statement()
     uint32_t start_col = peek().col;
 
     // Variable declaration
-    if(consume_if(TokenID::KW_LET))
-    {
-        // ptr = std::make_unique<VarDeclStmt>();
-        // VarDeclStmt *reint_ptr = 
-        //     static_cast<VarDeclStmt*>(ptr.get());
-
-        // reint_ptr->is_binding_mutable = consume_if(TokenID::KW_MUT);
-        // reint_ptr->var_name = expect(TokenID::IDENTIFIER).text;
-
-        // expect(TokenID::COLON);
-
-        // reint_ptr->type_decl = parse_type_decl();
-
-        // // Variable has assignment expression
-        // if(consume_if(TokenID::ASSIGN))
-        // {
-        //     // Struct init
-        //     if(check(TokenID::LBRACE))
-        //         reint_ptr->init_expr = parse_struct_init();
-
-        //     else reint_ptr->init_expr = parse_expression();
-        // }
-
-        // expect(TokenID::SEMICOLON);
-    
-        return parse_var_decl_stmt();
-    }
+    if(consume_if(TokenID::KW_LET)) return parse_var_decl_stmt();
 
     // Container declaration
     else if(consume_if(TokenID::KW_TYPE))
@@ -503,7 +477,12 @@ std::unique_ptr<Statement> Parser::parse_statement()
         RetStmt *reint_ptr = 
                 static_cast<RetStmt*>(ptr.get());
     
-        reint_ptr->ret_expr = parse_expression();
+        // We have a return statement expression.
+        if(!check(TokenID::SEMICOLON))
+        {
+            reint_ptr->ret_expr = parse_expression();
+        }
+
         expect(TokenID::SEMICOLON);
     }
 
@@ -594,6 +573,10 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
     else
     {
+        // std::cerr << "Parsing expression: ";
+        // print_error_location(start_line, start_col);
+        // std::cerr << '\n';
+
         // Anything else we assume is an expression and attempt to parse it.
         ptr = std::make_unique<ExprStmt>();
 
@@ -670,15 +653,26 @@ std::unique_ptr<Expression> Parser::parse_struct_init()
 
 std::unique_ptr<Expression> Parser::parse_expression()
 {
-    return parse_assignment();
+    return parse_assignment(nullptr);
 }
 
-std::unique_ptr<Expression> Parser::parse_assignment()
+std::unique_ptr<Expression> Parser::parse_assignment(
+    std::unique_ptr<Expression> pre_expr)
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    std::unique_ptr<Expression> left = parse_log_or();
+    // print_error_location(start_line, start_col);
+    // std::cerr << ": Checking for assignment\n";
+
+    bool pre_expr_null = false;
+
+    if(pre_expr == nullptr)
+    {
+        pre_expr_null = true;
+        // std::cerr << "pre_expr was nullptr\n";
+        pre_expr = parse_log_or(nullptr);
+    }
 
     AssignOp op = AssignOp::INVALID;
 
@@ -688,7 +682,8 @@ std::unique_ptr<Expression> Parser::parse_assignment()
     else if(consume_if(TokenID::ASTERISK_ASSIGN)) op = AssignOp::MUL_ASSIGN;
     else if(consume_if(TokenID::FORW_SLASH_ASSIGN)) op = AssignOp::DIV_ASSIGN;
     else if(consume_if(TokenID::MODULO_ASSIGN)) op = AssignOp::MOD_ASSIGN;
-    else return left;
+    else return pre_expr_null ? std::move(pre_expr) : 
+        parse_log_or(std::move(pre_expr));
 
     auto full_expr = std::make_unique<AssignExpr>();
 
@@ -696,20 +691,30 @@ std::unique_ptr<Expression> Parser::parse_assignment()
     full_expr->col = start_col;
     full_expr->op_type = op;
     
-    full_expr->lhs = std::move(left);
+    full_expr->lhs = std::move(pre_expr);
 
     // Parse RHS using log_or. We don't support chained assignments.
-    full_expr->rhs = parse_log_or();
+    full_expr->rhs = parse_log_or(std::move(pre_expr));
 
     return full_expr;
 }
 
-std::unique_ptr<Expression> Parser::parse_log_or()
+std::unique_ptr<Expression> Parser::parse_log_or(
+    std::unique_ptr<Expression> pre_expr)
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    std::unique_ptr<Expression> left = parse_log_and();
+    // print_error_location(start_line, start_col);
+    // std::cerr << ": Checking for log_or\n";
+
+    bool pre_expr_null = false;
+
+    if(pre_expr == nullptr)
+    {
+        pre_expr_null = true;
+        pre_expr = parse_log_and(std::move(pre_expr));
+    } 
 
     while(true)
     {
@@ -720,21 +725,32 @@ std::unique_ptr<Expression> Parser::parse_log_or()
         full_expr->line = start_line;
         full_expr->col = start_col;
         full_expr->op_type = BinaryOp::LOG_OR;
-        full_expr->lhs = std::move(left);
-        full_expr->rhs = parse_log_and();
+        full_expr->lhs = std::move(pre_expr);
+        full_expr->rhs = parse_log_and(nullptr);
 
-        left = std::move(full_expr);
+        pre_expr = std::move(full_expr);
     }
 
-    return left;
+    return pre_expr_null ? std::move(pre_expr) : 
+        parse_log_and(std::move(pre_expr));
 }
 
-std::unique_ptr<Expression> Parser::parse_log_and()
+std::unique_ptr<Expression> Parser::parse_log_and(
+    std::unique_ptr<Expression> pre_expr)
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    std::unique_ptr<Expression> left = parse_equality();
+    // print_error_location(start_line, start_col);
+    // std::cerr << ": Checking for log_and\n";
+
+    bool pre_expr_null = false;
+
+    if(pre_expr == nullptr)
+    {
+        pre_expr_null = true;
+        pre_expr = parse_equality(nullptr);
+    }
 
     while(true)
     {
@@ -745,21 +761,34 @@ std::unique_ptr<Expression> Parser::parse_log_and()
         full_expr->line = start_line;
         full_expr->col = start_col;
         full_expr->op_type = BinaryOp::LOG_AND;
-        full_expr->lhs = std::move(left);
-        full_expr->rhs = parse_equality();
+        full_expr->lhs = std::move(pre_expr);
+        full_expr->rhs = parse_equality(nullptr);
 
-        left = std::move(full_expr);
+        pre_expr = std::move(full_expr);
     }
 
-    return left;
+    return pre_expr_null ? std::move(pre_expr) :
+        parse_equality(std::move(pre_expr));
 }
 
-std::unique_ptr<Expression> Parser::parse_equality()
+std::unique_ptr<Expression> Parser::parse_equality(
+    std::unique_ptr<Expression> pre_expr)
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    std::unique_ptr<Expression> left = parse_relational();
+    // print_error_location(start_line, start_col);
+    // std::cerr << ": Checking for equality\n";
+
+    bool pre_expr_null = false;
+
+    if(pre_expr == nullptr)
+    {
+        pre_expr_null = true;
+        // std::cerr << "pre_expr was nullptr\n";
+
+        pre_expr = parse_relational(nullptr);
+    }
 
     while(true)
     {
@@ -774,21 +803,33 @@ std::unique_ptr<Expression> Parser::parse_equality()
         full_expr->line = start_line;
         full_expr->col = start_col;
         full_expr->op_type = op;
-        full_expr->lhs = std::move(left);
-        full_expr->rhs = parse_relational();
+        full_expr->lhs = std::move(pre_expr);
+        full_expr->rhs = parse_relational(nullptr);
 
-        left = std::move(full_expr);
+        pre_expr = std::move(full_expr);
     }
 
-    return left;
+    return pre_expr_null ? std::move(pre_expr) : 
+        parse_relational(std::move(pre_expr));
 }
 
-std::unique_ptr<Expression> Parser::parse_relational()
+std::unique_ptr<Expression> Parser::parse_relational(
+    std::unique_ptr<Expression> pre_expr)
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    std::unique_ptr<Expression> left = parse_additive();
+    // std::cerr << "Checking relational: ";
+    // print_error_location(peek().line, peek().col);
+    // std::cerr << '\n';
+
+    bool pre_expr_null = false;
+
+    if(pre_expr == nullptr)
+    {
+        pre_expr_null = true;
+        pre_expr = parse_additive(nullptr);
+    }
 
     while(true)
     {
@@ -805,21 +846,37 @@ std::unique_ptr<Expression> Parser::parse_relational()
         full_expr->line = start_line;
         full_expr->col = start_col;
         full_expr->op_type = op;
-        full_expr->lhs = std::move(left);
-        full_expr->rhs = parse_additive();
+        full_expr->lhs = std::move(pre_expr);
+        full_expr->rhs = parse_additive(nullptr);
 
-        left = std::move(full_expr);
+        pre_expr = std::move(full_expr);
     }
 
-    return left;
+    return pre_expr_null ? std::move(pre_expr) : 
+        parse_additive(std::move(pre_expr));
 }
 
-std::unique_ptr<Expression> Parser::parse_additive()
+std::unique_ptr<Expression> Parser::parse_additive(
+    std::unique_ptr<Expression> pre_expr)
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    std::unique_ptr<Expression> left = parse_multiplicative();
+    // print_error_location(start_line, start_col);
+    // std::cerr << ": Checking additive\n";
+
+    bool pre_expr_null = false;
+
+    if(pre_expr == nullptr)
+    {
+        pre_expr_null = true;
+
+        // std::cerr << "pre_expr was nullptr\n";
+        pre_expr = parse_multiplicative(nullptr);
+        // std::cerr << "After getting pre expr, we are at: ";
+        // print_error_location(peek().line, peek().col);
+        // std::cerr << '\n';
+    }
 
     while(true)
     {
@@ -834,20 +891,33 @@ std::unique_ptr<Expression> Parser::parse_additive()
         full_expr->line = start_line;
         full_expr->col = start_col;
         full_expr->op_type = op;
-        full_expr->lhs = std::move(left);
-        full_expr->rhs = parse_multiplicative();
-        left = std::move(full_expr);
+        full_expr->lhs = std::move(pre_expr);
+        full_expr->rhs = parse_multiplicative(nullptr);
+        pre_expr = std::move(full_expr);
     }
 
-    return left;   
+    return pre_expr_null ? std::move(pre_expr) : 
+        parse_multiplicative(std::move(pre_expr));   
 }
 
-std::unique_ptr<Expression> Parser::parse_multiplicative()
+std::unique_ptr<Expression> Parser::parse_multiplicative(
+    std::unique_ptr<Expression> pre_expr)
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    std::unique_ptr<Expression> left = parse_unary();
+    // print_error_location(start_line, start_col);
+    // std::cerr << ": Checking multi\n";
+
+    bool pre_expr_null = false;
+
+    if(pre_expr == nullptr)
+    {
+        pre_expr_null = true;
+
+        // std::cerr << "pre_expr was nullptr\n";
+        pre_expr = parse_unary(nullptr);
+    }
 
     while(true)
     {
@@ -863,24 +933,49 @@ std::unique_ptr<Expression> Parser::parse_multiplicative()
         full_expr->line = start_line;
         full_expr->col = start_col;
         full_expr->op_type = op;
-        full_expr->lhs = std::move(left);
-        full_expr->rhs = parse_unary();
-        left = std::move(full_expr);
+        full_expr->lhs = std::move(pre_expr);
+        full_expr->rhs = parse_unary(nullptr);
+        pre_expr = std::move(full_expr);
     }
 
-    return left;
+    return pre_expr_null ? std::move(pre_expr) : 
+        parse_unary(std::move(pre_expr));
 }
 
-std::unique_ptr<Expression> Parser::parse_unary()
+std::unique_ptr<Expression> Parser::parse_unary(
+    std::unique_ptr<Expression> pre_expr)
 {
+    // print_error_location(peek().line, peek().col);
+    // std::cerr << ": Checking unary\n";
+    
     if(check(TokenID::PLUS_PLUS))
     {   
+        if(pre_expr != nullptr)
+        {
+            // std::cerr << "unary pre_expr was nullptr\n";
+            return parse_postfix(std::move(pre_expr));
+        }
+
         Token t = expect(TokenID::PLUS_PLUS);
 
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::PRE_INC;
-        ptr->operand = parse_unary();
+
+        ptr->operand = parse_unary(nullptr);
+
+        // if(pre_expr == nullptr)
+        // {
+        //     ptr->operand = parse_unary(nullptr);
+        // }
+        // // else ptr->operand = std::move(pre_expr);
+        // else
+        // {
+        //     print_error_location(t.line, t.col);
+        //     std::cerr << ": Unexpected preincrement\n";
+        //     exit(1);
+        // }
+
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -893,7 +988,11 @@ std::unique_ptr<Expression> Parser::parse_unary()
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::PRE_DEC;
-        ptr->operand = parse_unary();
+        if(pre_expr == nullptr)
+        {
+            ptr->operand = parse_unary(nullptr);
+        }
+        else ptr->operand = std::move(pre_expr);
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -906,7 +1005,11 @@ std::unique_ptr<Expression> Parser::parse_unary()
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::NEGATE;
-        ptr->operand = parse_unary();
+        if(pre_expr == nullptr)
+        {
+            ptr->operand = parse_unary(nullptr);
+        }
+        else ptr->operand = std::move(pre_expr);
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -919,7 +1022,11 @@ std::unique_ptr<Expression> Parser::parse_unary()
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::LOG_NOT;
-        ptr->operand = parse_unary();
+        if(pre_expr == nullptr)
+        {
+            ptr->operand = parse_unary(nullptr);
+        }
+        else ptr->operand = std::move(pre_expr);
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -932,7 +1039,11 @@ std::unique_ptr<Expression> Parser::parse_unary()
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::BIT_NOT;
-        ptr->operand = parse_unary();
+        if(pre_expr == nullptr)
+        {
+            ptr->operand = parse_unary(nullptr);
+        }
+        else ptr->operand = std::move(pre_expr);
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -945,7 +1056,11 @@ std::unique_ptr<Expression> Parser::parse_unary()
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::ADDRESS_OF;
-        ptr->operand = parse_unary();
+        if(pre_expr == nullptr)
+        {
+            ptr->operand = parse_unary(nullptr);
+        }
+        else ptr->operand = std::move(pre_expr);
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -958,7 +1073,11 @@ std::unique_ptr<Expression> Parser::parse_unary()
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::DEREF;
-        ptr->operand = parse_unary();
+        if(pre_expr == nullptr)
+        {
+            ptr->operand = parse_unary(nullptr);
+        }
+        else ptr->operand = std::move(pre_expr);
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -983,7 +1102,11 @@ std::unique_ptr<Expression> Parser::parse_unary()
             expr_ptr->line = t.line;
             expr_ptr->col = t.col;
             expect(TokenID::RPAREN);
-            expr_ptr->expr_to_cast = parse_unary();
+            if(pre_expr == nullptr)
+            {
+                expr_ptr->expr_to_cast = parse_unary(nullptr);
+            }
+            else expr_ptr->expr_to_cast = std::move(pre_expr);
             return expr_ptr;
         }
 
@@ -991,24 +1114,53 @@ std::unique_ptr<Expression> Parser::parse_unary()
         // attempting to consume the non type.
         rewind(saved_tok_idx);
         
-        auto parenthesized_expr = parse_expression();
+        std::unique_ptr<Expression> full_expr = 
+            parse_assignment(nullptr);
 
         expect(TokenID::RPAREN);
 
-        return parenthesized_expr;
+        // std::cerr << "After getting full_expr, we are at: ";
+        // print_error_location(peek().line, peek().col);
+        // std::cerr << '\n';
+
+        // // This is the end of a paranthesized expression. don't do anything.
+        // if(check(TokenID::RPAREN)) return full_expr;
+
+        // We want to continue this expression if there's more after the 
+        // right parenthesis
+
+        while(!check(TokenID::SEMICOLON) && !check(TokenID::RPAREN))
+        {
+            full_expr = parse_assignment(std::move(full_expr));
+            std::cin.get();
+        }
+
+        return full_expr;
 
     }
 
-    return parse_postfix();
+    return parse_postfix(std::move(pre_expr));
 }
 
-std::unique_ptr<Expression> Parser::parse_postfix()
+std::unique_ptr<Expression> Parser::parse_postfix(
+    std::unique_ptr<Expression> pre_expr)
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    // Expression that came before the postfix.
-    std::unique_ptr<Expression> pre_expr = parse_primary();
+    // print_error_location(start_line, start_col);
+    // std::cerr << ": Checking postfix\n";
+
+    // bool pre_expr_null = false;
+
+    if(pre_expr == nullptr)
+    {
+        // pre_expr_null = true;
+
+        // Expression that came before the postfix.
+        // pre_expr = parse_primary();
+        return parse_primary();
+    }
 
     while(true)
     {
@@ -1126,6 +1278,9 @@ std::unique_ptr<Expression> Parser::parse_postfix()
         else break;
     }
 
+    // return pre_expr_null ? std::move(pre_expr) : 
+    //     parse_primary();
+
     return pre_expr;
 }
 
@@ -1133,6 +1288,9 @@ std::unique_ptr<Expression> Parser::parse_primary()
 {
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
+
+    // print_error_location(start_line, start_col);
+    // std::cerr << ": Checking primary\n";
 
     if(check(TokenID::INT_LITERAL))
     {
@@ -1230,8 +1388,12 @@ std::unique_ptr<Expression> Parser::parse_primary()
 
     if(consume_if(TokenID::LPAREN))
     {
+        std::cerr << "Shouldn't make it here\n";
+        exit(1);
+
         auto ptr = parse_expression();
         expect(TokenID::RPAREN);
+
         return ptr;
     }
 
@@ -1292,9 +1454,9 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
             if(error_on_invalid)
             {
                 print_error_location(ident_line, ident_col);
-                std::cerr << ": \"";
+                std::cerr << " -> Undefined symbol: \"";
                 print_ident_path(reint_ptr->ident_path);
-                std::cerr << "\" is not a defined type.\n";
+                std::cerr << "\"\n";
                 exit(1);
             }
 

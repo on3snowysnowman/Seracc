@@ -10,6 +10,14 @@
 
 TypeChecker::TypeChecker() {}
 
+TypeChecker::~TypeChecker()
+{
+    for(TypeDecl *ptr : created_decls)
+    {
+        delete ptr;
+    }
+}
+
 
 // Public
 
@@ -29,7 +37,7 @@ void TypeChecker::type_check(const Program &p, const SymbolTable &sym_table)
 
 void TypeChecker::print_error_location(uint32_t line, uint32_t col) const
 {
-    std::cerr << parsed_file << ":" << line << ':' << col;
+    std::cerr << "Serac ERROR: " << parsed_file << ":" << line << ':' << col;
 }
 
 void TypeChecker::print_type_mismatch(const TypeDecl *first, 
@@ -37,9 +45,9 @@ void TypeChecker::print_type_mismatch(const TypeDecl *first,
 {
     print_error_location(line, col);
     std::cerr << ": Got type: \"";
-    print_type_decl(first);
-    std::cerr << "\" expected type: \"";
     print_type_decl(second);
+    std::cerr << "\" expected type: \"";
+    print_type_decl(first);
     std::cerr << "\"\n";
 }
 
@@ -323,15 +331,38 @@ void TypeChecker::check_statement(Statement * const ptr,
                 exit(1);
             }
 
-            const RetStmt * ret_stmt_expr = static_cast<const RetStmt*>(ptr);
+            const RetStmt * ret_stmt = static_cast<const RetStmt*>(ptr);
+
+            // We have no return expr, the return type better be void.
+            if(ret_stmt->ret_expr == nullptr)
+            {   
+                const uint64_t void_symbol_id = 
+                    s_table->builtin_to_id.at("void");
+
+                const TypeDecl * func_ret_type = expected_ret_type.value();
+
+                if(func_ret_type->kind != TypeKind::NAMED || 
+                    static_cast<const NamedTypeDecl*>(func_ret_type)->
+                        resolved_symbol_idx.value() != void_symbol_id)
+                {
+                    print_error_location(ret_stmt->line, ret_stmt->col);
+                    std::cerr << ": No return expression found for a non void "
+                        "returning function.\n";
+                    exit(1);
+                }
+
+                // Type is void, we're good.
+                return;
+            }
 
             CheckExprResult res = check_expression(
-                ret_stmt_expr->ret_expr.get());
+            ret_stmt->ret_expr.get());
 
             const TypeDecl * got_ret_type = res.type_ptr;
 
             cmp_type_decls(*expected_ret_type, got_ret_type, 
-                ret_stmt_expr->line, ret_stmt_expr->col);
+                ret_stmt->line, ret_stmt->col);
+            
             break;
         }
 
@@ -358,11 +389,11 @@ void TypeChecker::check_statement(Statement * const ptr,
             break;
         }
             
-    default:
+        default:
 
-        print_error_location(ptr->line, ptr->col);
-        std::cerr << ": Invalid StatementType found\n";
-        exit(1);
+            print_error_location(ptr->line, ptr->col);
+            std::cerr << ": Invalid StatementType found\n";
+            exit(1);
     }
 }
 
@@ -414,9 +445,14 @@ void TypeChecker::print_type_decl(const TypeDecl* decl) const
                         std::cerr << "cstr_ptr";
                         break;
 
-                    case BuiltinPtrType::NULLPTR:
+                    case BuiltinPtrType::NULL_PTR:
 
                         std::cerr << "nullptr";
+                        break;
+
+                    case BuiltinPtrType::OPAQUE_PTR:
+
+                        std::cerr << "opaque_ptr";
                         break;
                 }
 
@@ -424,6 +460,8 @@ void TypeChecker::print_type_decl(const TypeDecl* decl) const
             }
 
             std::cerr << "*";
+            if(reint_ptr->points_to_mutable) std::cerr << "mut";
+            std::cerr << ' ';
             print_type_decl(reint_ptr->pointee.get());
             break;
         }
@@ -433,7 +471,9 @@ void TypeChecker::print_type_decl(const TypeDecl* decl) const
             const RefTypeDecl * reint_ptr = 
                 static_cast<const RefTypeDecl*>(decl);
 
-            std::cerr << "ref ";
+            std::cerr << "ref";
+            if(reint_ptr->ref_to_mutable) std::cerr << " mut";
+            std::cerr << ' ';
             print_type_decl(reint_ptr->referred.get());
             break;
         }
@@ -445,9 +485,9 @@ void TypeChecker::print_type_decl(const TypeDecl* decl) const
     }
 }
 
-void TypeChecker::check_cast(const CheckExprResult &first, 
-    const CheckExprResult &second, uint32_t expr_line, uint32_t expr_col) 
-    const
+TypeChecker::CheckExprResult TypeChecker::check_cast(
+    const CheckExprResult &first, const CheckExprResult &second, 
+    uint32_t expr_line, uint32_t expr_col) const
 {
     std::cerr << "Checking cast between: ";
     print_type_decl(first.type_ptr);
@@ -456,11 +496,27 @@ void TypeChecker::check_cast(const CheckExprResult &first,
     std::cerr << '\n';
 
     std::cerr << "First is " <<
-        first.is_type_mutable ? "mutable\n" : "not mutable\n";
+        (first.is_var_mutable ? "mutable\n" : "not mutable\n");
     std::cerr << "Second is " <<
-        second.is_type_mutable ? "mutable\n" : "not mutable\n";
-
+        (second.is_var_mutable ? "mutable\n" : "not mutable\n");
     
+    // Check if we're casting to * opaque. If so, all correctness checks are
+    // off as we're in unsafe land.
+    if(first.builtin_ptr_type.has_value() && 
+        *first.builtin_ptr_type == BuiltinPtrType::OPAQUE_PTR)
+    {
+        return first;
+    }
+
+    // Check if we're casting from * opaque. Same for this as above.
+    if(second.builtin_ptr_type.has_value() && 
+        *second.builtin_ptr_type == BuiltinPtrType::OPAQUE_PTR)
+    {
+        return first;
+    }
+
+    // Not * opaque, need to check the types.
+    cmp_type_decls(first.type_ptr, second.type_ptr, expr_line, expr_col);
 }
 
 static bool check_acceptable_lit(const BuiltinType targ, 
@@ -640,11 +696,24 @@ void TypeChecker::cmp_named_decls(const NamedTypeDecl *first,
 void TypeChecker::cmp_ptr_decls(const PtrTypeDecl *first, 
     const PtrTypeDecl *second, uint32_t expr_line, uint32_t expr_col) const
 {
+    // *mut = * is not valid
+    if(first->points_to_mutable && !second->points_to_mutable)
+    {
+        print_error_location(expr_line, expr_col);
+        std::cerr << " -> Cannot assign pointer to non mutable: \"";
+        print_type_decl(second);
+        std::cerr << "\" to pointer to mutable: \"";
+        print_type_decl(first);
+        std::cerr << "\"\n";
+        exit(1);
+    }
 
+    cmp_type_decls(first->pointee.get(), second->pointee.get(), expr_line, 
+        expr_col);
 }
 
 void TypeChecker::cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
-    uint32_t expr_line, uint32_t expr_col)
+    uint32_t expr_line, uint32_t expr_col) const
 {
     std::cerr << "Comparing type decls: ";
     print_type_decl(first);
@@ -679,18 +748,6 @@ void TypeChecker::cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
             break;
         }
 
-        // case TypeKind::FUNC_PTR:
-        // {
-
-
-        //     break; 
-        // }
-
-        case TypeKind::INVALID:
-        {
-            break;
-        }
-
         case TypeKind::NAMED:
         
             cmp_named_decls(static_cast<const NamedTypeDecl*>(first), 
@@ -702,12 +759,7 @@ void TypeChecker::cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
 
             cmp_ptr_decls(static_cast<const PtrTypeDecl*>(first),
                 static_cast<const PtrTypeDecl*>(second), expr_line, expr_col);
-
             break;
-
-        // case TypeKind::REF:
-
-        //     break;
 
         default:
 
@@ -722,62 +774,170 @@ bool TypeChecker::is_symbol_mutable(const Symbol *ptr, uint32_t symbol_line,
 {
     switch(ptr->sym_type)
     {
-        case SymbolType::BUILTIN:
+        case SymbolType::FIELD:
+        {
+            const FieldSymbol *reint_ptr = 
+                static_cast<const FieldSymbol*>(ptr);
 
-            return false;
+            return reint_ptr->ast_node_ptr->is_binding_mutable;
+        }
 
-        default:
+        case SymbolType::INVALID:
 
             std::cerr << "TypeChecker::is_symbol_mutable() -> Invalid type "
                 "found for symbol.\n";
+            exit(1);
+
+        case SymbolType::PARAM:
+        {
+            const ParamSymbol *reint_ptr = 
+                static_cast<const ParamSymbol*>(ptr);
+
+            return reint_ptr->ast_node_ptr->is_binding_mutable;
+        }
+
+        case SymbolType::VAR:
+        {
+            const VarSymbol *reint_ptr = 
+                static_cast<const VarSymbol*>(ptr);
+
+            return reint_ptr->ast_node_ptr->is_binding_mutable;
+        }
+
+        default: return false;
     }
 }
 
-bool TypeChecker::is_type_mutable(const TypeDecl *ptr) const
+bool TypeChecker::is_var_mutable(const TypeDecl *ptr) const
 {
-    switch(ptr->kind)
+    if(ptr->kind != TypeKind::NAMED)
     {
-        case TypeKind::ARRAY:
-        {
-            const ArrTypeDecl * reint_ptr = 
-                static_cast<const ArrTypeDecl*>(ptr);
-
-            return is_type_mutable(reint_ptr->element_type.get());
-        }
-
-        case TypeKind::NAMED:
-        {
-            const NamedTypeDecl * reint_ptr = 
-                static_cast<const NamedTypeDecl*>(ptr);
-
-            return is_symbol_mutable(s_table->symbols.at(
-                reint_ptr->resolved_symbol_idx.value()).get());
-        }
-
-        default:
-
-            print_error_location(ptr->line, ptr->col);
-            std::cerr << ": TypeChecker::is_type_mutable() -> Invalid kind "
-                "found for type.\n";
-            exit(1);
+        print_error_location(ptr->line, ptr->col);
+        std::cerr << ": TypeChecker::is_var_mutable() -> Cannot check variable"
+            " mutability of a non variable.\n";
+        exit(1);
     }
+
+    const NamedTypeDecl * reint_ptr = 
+        static_cast<const NamedTypeDecl*>(ptr);
+
+    return is_symbol_mutable(s_table->symbols.at(
+        reint_ptr->resolved_symbol_idx.value()).get(), ptr->line, 
+        ptr->col);
 }
 
 // Returns true if the number in the string can fit in type 'T'
 template <typename T>
 bool fits_in(const std::string& s, T& out) 
 {
-    auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), out);
+    std::from_chars_result res = 
+        std::from_chars(s.data(), s.data() + s.size(), out);
 
-    return ec == std::errc() && ptr == s.data() + s.size();
+    // auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), out);
+
+    // return ec == std::errc() && ptr == s.data() + s.size();
+
+    return res.ec == std::errc() && res.ptr == s.data() + s.size();
+}
+
+TypeChecker::CheckExprResult TypeChecker::check_addr_of_unary_expr(
+    const UnaryExpr * const ptr)
+{
+    CheckExprResult operand_res = check_expression(ptr->operand.get());
+    
+    if(!operand_res.is_lvalue)
+    {
+        print_error_location(ptr->line, ptr->col);
+        std::cerr << ": Cannot take address of a non lvalue\n";
+        exit(1);
+    }
+    
+    PtrTypeDecl * new_ptr = new PtrTypeDecl;
+    created_decls.push_back(new_ptr);
+
+    new_ptr->line = ptr->line;
+    new_ptr->col = ptr->col;
+    new_ptr->points_to_mutable = operand_res.is_var_mutable;
+
+    // Our new PtrTypeDecl that we've had to create needs a unique ptr to the 
+    // TypeDecl it's pointing to. Since it's a unique ptr and we only have a raw
+    // pointer, we need to clone it and keep our own copy of the data.
+    new_ptr->pointee = operand_res.type_ptr->clone();
+
+    CheckExprResult final_res;
+    final_res.type_ptr = new_ptr;
+    final_res.is_var_mutable = operand_res.is_var_mutable;
+    final_res.is_lvalue = false; // Temporary ptr to lvalue is not an lvalue.
+
+    return final_res;
+}
+
+TypeChecker::CheckExprResult TypeChecker::check_unary_expr(
+    const UnaryExpr * const ptr)
+{
+    std::cerr << "Checking Unary Expr for: " << parsed_file << 
+        ":" << ptr->line << ":" << ptr->col << '\n';
+
+    switch(ptr->op_type)
+    {
+        case UnaryOp::ADDRESS_OF: return check_addr_of_unary_expr(ptr);
+
+        // case UnaryOp::BIT_NOT:
+
+        //     break;
+
+        // case UnaryOp::DEREF:
+
+        //     break;
+
+        // case UnaryOp::LOG_NOT:
+
+        //     break;
+
+        // case UnaryOp::NEGATE:
+
+        //     break;
+
+        // case UnaryOp::POST_DEC:
+
+        //     break;
+
+        // case UnaryOp::POST_INC:
+
+        //     break;
+
+        // case UnaryOp::PRE_DEC:
+
+        //     break;
+
+        // case UnaryOp::PRE_INC:
+
+        //     break;
+
+        default:
+
+            print_error_location(ptr->line, ptr->col);
+            std::cerr << ": Invalid UnaryOp type found.\n";
+            exit(1);
+    }
+
+    return CheckExprResult {};
 }
 
 TypeChecker::CheckExprResult TypeChecker::check_ident_expr(
     const IdentExpr * const ptr)
 {
     CheckExprResult res;
+    res.is_lvalue = true;
 
-    std::cerr << "Checking Ident Expr\n";
+    std::cerr << "Checking Ident Expr for: ";
+
+    for(size_t i = 0; i < ptr->ident_path.size(); ++i)
+    {
+        std::cerr << ptr->ident_path.at(i);
+        if(i < ptr->ident_path.size() - 1) std::cerr << "::";
+    }
+    std::cerr << '\n';
 
     // Get the symbol that this IdentExpr points to.
     const Symbol * const sym_ptr = s_table->symbols.at(
@@ -794,7 +954,7 @@ TypeChecker::CheckExprResult TypeChecker::check_ident_expr(
                 static_cast<const VarSymbol*>(sym_ptr)->ast_node_ptr;
 
             res.type_ptr = var_stmt->type_decl.get();
-            res.is_type_mutable = var_stmt->is_binding_mutable;
+            res.is_var_mutable = var_stmt->is_binding_mutable;
 
             return res;
         }
@@ -806,7 +966,7 @@ TypeChecker::CheckExprResult TypeChecker::check_ident_expr(
                 static_cast<const ParamSymbol*>(sym_ptr)->ast_node_ptr;
             
             res.type_ptr = param->type_decl.get();
-            res.is_type_mutable = param->is_binding_mutable;
+            res.is_var_mutable = param->is_binding_mutable;
 
             return res;
         }
@@ -839,13 +999,16 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
             const CheckExprResult lhs_res = 
                 check_expression(reint_ptr->lhs.get());
+                
+            if(!lhs_res.is_var_mutable)
+            {
+                print_error_location(reint_ptr->line, reint_ptr->col);
+                std::cerr << ": Cannot assign an immutable variable.\n";
+                exit(1);
+            }
+
             const CheckExprResult rhs_res = 
                 check_expression(reint_ptr->rhs.get());
-
-            // const TypeDecl * lhs_type = 
-            //     check_expression(reint_ptr->lhs.get());
-            // const TypeDecl * rhs_type = 
-            //     check_expression(reint_ptr->rhs.get());
 
             // Make sure the rhs matches the type of the lhs
             cmp_type_decls(lhs_res.type_ptr, rhs_res.type_ptr, 
@@ -873,7 +1036,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
             CheckExprResult res;
             res.type_ptr = type_decl;
-            res.is_type_mutable = false; 
+            res.is_var_mutable = false; 
 
             type_decl->builtin_type.emplace(BuiltinType::BOOL);
             type_decl->resolved_symbol_idx.emplace(
@@ -892,15 +1055,22 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             const CastExpr * reint_ptr = 
                 static_cast<const CastExpr*>(ptr);
             
-            CheckExprResult res;
-            
+            CheckExprResult lhs_res;
+            lhs_res.type_ptr = reint_ptr->to_cast_type.get();
+            lhs_res.is_lvalue = false;
+            lhs_res.is_var_mutable = false;
 
+            CheckExprResult rhs_res = 
+                check_expression(reint_ptr->expr_to_cast.get());
+
+            return check_cast(
+                lhs_res, rhs_res, reint_ptr->line, reint_ptr->col);
         }
 
         case ExpressionType::CHAR_LITERAL:
         {
-            const CharLitExpr * const reint_ptr = 
-                static_cast<const CharLitExpr*>(ptr);
+            // const CharLitExpr * const reint_ptr = 
+            //     static_cast<const CharLitExpr*>(ptr);
             
             CheckExprResult res;
 
@@ -908,7 +1078,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             // TODO: Implement some way of deleting this memory.
 
             res.type_ptr = type_decl;
-            res.is_type_mutable = false;
+            res.is_var_mutable = false;
 
             type_decl->builtin_type.emplace(BuiltinType::U8);
             type_decl->resolved_symbol_idx.emplace(
@@ -942,7 +1112,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
             CheckExprResult res;
 
-            res.is_type_mutable = false;
+            res.is_var_mutable = false;
             res.type_ptr = type_decl;
 
             // type_decl->is_literal = true;
@@ -1051,11 +1221,11 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             PtrTypeDecl *type_decl = new PtrTypeDecl();
             // TODO: Implement some way of deleting this memory.
 
-            type_decl->builtin_type.emplace(BuiltinPtrType::NULLPTR);
+            type_decl->builtin_type.emplace(BuiltinPtrType::NULL_PTR);
 
             CheckExprResult res;
             res.type_ptr = type_decl;
-            res.is_type_mutable = false;
+            res.is_var_mutable = false;
 
             return res;
         }
@@ -1069,7 +1239,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
             CheckExprResult res;
             res.type_ptr = type_decl;
-            res.is_type_mutable = false;
+            res.is_var_mutable = false;
 
             return res;
         }
@@ -1089,10 +1259,13 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
         //     break;
         // }
 
-        // case ExpressionType::UNARY:
-        // {
-        //     break;
-        // }
+        case ExpressionType::UNARY:
+        {
+            const UnaryExpr * reint_ptr = 
+                static_cast<const UnaryExpr*>(ptr);
+
+            return check_unary_expr(reint_ptr);
+        }
 
         default: 
         
@@ -1101,5 +1274,5 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             exit(1);
     }
 
-    return CheckExprResult {.type_ptr = nullptr, .is_type_mutable = false};
+    return CheckExprResult {};
 }

@@ -6,6 +6,7 @@
 #include "SymbolTBlder.hpp"
 #include "SymbolResolver.hpp"
 #include "TypeChecker.hpp"
+// #include "ParserPrinter.hpp"
 
 
 int main(int argc, char **argv)
@@ -17,6 +18,8 @@ int main(int argc, char **argv)
     }
 
     const char *in_file_path = argv[1];
+
+    // print_parse_results(in_file_path);
 
     Parser parser;
     Program prog = parser.parse(in_file_path);

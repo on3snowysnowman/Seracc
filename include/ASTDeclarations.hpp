@@ -17,6 +17,31 @@ struct FunctionDecl;
 struct ComponentDecl;
 struct StructDecl;
 
+enum class TypeKind
+{
+    INVALID, // Uninitialized Sentinel
+    NAMED,
+    PTR,
+    REF,
+    ARRAY,
+    FUNC_PTR
+};
+
+// Some Expression require full impl of TypeDecl, so we define it here.
+struct TypeDecl
+{
+    uint32_t line = 0;
+    uint32_t col = 0;
+    // bool is_literal = false;
+    TypeKind kind = TypeKind::INVALID;
+
+    virtual ~TypeDecl() = default;
+
+    // We need a clone function for the TypeChecker to be able to create its
+    // own TypeDecls which require their own unique_ptr.
+    virtual std::unique_ptr<TypeDecl> clone() const = 0;
+};
+
 static void print_ident_path(const std::vector<std::string> &ident_path)
 {
     if(ident_path.size() == 0) return; 
@@ -233,53 +258,97 @@ struct Expression
     ExpressionType exp_type = ExpressionType::INVALID;
 
     virtual ~Expression() = default;
+    virtual std::unique_ptr<Expression> clone() const
+    {
+        return std::make_unique<Expression>();
+    }
 };
 
 struct BinaryLitExpr : Expression
 {
     BinaryLitExpr() { exp_type = ExpressionType::BIN_LITERAL; }
     std::string value;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<BinaryLitExpr>(*this);
+    }
 };
 
 struct HexLitExpr : Expression
 {
     HexLitExpr() { exp_type = ExpressionType::HEX_LITERAL; }
     std::string value;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<HexLitExpr>(*this);
+    }
 };
 
 struct IntLitExpr : Expression
 {
     IntLitExpr() { exp_type = ExpressionType::INT_LITERAL; }
     std::string value;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<IntLitExpr>(*this);
+    }
 };
 
 struct FloatLitExpr : Expression
 {
     FloatLitExpr() { exp_type = ExpressionType::FLOAT_LITERAL; }
     std::string value;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<FloatLitExpr>(*this);
+    }
 };
 
 struct StringLitExpr : Expression
 {
     StringLitExpr() { exp_type = ExpressionType::STR_LITERAL; }
     std::string value;
+    
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<StringLitExpr>(*this);
+    }
 };
 
 struct CharLitExpr : Expression
 {
     CharLitExpr() { exp_type = ExpressionType::CHAR_LITERAL; }
     char value;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<CharLitExpr>(*this);
+    }
 };
 
 struct BoolLitExpr : Expression
 {
     BoolLitExpr() { exp_type = ExpressionType::BOOL_LITERAL; }
     bool value;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<BoolLitExpr>(*this);
+    }
 };
 
 struct NullptrLitExpr : Expression
 {
     NullptrLitExpr() { exp_type = ExpressionType::NULLPTR_LITERAL; }
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<NullptrLitExpr>(*this);
+    }
 };
 
 struct IdentExpr : Expression
@@ -287,6 +356,11 @@ struct IdentExpr : Expression
     IdentExpr() { exp_type = ExpressionType::IDENTIFIER; }
     std::vector<std::string> ident_path;
     std::optional<uint64_t> resolved_symbol_idx;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        return std::make_unique<IdentExpr>(*this);
+    }
 };
 
 struct StructInitExpr : Expression
@@ -294,12 +368,38 @@ struct StructInitExpr : Expression
     StructInitExpr() { exp_type = ExpressionType::STRUCT_INIT; }
     std::vector<std::pair<std::string, std::unique_ptr<Expression>>> 
         init_args;
+    
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<StructInitExpr> new_obj =
+            std::make_unique<StructInitExpr>(); 
+
+        for(const auto &elem : init_args)
+        {
+            new_obj->init_args.emplace_back(elem.first, elem.second->clone());
+        }
+
+        return new_obj;
+    }
 };
 
 struct ArrInitExpr : Expression
 {
     ArrInitExpr() { exp_type = ExpressionType::ARR_INIT; }
     std::vector<std::unique_ptr<Expression>> init_args;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<ArrInitExpr> new_obj =
+            std::make_unique<ArrInitExpr>();
+
+        for(const std::unique_ptr<Expression> &expr : init_args)
+        {   
+            new_obj->init_args.push_back(expr->clone());
+        }
+
+        return new_obj;
+    }
 };
 
 struct UnaryExpr : Expression
@@ -308,6 +408,17 @@ struct UnaryExpr : Expression
 
     UnaryOp op_type = UnaryOp::INVALID;
     std::unique_ptr<Expression> operand;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<UnaryExpr> new_obj =
+            std::make_unique<UnaryExpr>();
+
+        new_obj->op_type = op_type;
+        new_obj->operand = operand->clone();
+
+        return new_obj;
+    }
 };
 
 struct BinaryExpr : Expression
@@ -317,6 +428,18 @@ struct BinaryExpr : Expression
     BinaryOp op_type = BinaryOp::INVALID;
     std::unique_ptr<Expression> lhs;
     std::unique_ptr<Expression> rhs;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<BinaryExpr> new_obj =
+            std::make_unique<BinaryExpr>();
+
+        new_obj->op_type = op_type;
+        new_obj->lhs = lhs->clone();
+        new_obj->rhs = rhs->clone();
+
+        return new_obj;
+    }
 };
 
 struct TernaryExpr : Expression
@@ -326,6 +449,18 @@ struct TernaryExpr : Expression
     std::unique_ptr<Expression> condition;
     std::unique_ptr<Expression> on_true_expr;
     std::unique_ptr<Expression> on_false_expr;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<TernaryExpr> new_obj =
+            std::make_unique<TernaryExpr>();
+
+        new_obj->condition = condition->clone();
+        new_obj->on_true_expr = on_true_expr->clone();
+        new_obj->on_false_expr = on_false_expr->clone();
+
+        return new_obj;
+    }
 };
 
 struct AssignExpr : Expression
@@ -335,6 +470,18 @@ struct AssignExpr : Expression
     AssignOp op_type = AssignOp::INVALID;
     std::unique_ptr<Expression> lhs;
     std::unique_ptr<Expression> rhs;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<AssignExpr> new_obj =
+            std::make_unique<AssignExpr>();
+
+        new_obj->op_type = op_type;
+        new_obj->lhs = lhs->clone();
+        new_obj->rhs = rhs->clone();
+
+        return new_obj;
+    }
 };
 
 struct CastExpr : Expression
@@ -343,6 +490,17 @@ struct CastExpr : Expression
 
     std::unique_ptr<TypeDecl> to_cast_type;
     std::unique_ptr<Expression> expr_to_cast;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<CastExpr> new_obj =
+            std::make_unique<CastExpr>();
+
+        new_obj->to_cast_type = to_cast_type->clone();
+        new_obj->expr_to_cast = expr_to_cast->clone();
+
+        return new_obj;
+    }
 };
 
 struct CallExpr : Expression
@@ -351,6 +509,21 @@ struct CallExpr : Expression
 
     std::unique_ptr<Expression> callee_expr;
     std::vector<std::unique_ptr<Expression>> args;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<CallExpr> new_obj =
+            std::make_unique<CallExpr>();
+
+        new_obj->callee_expr = callee_expr->clone();
+
+        for(const std::unique_ptr<Expression> &expr : args)
+        {
+            new_obj->args.push_back(expr->clone());
+        }
+
+        return new_obj;
+    }
 };
 
 struct SubscriptExpr : Expression
@@ -359,6 +532,17 @@ struct SubscriptExpr : Expression
 
     std::unique_ptr<Expression> base_expr;
     std::unique_ptr<Expression> index_expr;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<SubscriptExpr> new_obj =
+            std::make_unique<SubscriptExpr>();
+
+        new_obj->base_expr = base_expr->clone();
+        new_obj->index_expr = index_expr->clone();
+
+        return new_obj;
+    }
 };
 
 struct MemberAccExpr : Expression
@@ -369,7 +553,18 @@ struct MemberAccExpr : Expression
 
     std::unique_ptr<Expression> base_expr;
     std::string member_name;
-    // std::optional<uint64_t> resolved_symbol_idx;
+
+    std::unique_ptr<Expression> clone() const final
+    {
+        std::unique_ptr<MemberAccExpr> new_obj =
+            std::make_unique<MemberAccExpr>();
+
+        new_obj->via_pointer = via_pointer;
+        new_obj->base_expr = base_expr->clone();
+        new_obj->member_name = member_name;
+
+        return new_obj;
+    }
 };
 
 // STATEMENTS ==================================================================
@@ -481,37 +676,23 @@ struct BlockStmt : Statement
 
 // DECLARATIONS ================================================================
 
-enum class TypeKind
-{
-    INVALID, // Uninitialized Sentinel
-    NAMED,
-    PTR,
-    REF,
-    ARRAY,
-    FUNC_PTR
-};
-
-struct TypeDecl
-{
-    uint32_t line = 0;
-    uint32_t col = 0;
-    // bool is_literal = false;
-    TypeKind kind = TypeKind::INVALID;
-
-    virtual ~TypeDecl() = default;
-};
-
 struct NamedTypeDecl : TypeDecl
 {
     NamedTypeDecl() { kind = TypeKind::NAMED; }
     std::vector<std::string> ident_path;
     std::optional<uint64_t> resolved_symbol_idx;
     std::optional<BuiltinType> builtin_type;
+
+    std::unique_ptr<TypeDecl> clone() const final
+    {
+        return std::make_unique<NamedTypeDecl>(*this);
+    }
 };
 
 enum class BuiltinPtrType
 {
-    NULLPTR,
+    NULL_PTR,
+    OPAQUE_PTR,
     CSTR_PTR
 };
 
@@ -522,6 +703,18 @@ struct PtrTypeDecl : TypeDecl
     bool points_to_mutable = false;
     std::unique_ptr<TypeDecl> pointee;
     std::optional<BuiltinPtrType> builtin_type;
+
+    std::unique_ptr<TypeDecl> clone() const final
+    {
+        std::unique_ptr<PtrTypeDecl> new_obj =
+            std::make_unique<PtrTypeDecl>();
+
+        new_obj->points_to_mutable = points_to_mutable;
+        new_obj->pointee = pointee->clone();
+        new_obj->builtin_type = builtin_type;
+    
+        return new_obj;
+    }
 };
 
 struct RefTypeDecl : TypeDecl
@@ -530,6 +723,18 @@ struct RefTypeDecl : TypeDecl
 
     bool ref_to_mutable = false;
     std::unique_ptr<TypeDecl> referred;
+
+    std::unique_ptr<TypeDecl> clone() const final
+    {
+        std::unique_ptr<RefTypeDecl> new_obj =
+            std::make_unique<RefTypeDecl>();
+
+        new_obj->ref_to_mutable = ref_to_mutable;
+        new_obj->referred = referred->clone();
+        
+        return new_obj;
+    }
+
 };
 
 struct ArrTypeDecl : TypeDecl
@@ -540,6 +745,22 @@ struct ArrTypeDecl : TypeDecl
 
     std::unique_ptr<TypeDecl> element_type;
     std::vector<std::unique_ptr<Expression>> size_exprs;
+
+    std::unique_ptr<TypeDecl> clone() const final
+    {
+        std::unique_ptr<ArrTypeDecl> new_obj =
+            std::make_unique<ArrTypeDecl>();
+
+        new_obj->depth = depth;
+        new_obj->element_type = element_type->clone();
+
+        for(const std::unique_ptr<Expression> &expr : size_exprs)
+        {
+            new_obj->size_exprs.push_back(expr->clone());
+        }
+    
+        return new_obj;
+    }
 };
 
 struct Parameter
@@ -553,6 +774,36 @@ struct Parameter
     std::unique_ptr<TypeDecl> type_decl;
     std::optional<uint64_t> symbol_idx; // Idx of the parameter variable, not
                                         // type symbol
+
+    Parameter() {}
+
+    Parameter(const Parameter &other)
+    {
+        line = other.line;
+        col = other.col;
+        name = other.name;
+        is_unqual_param = other.is_unqual_param;
+        is_binding_mutable = other.is_binding_mutable;
+        passed_by_copy = other.passed_by_copy;
+        type_decl = other.type_decl->clone();
+        symbol_idx = other.symbol_idx;
+    }
+
+    Parameter& operator=(const Parameter &other)
+    {
+        line = other.line;
+        col = other.col;
+        name = other.name;
+        is_unqual_param = other.is_unqual_param;
+        is_binding_mutable = other.is_binding_mutable;
+        passed_by_copy = other.passed_by_copy;
+        type_decl = other.type_decl->clone();
+        symbol_idx = other.symbol_idx;
+
+        return *this;
+    }
+
+    
 };
 
 struct FuncPtrDecl : TypeDecl
@@ -561,6 +812,17 @@ struct FuncPtrDecl : TypeDecl
 
     std::unique_ptr<TypeDecl> ret_type;
     std::vector<Parameter> param_types;
+
+    std::unique_ptr<TypeDecl> clone() const final
+    {
+        std::unique_ptr<FuncPtrDecl> new_obj =
+            std::make_unique<FuncPtrDecl>();
+
+        new_obj->ret_type = ret_type->clone();
+        new_obj->param_types = param_types;
+    
+        return new_obj;
+    }
 };
 
 enum class DeclKind

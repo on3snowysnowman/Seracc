@@ -35,8 +35,8 @@ private:
 
     // Given an expression, gets the index of the symbol the expression results
     // in. Returns default optional if the expression does not result in a type
-    std::optional<uint64_t> symbol_idx_from_expr(
-        const Expression * const ptr, uint64_t scope_idx);
+    // std::optional<uint64_t> symbol_idx_from_expr(
+    //     const Expression * const ptr, uint64_t scope_idx);
 
     const char * parsed_file = nullptr;
     const SymbolTable * s_table_ptr = nullptr;

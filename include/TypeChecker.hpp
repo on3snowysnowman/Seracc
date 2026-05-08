@@ -13,6 +13,7 @@ class TypeChecker
 public:
 
     TypeChecker();
+    ~TypeChecker();
 
     void type_check(const Program &p, const SymbolTable &s_table);
 
@@ -48,12 +49,16 @@ private:
 
     struct CheckExprResult
     {
-        const TypeDecl* type_ptr;
-        bool is_type_mutable;    
+        const TypeDecl* type_ptr = nullptr;
+        std::optional<BuiltinPtrType> builtin_ptr_type;
+        bool is_var_mutable = false;    
+        bool is_lvalue = false;
     };
 
-    void check_cast(const CheckExprResult &first, const CheckExprResult &second,  
-        uint32_t expr_line, uint32_t expr_col) const;
+    
+    CheckExprResult check_cast(const CheckExprResult &first, 
+        const CheckExprResult &second,  uint32_t expr_line, 
+        uint32_t expr_col) const;
 
     void cmp_named_decls(const NamedTypeDecl *first, 
         const NamedTypeDecl *second, uint32_t expr_line, uint32_t expr_col) 
@@ -61,15 +66,21 @@ private:
     void cmp_ptr_decls(const PtrTypeDecl *first,
         const PtrTypeDecl *second, uint32_t expr_line, uint32_t expr_col) const;
     void cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
-        uint32_t expr_line, uint32_t expr_col);
+        uint32_t expr_line, uint32_t expr_col) const;
 
     bool is_symbol_mutable(const Symbol *ptr, uint32_t symbol_line,
         uint32_t symbol_col) const;
-    bool is_type_mutable(const TypeDecl *ptr) const;
+    bool is_var_mutable(const TypeDecl *ptr) const;
 
+    CheckExprResult check_addr_of_unary_expr(const UnaryExpr * const ptr);
+    CheckExprResult check_unary_expr(const UnaryExpr * const ptr);
     CheckExprResult check_ident_expr(const IdentExpr * const ptr);
     CheckExprResult check_expression(const Expression * const ptr);
 
     const char * parsed_file = nullptr;
     const SymbolTable * s_table = nullptr;
+
+    // TypeDecl that are created on heap that are managed by the TypeChecker 
+    // class and will be freed on its dtor.
+    std::vector<TypeDecl*> created_decls;
 };
