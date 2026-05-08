@@ -49,7 +49,7 @@ Program Parser::parse(const char *in_file_path)
 
 void Parser::register_builtin_types()
 {
-    for(int i = 0; i < readable_to_builtin.size(); ++i)
+    for(size_t i = 0; i < readable_to_builtin.size(); ++i)
     {
         defined_types.emplace(readable_to_builtin.at(i).first,
             DefinedType{0, 0, "BUILTIN"});
@@ -82,7 +82,7 @@ void Parser::print_error_location(uint32_t line, uint32_t col) const
 void Parser::handle_tok_mismatch(const Token &got_tok, TokenID expected) 
 {
     print_error_location(got_tok.line, got_tok.col);
-    std::cerr << ": Expect token of type: " << 
+    std::cerr << " -> Expect token of type: " << 
         tokID_readable[static_cast<int>(expected)] << " but got token:\n" << 
         got_tok << '\n';
     exit(1);
@@ -91,7 +91,7 @@ void Parser::handle_tok_mismatch(const Token &got_tok, TokenID expected)
 void Parser::handle_unexpected_token(const Token &got_tok)
 {
     print_error_location(got_tok.line, got_tok.col);
-    std::cerr << ": Unexpected token:\n" << got_tok;
+    std::cerr << " -> Unexpected token:\n" << got_tok;
     exit(1);
 }
 
@@ -104,7 +104,7 @@ void Parser::handle_register_type(const std::string &name, uint32_t line,
     if(it != defined_types.end())
     {
         print_error_location(line, col);
-        std::cerr << ": Struct type: \"" << name << "\" already defined here: "
+        std::cerr << " -> Struct type: \"" << name << "\" already defined here: "
             << it->second.file_defined << ':' << it->second.line << ':' << 
             it->second.col << ".\n";
         exit(1);
@@ -143,7 +143,7 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
         if(check(TokenID::KW_COMPONENT)) return parse_component(is_exported);
         
         print_error_location(peek().line, peek().col);
-        std::cerr << ": \"type\" not followed by a declaration of a struct or "
+        std::cerr << " -> \"type\" not followed by a declaration of a struct or "
             "component.\n";
         exit(1);
     }
@@ -215,7 +215,7 @@ std::unique_ptr<ModuleDecl> Parser::parse_module()
 
         if(!decl)
         {
-            std::cerr << parsed_file << ": Reached end of file expecting '}' "
+            std::cerr << parsed_file << " -> Reached end of file expecting '}' "
                 "for module: \""; 
             std::cerr << top_level_mod->ident;
             std::cerr << "\" found here: ";
@@ -247,7 +247,7 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
         if(check(TokenID::KW_MUT))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << ": Receiver parameter can't be marked mutable.\n";
+            std::cerr << " -> Receiver parameter can't be marked mutable.\n";
             exit(1);
         }
 
@@ -284,7 +284,7 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
         if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << ": Trailing comma in parameter list\n";
+            std::cerr << " -> Trailing comma in parameter list\n";
             exit(1);
         }
     }
@@ -375,7 +375,7 @@ std::unique_ptr<ComponentDecl> Parser::parse_component(bool is_pub)
             else
             {
                 print_error_location(peek().line, peek().col);
-                std::cerr << ": \"type\" not followed by a declaration of a "
+                std::cerr << " -> \"type\" not followed by a declaration of a "
                     "struct or component.\n";
                 exit(1);
             }
@@ -463,7 +463,7 @@ std::unique_ptr<Statement> Parser::parse_statement()
         else
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << ": \"type\" not followed by a declaration of a struct or "
+            std::cerr << " -> \"type\" not followed by a declaration of a struct or "
                 "component.\n";
             exit(1);
         }
@@ -610,7 +610,7 @@ std::unique_ptr<Expression> Parser::parse_arr_init()
         if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << ": Trailing comma in initialization list\n";
+            std::cerr << " -> Trailing comma in initialization list\n";
             exit(1);
         }
     }
@@ -641,7 +641,7 @@ std::unique_ptr<Expression> Parser::parse_struct_init()
         if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << ": Trailing comma in initialization list\n";
+            std::cerr << " -> Trailing comma in initialization list\n";
             exit(1);
         }
     }
@@ -663,7 +663,7 @@ std::unique_ptr<Expression> Parser::parse_assignment(
     uint32_t start_col = peek().col;
 
     // print_error_location(start_line, start_col);
-    // std::cerr << ": Checking for assignment\n";
+    // std::cerr << " -> Checking for assignment\n";
 
     bool pre_expr_null = false;
 
@@ -706,7 +706,7 @@ std::unique_ptr<Expression> Parser::parse_log_or(
     uint32_t start_col = peek().col;
 
     // print_error_location(start_line, start_col);
-    // std::cerr << ": Checking for log_or\n";
+    // std::cerr << " -> Checking for log_or\n";
 
     bool pre_expr_null = false;
 
@@ -742,7 +742,7 @@ std::unique_ptr<Expression> Parser::parse_log_and(
     uint32_t start_col = peek().col;
 
     // print_error_location(start_line, start_col);
-    // std::cerr << ": Checking for log_and\n";
+    // std::cerr << " -> Checking for log_and\n";
 
     bool pre_expr_null = false;
 
@@ -778,7 +778,7 @@ std::unique_ptr<Expression> Parser::parse_equality(
     uint32_t start_col = peek().col;
 
     // print_error_location(start_line, start_col);
-    // std::cerr << ": Checking for equality\n";
+    // std::cerr << " -> Checking for equality\n";
 
     bool pre_expr_null = false;
 
@@ -863,7 +863,7 @@ std::unique_ptr<Expression> Parser::parse_additive(
     uint32_t start_col = peek().col;
 
     // print_error_location(start_line, start_col);
-    // std::cerr << ": Checking additive\n";
+    // std::cerr << " -> Checking additive\n";
 
     bool pre_expr_null = false;
 
@@ -907,7 +907,7 @@ std::unique_ptr<Expression> Parser::parse_multiplicative(
     uint32_t start_col = peek().col;
 
     // print_error_location(start_line, start_col);
-    // std::cerr << ": Checking multi\n";
+    // std::cerr << " -> Checking multi\n";
 
     bool pre_expr_null = false;
 
@@ -946,7 +946,7 @@ std::unique_ptr<Expression> Parser::parse_unary(
     std::unique_ptr<Expression> pre_expr)
 {
     // print_error_location(peek().line, peek().col);
-    // std::cerr << ": Checking unary\n";
+    // std::cerr << " -> Checking unary\n";
     
     if(check(TokenID::PLUS_PLUS))
     {   
@@ -972,7 +972,7 @@ std::unique_ptr<Expression> Parser::parse_unary(
         // else
         // {
         //     print_error_location(t.line, t.col);
-        //     std::cerr << ": Unexpected preincrement\n";
+        //     std::cerr << " -> Unexpected preincrement\n";
         //     exit(1);
         // }
 
@@ -1149,7 +1149,7 @@ std::unique_ptr<Expression> Parser::parse_postfix(
     uint32_t start_col = peek().col;
 
     // print_error_location(start_line, start_col);
-    // std::cerr << ": Checking postfix\n";
+    // std::cerr << " -> Checking postfix\n";
 
     // bool pre_expr_null = false;
 
@@ -1185,7 +1185,7 @@ std::unique_ptr<Expression> Parser::parse_postfix(
                 if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
                 {
                     print_error_location(peek().line, peek().col);
-                    std::cerr << ": Trailing comma in argument list\n";
+                    std::cerr << " -> Trailing comma in argument list\n";
                     exit(1);
                 }
             }
@@ -1290,7 +1290,7 @@ std::unique_ptr<Expression> Parser::parse_primary()
     uint32_t start_col = peek().col;
 
     // print_error_location(start_line, start_col);
-    // std::cerr << ": Checking primary\n";
+    // std::cerr << " -> Checking primary\n";
 
     if(check(TokenID::INT_LITERAL))
     {
@@ -1417,7 +1417,7 @@ std::unique_ptr<Expression> Parser::parse_primary()
     }
 
     print_error_location(start_line, start_col);
-    std::cerr << ": Invalid expression\n";
+    std::cerr << " -> Invalid expression\n";
     exit(1);    
 }
 
@@ -1563,7 +1563,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(
         if(error_on_invalid)
         {
             print_error_location(start_line, start_col);
-            std::cerr << ": Invalid type declaration.\n";
+            std::cerr << " -> Invalid type declaration.\n";
             exit(1);
         }
 
@@ -1656,7 +1656,7 @@ Parameter Parser::parse_param()
         if(check(TokenID::KW_REF))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << ": Reference parameters cannot be passed in by val.\n";
+            std::cerr << " -> Reference parameters cannot be passed in by val.\n";
             exit(1); 
         }
 

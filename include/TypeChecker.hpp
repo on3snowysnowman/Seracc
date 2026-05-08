@@ -70,7 +70,8 @@ private:
 
     bool is_symbol_mutable(const Symbol *ptr, uint32_t symbol_line,
         uint32_t symbol_col) const;
-    bool is_var_mutable(const TypeDecl *ptr) const;
+    bool is_var_mutable(const NamedTypeDecl *ptr) const;
+    bool is_ptr_opaque_ptr(const TypeDecl *ptr) const;
 
     CheckExprResult check_addr_of_unary_expr(const UnaryExpr * const ptr);
     CheckExprResult check_unary_expr(const UnaryExpr * const ptr);

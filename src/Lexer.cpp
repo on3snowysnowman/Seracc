@@ -61,7 +61,7 @@ void Lexer::print_error_location()
 void Lexer::handle_invalid_char(char c)
 {
     print_error_location();
-    std::cerr << ": Invalid character: " << c << '\n';
+    std::cerr << " -> Invalid character: " << c << '\n';
     exit(1);
 }
 
@@ -70,7 +70,7 @@ void Lexer::handle_unexpected_eof()
     if(!at_eof()) return;
 
     std::cerr << file_being_parsed << ":" << current_line << ":" << current_col  
-        << ": Reached end of file expecting more characters\n";
+        << " -> Reached end of file expecting more characters\n";
     exit(1);
 }
 
@@ -184,7 +184,7 @@ void Lexer::parse_int_or_flt_literal(Token &t)
     if(dot_found && *(--t.text.end()) == '.')
     {
         std::cerr << file_being_parsed << ":" << t.line << ":" << t.col << 
-            ": Trailing dot at end of float literal.\n\n";
+            " -> Trailing dot at end of float literal.\n\n";
         exit(1);
     }
 }
@@ -259,7 +259,7 @@ void Lexer::parse_str_literal(Token &t)
         if(at_eof())
         {
             print_error_location();
-            std::cerr << ": Reached end of file while parsing string literal "
+            std::cerr << " -> Reached end of file while parsing string literal "
                 "starting on line: " << t.line << '\n';
             exit(1);
         }
@@ -270,7 +270,7 @@ void Lexer::parse_str_literal(Token &t)
     if(c != '"')
     {
         print_error_location();
-        std::cerr << ": Missing closing double quote for string literal\n";
+        std::cerr << " -> Missing closing double quote for string literal\n";
         exit(1);
     }
 
@@ -301,7 +301,7 @@ void Lexer::parse_char_literal(Token &t)
     if(c != '\'')
     {
         print_error_location();
-        std::cerr << ": Either too many characters in char literal or missing "
+        std::cerr << " -> Either too many characters in char literal or missing "
             "closing quote\n";
         exit(1);
     }
@@ -315,7 +315,7 @@ void Lexer::parse_non_ident_or_number(Token &t)
 
     if(c == '-')
     {
-        // Check for "->"
+        // Check for " -> "
         if(peek() == '>')
         {
             advance(); // Consume '>'

@@ -192,7 +192,7 @@ void SymbolResolver::resolve_declaration(Declaration * const ptr,
         default:
 
             std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col << 
-                ": Invalid type for declaration.\n";
+                " -> Invalid type for declaration.\n";
             exit(1);
             break;
     }
@@ -294,7 +294,7 @@ void SymbolResolver::resolve_statement(Statement * const ptr,
         default:
 
             std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col <<
-                ": Invalid statement type.\n";
+                " -> Invalid statement type.\n";
             exit(1);
             break;
     }
@@ -500,7 +500,7 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
 //         default:
 
 //             std::cerr << parsed_file << ':' << ptr->line << ':' << ptr->col << 
-//                 ": Attempted to get index of symbol of expression result, but"
+//                 " -> Attempted to get index of symbol of expression result, but"
 //                 " this expression does not return a type.\n";
 //             exit(1);
 //     }
@@ -541,7 +541,7 @@ uint64_t SymbolResolver::find_symbol_idx(
             if(!parsed_scope->parent_scope_idx)
             {
                 std::cerr << parsed_file << ":" << symbol_line << ":" << 
-                symbol_col << ": Undefined symbol: " << ident_path[0] << '\n';
+                symbol_col << " -> Undefined symbol: " << ident_path[0] << '\n';
                 exit(1);
             }
 
@@ -583,7 +583,7 @@ uint64_t SymbolResolver::find_symbol_idx(
         if(!match)
         {
             std::cerr << parsed_file << ":" << symbol_line << ":" <<   
-                symbol_col << ": Could not find Module -> \"" << targ_module << 
+                symbol_col << " -> Could not find Module -> \"" << targ_module << 
                 "\"\n";
             exit(1);
         }

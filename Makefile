@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++17 -Iinclude -MMD -MP -g
+CXXFLAGS = -Wall -Wno-unused-function -Wextra -std=c++17 -Iinclude -MMD -MP -g
 
 SRC = Seracc.cpp $(wildcard src/*.cpp)
 OBJ = $(patsubst %.cpp, build/%.o, $(SRC))
@@ -20,6 +20,6 @@ build/%.o: %.cpp
 -include $(DEP)
 
 clean:
-	rm -rf build $(TARGET)
+	rm -rf build $(TARGET) OUT.txt
 
 .PHONY: all clean

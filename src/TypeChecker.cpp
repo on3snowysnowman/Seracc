@@ -44,7 +44,7 @@ void TypeChecker::print_type_mismatch(const TypeDecl *first,
     const TypeDecl *second, uint32_t line, uint32_t col) const
 {
     print_error_location(line, col);
-    std::cerr << ": Got type: \"";
+    std::cerr << " -> Got type: \"";
     print_type_decl(second);
     std::cerr << "\" expected type: \"";
     print_type_decl(first);
@@ -80,7 +80,7 @@ uint64_t TypeChecker::get_resolved_idx_from_type_decl(
             if(!reint_ptr->resolved_symbol_idx.has_value())
             {
                 print_error_location(reint_ptr->line , reint_ptr->col);
-                std::cerr << ": Attempted to get resolved index of named type "
+                std::cerr << " -> Attempted to get resolved index of named type "
                     "decl but it doesn't have one.\n";
                 exit(1);
             }
@@ -107,7 +107,7 @@ uint64_t TypeChecker::get_resolved_idx_from_type_decl(
         default:
 
             print_error_location(ptr->line, ptr->col);
-            std::cerr << ": Invalid TypeKind for TypeDecl\n";
+            std::cerr << " -> Invalid TypeKind for TypeDecl\n";
             exit(1);
     }
 }
@@ -145,7 +145,7 @@ void TypeChecker::check_function(FunctionDecl * const ptr,
         {
             print_error_location(ptr->receiver_data->type_decl->line,
                 ptr->receiver_data->type_decl->col);
-            std::cerr << ": Receiver function declared outside of Component "
+            std::cerr << " -> Receiver function declared outside of Component "
                 "scope\n";
             exit(1);
         }
@@ -155,7 +155,7 @@ void TypeChecker::check_function(FunctionDecl * const ptr,
         {
             print_error_location(ptr->receiver_data->type_decl->line,
                 ptr->receiver_data->type_decl->col);
-            std::cerr << ": Component receiver object type does not match the "
+            std::cerr << " -> Component receiver object type does not match the "
             "enclosing Component type.\n";
             exit(1);
         }
@@ -188,7 +188,7 @@ void TypeChecker::check_field(FieldDecl * const ptr)
             SymbolType::MODULE)
         {
             print_error_location(ptr->line, ptr->col);
-            std::cerr << ": This field declaration cannot have an "
+            std::cerr << " -> This field declaration cannot have an "
                 "initialization expression.\n";
             exit(1);
         }
@@ -258,7 +258,7 @@ void TypeChecker::check_declaration(Declaration * const ptr,
         default:
 
             std::cerr << parsed_file << ':' << ptr->line << ':' << 
-                ": Invalid declaration kind.\n";
+                " -> Invalid declaration kind.\n";
             exit(1);
     }
 }
@@ -327,32 +327,50 @@ void TypeChecker::check_statement(Statement * const ptr,
             if(!expected_ret_type.has_value())
             {
                 print_error_location(ptr->line, ptr->col);
-                std::cerr << ": Unexpected return statement.\n";
+                std::cerr << " -> Unexpected return statement.\n";
                 exit(1);
             }
 
             const RetStmt * ret_stmt = static_cast<const RetStmt*>(ptr);
 
+
+            const TypeDecl * func_ret_type = expected_ret_type.value();
+
+            const uint64_t void_symbol_id = 
+                    s_table->builtin_to_id.at("void");
+            
+            const bool return_type_is_void = 
+                static_cast<const NamedTypeDecl*>(func_ret_type)->
+                        resolved_symbol_idx.value() == void_symbol_id;  
+
             // We have no return expr, the return type better be void.
             if(ret_stmt->ret_expr == nullptr)
             {   
-                const uint64_t void_symbol_id = 
-                    s_table->builtin_to_id.at("void");
+                // const uint64_t void_symbol_id = 
+                //     s_table->builtin_to_id.at("void");
 
-                const TypeDecl * func_ret_type = expected_ret_type.value();
+                // const TypeDecl * func_ret_type = expected_ret_type.value();
 
                 if(func_ret_type->kind != TypeKind::NAMED || 
-                    static_cast<const NamedTypeDecl*>(func_ret_type)->
-                        resolved_symbol_idx.value() != void_symbol_id)
+                    !return_type_is_void)
                 {
                     print_error_location(ret_stmt->line, ret_stmt->col);
-                    std::cerr << ": No return expression found for a non void "
-                        "returning function.\n";
+                    std::cerr << " -> No expression found in return statement for"
+                        " function with non void return type.\n";
                     exit(1);
                 }
 
                 // Type is void, we're good.
                 return;
+            }
+
+            // We have a return statement, return type better not be void
+            if(return_type_is_void)
+            {
+                print_error_location(ptr->line, ptr->col);
+                std::cerr << " -> Unexpected expression in return statement for"
+                    " function with void return type.\n";
+                exit(1);
             }
 
             CheckExprResult res = check_expression(
@@ -392,7 +410,7 @@ void TypeChecker::check_statement(Statement * const ptr,
         default:
 
             print_error_location(ptr->line, ptr->col);
-            std::cerr << ": Invalid StatementType found\n";
+            std::cerr << " -> Invalid StatementType found\n";
             exit(1);
     }
 }
@@ -416,11 +434,11 @@ void TypeChecker::print_type_decl(const TypeDecl* decl) const
             break;
         }
 
-        case TypeKind::FUNC_PTR:
-        {
+        // case TypeKind::FUNC_PTR:
+        // {
 
-            break;
-        }
+        //     break;
+        // }
 
         case TypeKind::NAMED:
         {
@@ -436,9 +454,9 @@ void TypeChecker::print_type_decl(const TypeDecl* decl) const
             const PtrTypeDecl *reint_ptr = 
                 static_cast<const PtrTypeDecl*>(decl);
 
-            if(reint_ptr->pointee == nullptr)
+            if(reint_ptr->builtin_type.has_value())
             {
-                switch(reint_ptr->builtin_type.value())
+                switch(*reint_ptr->builtin_type)
                 {
                     case BuiltinPtrType::CSTR_PTR:
 
@@ -457,7 +475,9 @@ void TypeChecker::print_type_decl(const TypeDecl* decl) const
                 }
 
                 return;
-            }
+            } 
+
+            // else 
 
             std::cerr << "*";
             if(reint_ptr->points_to_mutable) std::cerr << "mut";
@@ -505,6 +525,7 @@ TypeChecker::CheckExprResult TypeChecker::check_cast(
     if(first.builtin_ptr_type.has_value() && 
         *first.builtin_ptr_type == BuiltinPtrType::OPAQUE_PTR)
     {
+        std::cerr << "Casting to * opaque\n";
         return first;
     }
 
@@ -512,11 +533,14 @@ TypeChecker::CheckExprResult TypeChecker::check_cast(
     if(second.builtin_ptr_type.has_value() && 
         *second.builtin_ptr_type == BuiltinPtrType::OPAQUE_PTR)
     {
+        std::cerr << "Casting from * opaque\n";
         return first;
     }
 
     // Not * opaque, need to check the types.
     cmp_type_decls(first.type_ptr, second.type_ptr, expr_line, expr_col);
+
+    return first;
 }
 
 static bool check_acceptable_lit(const BuiltinType targ, 
@@ -667,7 +691,7 @@ void TypeChecker::cmp_named_decls(const NamedTypeDecl *first,
             acceptable_types))
         {
             print_error_location(expr_line, expr_col);
-            std::cerr << ": Illegal assignment of type: \"";
+            std::cerr << " -> Illegal assignment of type: \"";
             print_type_decl(second);
             std::cerr << "\" to type: \"";
             print_type_decl(first);
@@ -696,6 +720,17 @@ void TypeChecker::cmp_named_decls(const NamedTypeDecl *first,
 void TypeChecker::cmp_ptr_decls(const PtrTypeDecl *first, 
     const PtrTypeDecl *second, uint32_t expr_line, uint32_t expr_col) const
 {
+    // Check if rhs has a builtin ptr type (nullptr, opaque ptr or char ptr)
+    if(second->builtin_type.has_value())
+    {
+        // If rhs is a nullptr, it can be assigned to any pointer.
+        if(*second->builtin_type == BuiltinPtrType::NULL_PTR) return;
+
+        // Other builtin types?
+        std::cerr << "Implement this?\n";
+        exit(1);
+    }
+
     // *mut = * is not valid
     if(first->points_to_mutable && !second->points_to_mutable)
     {
@@ -764,7 +799,7 @@ void TypeChecker::cmp_type_decls(const TypeDecl *first, const TypeDecl *second,
         default:
 
             print_error_location(first->line, first->col);
-            std::cerr << ": Invalid TypeKind found.\n";
+            std::cerr << " ->  Invalid TypeKind found.\n";
             exit(1);
     }
 }
@@ -804,26 +839,47 @@ bool TypeChecker::is_symbol_mutable(const Symbol *ptr, uint32_t symbol_line,
             return reint_ptr->ast_node_ptr->is_binding_mutable;
         }
 
-        default: return false;
+        default: 
+            print_error_location(symbol_line, symbol_col);
+            std::cerr << " -> requested to determine if symbol was mutable but "
+                " symbol has non applicable mutability type: " <<
+                ptr->sym_type << '\n';
+            exit(1);
     }
 }
 
-bool TypeChecker::is_var_mutable(const TypeDecl *ptr) const
+bool TypeChecker::is_var_mutable(const NamedTypeDecl *ptr) const
 {
-    if(ptr->kind != TypeKind::NAMED)
-    {
-        print_error_location(ptr->line, ptr->col);
-        std::cerr << ": TypeChecker::is_var_mutable() -> Cannot check variable"
-            " mutability of a non variable.\n";
-        exit(1);
-    }
+    // if(ptr->kind != TypeKind::NAMED)
+    // {
+    //     print_error_location(ptr->line, ptr->col);
+    //     std::cerr << " -> TypeChecker::is_var_mutable() -> Cannot check variable"
+    //         " mutability of a non variable.\n";
+    //     exit(1);
+    // }
 
-    const NamedTypeDecl * reint_ptr = 
-        static_cast<const NamedTypeDecl*>(ptr);
+    // const NamedTypeDecl * reint_ptr = 
+    //     static_cast<const NamedTypeDecl*>(ptr);
 
     return is_symbol_mutable(s_table->symbols.at(
-        reint_ptr->resolved_symbol_idx.value()).get(), ptr->line, 
+        ptr->resolved_symbol_idx.value()).get(), ptr->line, 
         ptr->col);
+}
+
+bool TypeChecker::is_ptr_opaque_ptr(const TypeDecl *ptr) const
+{
+    switch(ptr->kind)
+    {
+        case TypeKind::PTR:
+            return is_ptr_opaque_ptr(
+                static_cast<const PtrTypeDecl*>(ptr)->pointee.get()); 
+        
+        case TypeKind::NAMED:
+            return static_cast<const NamedTypeDecl*>(ptr)->ident_path.back()
+                == "opaque";
+
+        default: return false;
+    }
 }
 
 // Returns true if the number in the string can fit in type 'T'
@@ -848,7 +904,7 @@ TypeChecker::CheckExprResult TypeChecker::check_addr_of_unary_expr(
     if(!operand_res.is_lvalue)
     {
         print_error_location(ptr->line, ptr->col);
-        std::cerr << ": Cannot take address of a non lvalue\n";
+        std::cerr << " -> Cannot take address of a non lvalue\n";
         exit(1);
     }
     
@@ -917,7 +973,7 @@ TypeChecker::CheckExprResult TypeChecker::check_unary_expr(
         default:
 
             print_error_location(ptr->line, ptr->col);
-            std::cerr << ": Invalid UnaryOp type found.\n";
+            std::cerr << " -> Invalid UnaryOp type found.\n";
             exit(1);
     }
 
@@ -943,7 +999,7 @@ TypeChecker::CheckExprResult TypeChecker::check_ident_expr(
     const Symbol * const sym_ptr = s_table->symbols.at(
         ptr->resolved_symbol_idx.value()).get();
         
-        std::cerr << "Ident symbol type is: " << sym_ptr->sym_type << '\n';
+    std::cerr << "Ident symbol type is: " << sym_ptr->sym_type << '\n';
 
     switch(sym_ptr->sym_type)
     {
@@ -974,7 +1030,7 @@ TypeChecker::CheckExprResult TypeChecker::check_ident_expr(
         default:
 
             print_error_location(ptr->line, ptr->col);
-            std::cerr << ": TypeChecker::check_ident_expr() -> Invalid type "
+            std::cerr << " -> TypeChecker::check_ident_expr() -> Invalid type "
                 "found for Symbol.\n";
             exit(1);
     }
@@ -1003,7 +1059,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             if(!lhs_res.is_var_mutable)
             {
                 print_error_location(reint_ptr->line, reint_ptr->col);
-                std::cerr << ": Cannot assign an immutable variable.\n";
+                std::cerr << " -> Cannot assign an immutable variable.\n";
                 exit(1);
             }
 
@@ -1029,8 +1085,8 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
 
         case ExpressionType::BOOL_LITERAL:
         {
-            const BoolLitExpr *reint_ptr = 
-                static_cast<const BoolLitExpr*>(ptr);
+            // const BoolLitExpr *reint_ptr = 
+            //     static_cast<const BoolLitExpr*>(ptr);
 
             NamedTypeDecl *type_decl = new NamedTypeDecl();
 
@@ -1059,6 +1115,11 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
             lhs_res.type_ptr = reint_ptr->to_cast_type.get();
             lhs_res.is_lvalue = false;
             lhs_res.is_var_mutable = false;
+
+            if(is_ptr_opaque_ptr(lhs_res.type_ptr))
+            {
+                lhs_res.builtin_ptr_type.emplace(BuiltinPtrType::OPAQUE_PTR);
+            }
 
             CheckExprResult rhs_res = 
                 check_expression(reint_ptr->expr_to_cast.get());
@@ -1270,7 +1331,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expression(
         default: 
         
             print_error_location(ptr->line, ptr->col);
-            std::cerr << ": Invalid type found for expression\n";
+            std::cerr << " -> Invalid type found for expression\n";
             exit(1);
     }
 
