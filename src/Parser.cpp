@@ -421,7 +421,7 @@ std::unique_ptr<VarDeclStmt> Parser::parse_var_decl_stmt()
             else reint_ptr->init_expr = parse_arr_init();
         }
 
-        else reint_ptr->init_expr = parse_expression();
+        else reint_ptr->init_expr = parse_expression({TokenID::SEMICOLON});
     }
 
     expect(TokenID::SEMICOLON);
@@ -480,7 +480,7 @@ std::unique_ptr<Statement> Parser::parse_statement()
         // We have a return statement expression.
         if(!check(TokenID::SEMICOLON))
         {
-            reint_ptr->ret_expr = parse_expression();
+            reint_ptr->ret_expr = parse_expression({TokenID::SEMICOLON});
         }
 
         expect(TokenID::SEMICOLON);
@@ -494,7 +494,7 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
         expect(TokenID::LPAREN);
 
-        reint_ptr->condition_expr = parse_expression();
+        reint_ptr->condition_expr = parse_expression({TokenID::RPAREN});
 
         expect(TokenID::RPAREN);
 
@@ -522,7 +522,7 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
         expect(TokenID::LPAREN);
 
-        reint_ptr->condition_expr = parse_expression();
+        reint_ptr->condition_expr = parse_expression({TokenID::RPAREN});
 
         expect(TokenID::RPAREN);
 
@@ -546,13 +546,13 @@ std::unique_ptr<Statement> Parser::parse_statement()
         
         if(!check(TokenID::SEMICOLON))
         {
-            reint_ptr->condition_expr = parse_expression();
+            reint_ptr->condition_expr = parse_expression({TokenID::SEMICOLON});
         }
         expect(TokenID::SEMICOLON);
 
         if(!check(TokenID::RPAREN))
         {
-            reint_ptr->increment_expr = parse_expression();
+            reint_ptr->increment_expr = parse_expression({TokenID::RPAREN});
         }
 
         expect(TokenID::RPAREN);
@@ -583,7 +583,7 @@ std::unique_ptr<Statement> Parser::parse_statement()
         ExprStmt * const reint_ptr = 
             static_cast<ExprStmt*>(ptr.get());
 
-        reint_ptr->expr = parse_expression();
+        reint_ptr->expr = parse_expression({TokenID::SEMICOLON});
         expect(TokenID::SEMICOLON);
     }
 
@@ -604,7 +604,8 @@ std::unique_ptr<Expression> Parser::parse_arr_init()
 
     while(!check(TokenID::RBRACE))
     {
-        ptr->init_args.push_back(parse_expression());
+        ptr->init_args.push_back(parse_expression(
+            {TokenID::COMMA, TokenID::RBRACE}));
 
         // Trailing comma 
         if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
@@ -633,7 +634,8 @@ std::unique_ptr<Expression> Parser::parse_struct_init()
     {
         std::string member_name = expect(TokenID::IDENTIFIER).text;
         expect(TokenID::ASSIGN);
-        std::unique_ptr<Expression> init_expr = parse_expression();
+        std::unique_ptr<Expression> init_expr = parse_expression(
+            {TokenID::COMMA, TokenID::RBRACE});
 
         ptr->init_args.push_back({std::move(member_name), 
             std::move(init_expr)});
@@ -651,13 +653,52 @@ std::unique_ptr<Expression> Parser::parse_struct_init()
     return ptr;
 }
 
-std::unique_ptr<Expression> Parser::parse_expression()
+std::unique_ptr<Expression> Parser::parse_expression(
+    std::initializer_list<TokenID> delimeters)
 {
     std::unique_ptr<Expression> result = parse_assignment(nullptr);
 
-    while(!check(TokenID::SEMICOLON))
+    bool hit_delimiter = false;
+
+    while(true)
     {
+        for(TokenID id : delimeters)
+        {
+            if(peek().id == id)
+            {
+                hit_delimiter = true;
+                break;
+            }
+        }
+
+        if(hit_delimiter) break;
+
+        uint64_t start_tok_idx = current_token_idx;
+    
         result = parse_assignment(std::move(result));
+   
+        if(current_token_idx == start_tok_idx)
+        {
+            print_error_location(peek().line, peek().col);
+            std::cerr << " -> Expected Token of type: ";
+
+            auto del_begin = delimeters.begin();
+
+            while(del_begin != delimeters.end())
+            {
+                std::cerr << *del_begin;
+
+                ++del_begin;
+
+                if(del_begin != delimeters.end())
+                {
+                    std::cerr << " or ";
+                }
+            }
+
+            std::cerr << " but got token: \n" << peek() << '\n';
+            exit(1);
+        }
     }
 
     return result;
@@ -701,9 +742,7 @@ std::unique_ptr<Expression> Parser::parse_assignment(
     full_expr->op_type = op;
     
     full_expr->lhs = std::move(pre_expr);
-
-    // Parse RHS using log_or. We don't support chained assignments.
-    full_expr->rhs = parse_log_or(std::move(pre_expr));
+    full_expr->rhs = parse_expression({TokenID::SEMICOLON});
 
     return full_expr;
 }
@@ -815,7 +854,8 @@ std::unique_ptr<Expression> Parser::parse_equality(
         full_expr->lhs = std::move(pre_expr);
         full_expr->rhs = parse_relational(nullptr);
 
-        pre_expr = std::move(full_expr);
+        // pre_expr = std::move(full_expr);
+        return full_expr;
     }
 
     return pre_expr_null ? std::move(pre_expr) : 
@@ -901,6 +941,7 @@ std::unique_ptr<Expression> Parser::parse_additive(
         full_expr->col = start_col;
         full_expr->op_type = op;
         full_expr->lhs = std::move(pre_expr);
+        
         full_expr->rhs = parse_multiplicative(nullptr);
         pre_expr = std::move(full_expr);
     }
@@ -961,6 +1002,10 @@ std::unique_ptr<Expression> Parser::parse_unary(
     {   
         if(pre_expr != nullptr)
         {
+            print_error_location(peek().line, peek().col);
+            std::cerr << " -> PRE INC can't have pre expression?\n";
+            exit(1);
+        
             // std::cerr << "unary pre_expr was nullptr\n";
             return parse_postfix(std::move(pre_expr));
         }
@@ -970,43 +1015,36 @@ std::unique_ptr<Expression> Parser::parse_unary(
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::PRE_INC;
-
         ptr->operand = parse_unary(nullptr);
-
-        // if(pre_expr == nullptr)
-        // {
-        //     ptr->operand = parse_unary(nullptr);
-        // }
-        // // else ptr->operand = std::move(pre_expr);
-        // else
-        // {
-        //     print_error_location(t.line, t.col);
-        //     std::cerr << " -> Unexpected preincrement\n";
-        //     exit(1);
-        // }
-
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
     }
 
+    // Pre Dec
     else if(check(TokenID::MINUS_MINUS))
     {
+        if(pre_expr != nullptr)
+        {
+            print_error_location(peek().line, peek().col);
+            std::cerr << " -> PRE DEC can't have pre expression?\n";
+            exit(1);
+
+            return parse_postfix(std::move(pre_expr));
+        }
+
         Token t = expect(TokenID::MINUS_MINUS);
 
         auto ptr = std::make_unique<UnaryExpr>();
         
         ptr->op_type = UnaryOp::PRE_DEC;
-        if(pre_expr == nullptr)
-        {
-            ptr->operand = parse_unary(nullptr);
-        }
-        else ptr->operand = std::move(pre_expr);
+        ptr->operand = parse_unary(nullptr);
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
     }
 
+    // Numerical Negation
     else if(check(TokenID::MINUS))
     {
         Token t = expect(TokenID::MINUS);
@@ -1018,12 +1056,19 @@ std::unique_ptr<Expression> Parser::parse_unary(
         {
             ptr->operand = parse_unary(nullptr);
         }
-        else ptr->operand = std::move(pre_expr);
+        // else ptr->operand = std::move(pre_expr);
+        else
+        {
+            print_error_location(t.line, t.col);
+            std::cerr << " -> NEGATE can't have pre expression?\n";
+            exit(1);
+        }
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
     }
 
+    // Logical Negation
     else if(check(TokenID::EXCLAMATION_POINT))
     {
         Token t = expect(TokenID::EXCLAMATION_POINT);
@@ -1035,7 +1080,13 @@ std::unique_ptr<Expression> Parser::parse_unary(
         {
             ptr->operand = parse_unary(nullptr);
         }
-        else ptr->operand = std::move(pre_expr);
+        // else ptr->operand = std::move(pre_expr);
+        else
+        {
+            print_error_location(t.line, t.col);
+            std::cerr << " -> LOG_NOT can't have pre expression?\n";
+            exit(1);
+        }
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -1052,7 +1103,13 @@ std::unique_ptr<Expression> Parser::parse_unary(
         {
             ptr->operand = parse_unary(nullptr);
         }
-        else ptr->operand = std::move(pre_expr);
+        // else ptr->operand = std::move(pre_expr);
+        else
+        {
+            print_error_location(t.line, t.col);
+            std::cerr << " -> TILDE can't have pre expression?\n";
+            exit(1);
+        }
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -1069,7 +1126,13 @@ std::unique_ptr<Expression> Parser::parse_unary(
         {
             ptr->operand = parse_unary(nullptr);
         }
-        else ptr->operand = std::move(pre_expr);
+        // else ptr->operand = std::move(pre_expr);
+        else
+        {
+            print_error_location(t.line, t.col);
+            std::cerr << " -> AMPERSAND can't have pre expression?\n";
+            exit(1);
+        }
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
@@ -1086,13 +1149,20 @@ std::unique_ptr<Expression> Parser::parse_unary(
         {
             ptr->operand = parse_unary(nullptr);
         }
-        else ptr->operand = std::move(pre_expr);
+        // else ptr->operand = std::move(pre_expr);
+        else
+        {
+            print_error_location(t.line, t.col);
+            std::cerr << " -> DEREF can't have pre expression?\n";
+            exit(1);
+        }
         ptr->line = t.line;
         ptr->col = t.col;
         return ptr;
     }
 
-    else if(check(TokenID::LPAREN))
+    // Parenthesized expression.
+    else if(check(TokenID::LPAREN) && pre_expr == nullptr)
     {
         Token t = expect(TokenID::LPAREN);
 
@@ -1122,27 +1192,19 @@ std::unique_ptr<Expression> Parser::parse_unary(
         // If the type parsing failed, rewind to the token before we starting
         // attempting to consume the non type.
         rewind(saved_tok_idx);
-        
+
         std::unique_ptr<Expression> full_expr = 
-            parse_assignment(nullptr);
+            parse_expression({TokenID::RPAREN});
+
+        // expect(TokenID::RPAREN);
+
+        // while(!consume_if(TokenID::RPAREN))
+        // {
+        //     full_expr = parse_assignment(std::move(full_expr));
+        //     // std::cin.get();
+        // }
 
         expect(TokenID::RPAREN);
-
-        // std::cerr << "After getting full_expr, we are at: ";
-        // print_error_location(peek().line, peek().col);
-        // std::cerr << '\n';
-
-        // // This is the end of a paranthesized expression. don't do anything.
-        // if(check(TokenID::RPAREN)) return full_expr;
-
-        // We want to continue this expression if there's more after the 
-        // right parenthesis
-
-        while(!check(TokenID::SEMICOLON) && !check(TokenID::RPAREN))
-        {
-            full_expr = parse_assignment(std::move(full_expr));
-            std::cin.get();
-        }
 
         return full_expr;
 
@@ -1167,8 +1229,8 @@ std::unique_ptr<Expression> Parser::parse_postfix(
         // pre_expr_null = true;
 
         // Expression that came before the postfix.
-        // pre_expr = parse_primary();
-        return parse_primary();
+        pre_expr = parse_primary();
+        // return parse_primary();
     }
 
     while(true)
@@ -1188,7 +1250,8 @@ std::unique_ptr<Expression> Parser::parse_postfix(
             // Parse arguments
             while(!check(TokenID::RPAREN))
             {
-                full_expr->args.push_back(parse_expression());
+                full_expr->args.push_back(parse_expression(
+                    {TokenID::COMMA, TokenID::RPAREN}));
 
                 // Trailing comma
                 if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
@@ -1219,7 +1282,13 @@ std::unique_ptr<Expression> Parser::parse_postfix(
             full_expr->base_expr = std::move(pre_expr);
 
             // Get the expression for the index. 
-            full_expr->index_expr = parse_expression();
+            full_expr->index_expr = parse_expression({TokenID::RBRACKET});
+
+            // while(!consume_if(TokenID::RBRACKET))
+            // {
+            //     full_expr->index_expr = parse_assignment(
+            //         std::move(full_expr->index_expr));
+            // }
 
             expect(TokenID::RBRACKET);
         
@@ -1400,7 +1469,7 @@ std::unique_ptr<Expression> Parser::parse_primary()
         std::cerr << "Shouldn't make it here\n";
         exit(1);
 
-        auto ptr = parse_expression();
+        auto ptr = parse_expression({TokenID::RPAREN});
         expect(TokenID::RPAREN);
 
         return ptr;
@@ -1425,8 +1494,9 @@ std::unique_ptr<Expression> Parser::parse_primary()
         return ptr;
     }
 
-    print_error_location(start_line, start_col);
-    std::cerr << " -> Invalid expression\n";
+    print_error_location(start_line, start_col);    
+    std::cerr << " -> Invalid expression, got unexpected token: \n" << 
+        peek() << '\n';
     exit(1);    
 }
 
@@ -1456,8 +1526,8 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
             reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
         }
 
-        // The identifier is not a type symbol, so this can't be a type.
-        if(defined_types.find(*(--reint_ptr->ident_path.end())) 
+        // If the identifier is not a type symbol, this can't be a type.
+        if(defined_types.find(reint_ptr->ident_path.back()) 
             == defined_types.end())
         {
             if(error_on_invalid)
@@ -1483,7 +1553,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
 
         reint_ptr->points_to_mutable = consume_if(TokenID::KW_MUT);
 
-        auto pointee = parse_type_decl_recurse();
+        auto pointee = parse_type_decl_recurse(error_on_invalid);
 
         if(pointee == nullptr) return nullptr;
 
@@ -1499,7 +1569,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
 
         reint_ptr->ref_to_mutable = consume_if(TokenID::KW_MUT);
 
-        auto pointee = parse_type_decl_recurse();
+        auto pointee = parse_type_decl_recurse(error_on_invalid);
 
         if(pointee == nullptr) return nullptr;
 
@@ -1590,7 +1660,8 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(
 
     while(consume_if(TokenID::LBRACKET))
     {
-        arr_decl->size_exprs.push_back(std::move(parse_expression()));
+        arr_decl->size_exprs.push_back(std::move(parse_expression(
+            {TokenID::RBRACKET})));
         ++arr_decl->depth;
         expect(TokenID::RBRACKET);
     }
@@ -1614,7 +1685,7 @@ std::unique_ptr<FieldDecl> Parser::parse_field(bool is_pub)
     // This field has an init expression
     if(consume_if(TokenID::ASSIGN))
     {
-        ptr->init_expr = parse_expression();
+        ptr->init_expr = parse_expression({TokenID::SEMICOLON});
     }
 
     expect(TokenID::SEMICOLON);

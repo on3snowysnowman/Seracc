@@ -1,20 +1,14 @@
 
-// type struct Structy
-// {
-//     num: int;
-// }
-
-
-// fn func(obj: ref Structy) -> void
-// {
-//     ret;
-// }
-
 export fn main() -> int
 {
-    // let t0: int = 1++;
+    // (*table[idx++].handler)(ctx, argv[i--]->value) + ++(*table[idx].handler);
+    
+    // result = 1;
+    // result = (*table[idx++].handler)(ctx, argv[i--]->value);
+    // matrix[row++][col--] = (*callbacks[k++])(x->y.z, arr[--n]);
+    
+    while ((*p++ = q->buf[i--]) != '\0') {}
 
-    let t0: int = 1 // Fix infinite while
-
-    ret 0;
+    // node = root->children[i++].next->payload[j--].owner;
+    // ret (*factory(types))->vtable->methods[op++](self, args--);
 }

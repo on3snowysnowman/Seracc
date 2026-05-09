@@ -3,6 +3,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <initializer_list>
 
 #include "Program.hpp"
 #include "Token.hpp"
@@ -64,7 +65,8 @@ private:
 
     std::unique_ptr<Expression> parse_arr_init();
     std::unique_ptr<Expression> parse_struct_init();
-    std::unique_ptr<Expression> parse_expression();
+    std::unique_ptr<Expression> parse_expression(
+        std::initializer_list<TokenID> delimeters);
     std::unique_ptr<Expression> parse_assignment(
         std::unique_ptr<Expression> pre_expr);
     std::unique_ptr<Expression> parse_log_or(
@@ -85,7 +87,7 @@ private:
         std::unique_ptr<Expression> pre_expr);
     std::unique_ptr<Expression> parse_primary();
 
-    std::unique_ptr<TypeDecl> parse_type_decl_recurse(bool error_on_invalid = true);
+    std::unique_ptr<TypeDecl> parse_type_decl_recurse(bool error_on_invalid);
     // If error_on_invalid is false, returns nullptr instead of crashing.
     std::unique_ptr<TypeDecl> parse_type_decl(
         bool error_on_invalid = true);

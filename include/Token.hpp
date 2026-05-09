@@ -174,6 +174,12 @@ const char * const tokID_readable[]
     "SHIFT_RIGHT"
 };
 
+static inline std::ostream& operator<<(std::ostream &os, TokenID id)
+{
+    os << tokID_readable[static_cast<int>(id)];
+    return os;
+}
+
 const std::unordered_map<std::string, TokenID> rdbl_kw_to_id
 {
     {"fn", TokenID::KW_FN},
