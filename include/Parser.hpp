@@ -3,7 +3,6 @@
 #pragma once
 
 #include <unordered_map>
-#include <initializer_list>
 
 #include "Program.hpp"
 #include "Token.hpp"
@@ -65,27 +64,44 @@ private:
 
     std::unique_ptr<Expression> parse_arr_init();
     std::unique_ptr<Expression> parse_struct_init();
-    std::unique_ptr<Expression> parse_expression(
-        std::initializer_list<TokenID> delimeters);
-    std::unique_ptr<Expression> parse_assignment(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_log_or(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_log_and(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_equality(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_relational(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_additive(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_multiplicative(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_unary(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_postfix(
-        std::unique_ptr<Expression> pre_expr);
-    std::unique_ptr<Expression> parse_primary();
+
+    std::unique_ptr<Expression> parse_expression(uint32_t min_prec = 0);
+    std::unique_ptr<Expression> pratt_parse(
+        std::unique_ptr<Expression> lhs, uint32_t min_prec);
+    std::unique_ptr<Expression> parse_infix(
+        std::unique_ptr<Expression> lhs, uint32_t min_rhs_prec);
+    std::unique_ptr<Expression> parse_func_call(
+        std::unique_ptr<Expression> lhs);
+    std::unique_ptr<Expression> parse_arr_sub(
+        std::unique_ptr<Expression> lhs);
+    std::unique_ptr<Expression> parse_member_access(
+        std::unique_ptr<Expression> lhs);
+    std::unique_ptr<Expression> parse_post_inc_dec(
+        std::unique_ptr<Expression> lhs);
+    std::unique_ptr<Expression> parse_prefix();
+    std::unique_ptr<Expression> parse_paren_or_cast();
+
+    // std::unique_ptr<Expression> parse_expression(
+    //     std::initializer_list<TokenID> delimeters);
+    // std::unique_ptr<Expression> parse_assignment(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_log_or(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_log_and(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_equality(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_relational(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_additive(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_multiplicative(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_unary(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_postfix(
+    //     std::unique_ptr<Expression> pre_expr);
+    // std::unique_ptr<Expression> parse_primary();
 
     std::unique_ptr<TypeDecl> parse_type_decl_recurse(bool error_on_invalid);
     // If error_on_invalid is false, returns nullptr instead of crashing.

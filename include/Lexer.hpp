@@ -41,8 +41,8 @@ private:
 
     bool at_eof() const;
 
-    void print_error_location();
-    void handle_invalid_char(char c);
+    void print_error_location(uint32_t line, uint32_t col);
+    void handle_invalid_char(char c, uint32_t line, uint32_t col);
     void handle_unexpected_eof();
     
     void skip_till_newline();

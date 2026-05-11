@@ -169,7 +169,7 @@ static void print_param(const Parameter &param, int tab_depth)
     handle_newline(tab_depth); 
     std::cout << "Binding Mutable: " << param.is_binding_mutable;
     handle_newline(tab_depth);
-    std::cout << "Unqual noied: " << param.is_unqual_param;
+    std::cout << "Unqual param: " << param.is_unqual_param;
     handle_newline(tab_depth);
     std::cout << "Passed by copy: " << param.passed_by_copy;
     handle_newline(tab_depth);
@@ -551,6 +551,38 @@ static void print_memb_acc_expr(const MemberAccExpr * const ptr,
     std::cout << "Member Name: " << ptr->member_name << '\n';
 }
  
+static void print_ternary_expr(const TernaryExpr * const ptr,
+    int tab_depth)
+{
+    handle_tab_print(tab_depth);
+    std::cout << "Line: " << ptr->line;
+    handle_newline(tab_depth);
+    std::cout << "Col: " << ptr->col;
+    handle_newline(tab_depth);
+    std::cout << "Ternary Expression:";
+    handle_newline(tab_depth);
+    std::cout << "Condition Expression:";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->condition.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}";
+    handle_newline(tab_depth);
+    std::cout << "On True Expression";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->on_true_expr.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}";
+    handle_newline(tab_depth);
+    std::cout << "On False Expression";
+    handle_newline(tab_depth);
+    std::cout << "{\n";
+    print_expression(ptr->on_false_expr.get(), tab_depth + 1);
+    handle_tab_print(tab_depth);
+    std::cout << "}\n";
+}   
+
 static void print_expression(const Expression * const ptr, int tab_depth)
 {
     switch(ptr->exp_type)
@@ -647,6 +679,11 @@ static void print_expression(const Expression * const ptr, int tab_depth)
                 tab_depth);
             break;
 
+        case ExpressionType::TERNARY:
+
+            print_ternary_expr(static_cast<const TernaryExpr*>(ptr), tab_depth);
+            break;
+
         default:
 
             std::cout << "No printing for this expression\n";
@@ -697,7 +734,12 @@ static void print_ret_decl(const RetStmt * const ptr, int tab_depth)
     handle_newline(tab_depth);
     std::cout << "Expression:";
     handle_newline(tab_depth);
-    std::cout << "{\n";
+    if(ptr->ret_expr == nullptr) 
+    {
+        std::cout << '\n';
+        return;
+    }
+        std::cout << "{\n";
     print_expression(ptr->ret_expr.get(), tab_depth + 1);
     handle_tab_print(tab_depth);
     std::cout << "}\n";

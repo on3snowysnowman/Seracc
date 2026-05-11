@@ -583,6 +583,54 @@ enum class StatementType
     BLOCK
 };
 
+static inline std::ostream& operator<<(std::ostream &os, StatementType type)
+{
+    switch(type)
+    {
+        case StatementType::BLOCK:
+            os << "BLOCK";
+            break;
+        
+        case StatementType::COMPONENT_DECL:
+            os << "COMPONENT_DECL";
+            break;
+
+        case StatementType::EXPR:
+            os << "EXPR";
+            break;
+
+        case StatementType::FOR:
+            os << "FOR";
+            break;
+
+        case StatementType::IF:
+            os << "IF";
+            break;
+
+        case StatementType::INVALID:
+            os << "INVALID";
+            break;
+
+        case StatementType::RETURN:
+            os << "RETURN";
+            break;
+
+        case StatementType::STRUCT_DECL:
+            os << "STRUCT_DECL";
+            break;
+
+        case StatementType::VAR_DECL:
+            os << "VAR_DECL";
+            break;
+
+        case StatementType::WHILE:
+            os << "WHILE";
+            break;
+    }
+
+    return os;
+}
+
 struct Statement
 {
     uint32_t line = 0;
@@ -772,10 +820,9 @@ struct Parameter
     bool is_binding_mutable = false;
     bool passed_by_copy = false;
     std::unique_ptr<TypeDecl> type_decl;
-    std::optional<uint64_t> symbol_idx; // Idx of the parameter variable, not
-                                        // type symbol
+    std::optional<uint64_t> symbol_idx;
 
-    Parameter() {}
+    Parameter() = default;
 
     Parameter(const Parameter &other)
     {
@@ -785,25 +832,28 @@ struct Parameter
         is_unqual_param = other.is_unqual_param;
         is_binding_mutable = other.is_binding_mutable;
         passed_by_copy = other.passed_by_copy;
-        type_decl = other.type_decl->clone();
+        type_decl = other.type_decl ? other.type_decl->clone() : nullptr;
         symbol_idx = other.symbol_idx;
     }
 
     Parameter& operator=(const Parameter &other)
     {
+        if (this == &other) return *this;
+
         line = other.line;
         col = other.col;
         name = other.name;
         is_unqual_param = other.is_unqual_param;
         is_binding_mutable = other.is_binding_mutable;
         passed_by_copy = other.passed_by_copy;
-        type_decl = other.type_decl->clone();
+        type_decl = other.type_decl ? other.type_decl->clone() : nullptr;
         symbol_idx = other.symbol_idx;
 
         return *this;
     }
 
-    
+    Parameter(Parameter&&) noexcept = default;
+    Parameter& operator=(Parameter&&) noexcept = default;
 };
 
 struct FuncPtrDecl : TypeDecl
@@ -834,6 +884,38 @@ enum class DeclKind
     FUNCTION,
     COMPONENT
 };
+
+static inline std::ostream& operator<<(std::ostream &os, DeclKind kind)
+{
+    switch(kind)
+    {
+        case DeclKind::INVALID:
+            os << "INVALID";
+            break;
+
+        case DeclKind::FIELD:
+            os << "FIELD";
+            break;
+
+        case DeclKind::MODULE:
+            os << "MODULE";
+            break;
+
+        case DeclKind::STRUCT:
+            os << "STRUCT";
+            break;
+
+        case DeclKind::FUNCTION:
+            os << "FUNCTION";
+            break;
+
+        case DeclKind::COMPONENT:
+            os << "COMPONENT";
+            break;
+    }
+
+    return os;
+}
 
 struct Declaration
 {

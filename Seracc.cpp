@@ -19,9 +19,8 @@ int main(int argc, char **argv)
 
     const char *in_file_path = argv[1];
 
-    print_parse_results(in_file_path);
-
-    exit(0);
+    // print_parse_results(in_file_path);
+    // exit(0);
 
     Parser parser;
     Program prog = parser.parse(in_file_path);
@@ -35,5 +34,5 @@ int main(int argc, char **argv)
     TypeChecker checker;
     checker.type_check(prog, symbol_table);
 
-    return EXIT_SUCCESS;
+    return 0;
 }

@@ -387,10 +387,16 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
         }
 
         case ExpressionType::TERNARY:
+        {   
+            TernaryExpr * const reint_ptr = 
+                static_cast<TernaryExpr*>(ptr);
 
-            std::cerr << "Symbol resolver doesn't support Ternary yet.\n";
-            exit(1);
+            resolve_expression(reint_ptr->condition.get(), scope_idx);
+            resolve_expression(reint_ptr->on_true_expr.get(), scope_idx);
+            resolve_expression(reint_ptr->on_false_expr.get(), scope_idx);
 
+            break;
+        }
        
         case ExpressionType::UNARY:
         {

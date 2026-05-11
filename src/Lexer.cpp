@@ -53,14 +53,14 @@ std::vector<Token> Lexer::lex(const char *in_file_path)
 
 bool Lexer::at_eof() const { return current_idx >= source.size(); }
 
-void Lexer::print_error_location()
+void Lexer::print_error_location(uint32_t line, uint32_t col)
 {
-    std::cerr << file_being_parsed << ":" << current_line << ":" << current_col;
+    std::cerr << file_being_parsed << ":" << line << ":" << col;
 }
 
-void Lexer::handle_invalid_char(char c)
+void Lexer::handle_invalid_char(char c, uint32_t line, uint32_t col)
 {
-    print_error_location();
+    print_error_location(line, col);
     std::cerr << " -> Invalid character: " << c << '\n';
     exit(1);
 }
@@ -150,6 +150,9 @@ void Lexer::parse_int_or_flt_literal(Token &t)
 {
     t.id = TokenID::INT_LITERAL; // Default to int literal
 
+    const uint32_t line = t.line;
+    const uint32_t col = t.col;
+
     // Wether a dot has been found in the literal.
     bool dot_found = false;
 
@@ -163,7 +166,7 @@ void Lexer::parse_int_or_flt_literal(Token &t)
             {
                 if(dot_found)
                 {
-                    handle_invalid_char(c);
+                    handle_invalid_char(c, line, col);
                 }
 
                 dot_found = true;
@@ -235,6 +238,9 @@ void Lexer::parse_str_literal(Token &t)
 {
     t.id = TokenID::STR_LITERAL;
 
+    const uint32_t line = t.line;
+    const uint32_t col = t.col;
+
     char c = peek();
 
     while(c != '\"') // c == "
@@ -258,7 +264,7 @@ void Lexer::parse_str_literal(Token &t)
 
         if(at_eof())
         {
-            print_error_location();
+            print_error_location(line, col);
             std::cerr << " -> Reached end of file while parsing string literal "
                 "starting on line: " << t.line << '\n';
             exit(1);
@@ -269,7 +275,7 @@ void Lexer::parse_str_literal(Token &t)
 
     if(c != '"')
     {
-        print_error_location();
+        print_error_location(line, col);
         std::cerr << " -> Missing closing double quote for string literal\n";
         exit(1);
     }
@@ -280,6 +286,9 @@ void Lexer::parse_str_literal(Token &t)
 void Lexer::parse_char_literal(Token &t)
 {
     t.id = TokenID::CHAR_LITERAL;
+
+    const uint32_t line = t.line;
+    const uint32_t col = t.col;
 
     char c = peek();
 
@@ -300,7 +309,7 @@ void Lexer::parse_char_literal(Token &t)
 
     if(c != '\'')
     {
-        print_error_location();
+        print_error_location(line, col);
         std::cerr << " -> Either too many characters in char literal or missing "
             "closing quote\n";
         exit(1);
@@ -311,6 +320,9 @@ void Lexer::parse_char_literal(Token &t)
 
 void Lexer::parse_non_ident_or_number(Token &t)
 {
+    const uint32_t line = t.line;
+    const uint32_t col = t.col;
+
     char c = advance(); 
 
     if(c == '-')
@@ -427,6 +439,20 @@ void Lexer::parse_non_ident_or_number(Token &t)
         return;
     }
 
+    else if(c == '^')
+    {
+        // Check for "^="
+        if(peek() == '=')
+        {
+            advance(); // Consume '='
+            t.id = TokenID::BIT_XOR_ASSIGN;
+            return;
+        }
+
+        t.id = TokenID::CARROT;
+        return;
+    }
+
     else if(c == '<')
     {
         // Check for "<="
@@ -441,6 +467,15 @@ void Lexer::parse_non_ident_or_number(Token &t)
         else if(peek() == '<')
         {
             advance(); // Consume '<'
+
+            // Check for "<<="
+            if(peek() == '=')
+            {
+                advance(); // Consume '='
+                t.id = TokenID::SHIFT_LEFT_ASSIGN;
+                return;
+            }
+
             t.id = TokenID::SHIFT_LEFT;
             return;
         }
@@ -459,10 +494,19 @@ void Lexer::parse_non_ident_or_number(Token &t)
             return;
         }
 
-        // Check for ">>""
+        // Check for ">>"
         else if(peek() == '>')
         {
             advance(); // Consume '>
+
+            // Check for :>>=
+            if(peek() == '=')
+            {
+                advance(); // Consume '='
+                t.id = TokenID::SHIFT_RIGHT_ASSIGN;
+                return;
+            }
+
             t.id = TokenID::SHIFT_RIGHT;
             return;
         }
@@ -481,6 +525,14 @@ void Lexer::parse_non_ident_or_number(Token &t)
             return;
         }
 
+        // Check for "&="
+        if(peek() == '=')
+        {
+            advance(); // Consume '&'
+            t.id = TokenID::BIT_AND_ASSIGN;
+            return;
+        }
+
         t.id = TokenID::AMPERSAND;
         return;
     }
@@ -492,6 +544,14 @@ void Lexer::parse_non_ident_or_number(Token &t)
         {
             advance(); // Consume '|'
             t.id = TokenID::LOGIC_OR;
+            return;
+        }
+
+        // Check for "|="
+        if(peek() == '=')
+        {
+            advance(); // Consume '='
+            t.id = TokenID::BIT_OR_ASSIGN;
             return;
         }
 
@@ -565,6 +625,11 @@ void Lexer::parse_non_ident_or_number(Token &t)
             t.id = TokenID::AT;
             break;
 
+        case '?':
+
+            t.id = TokenID::TERNARY;
+            break;
+
         case '\\':
 
             t.id = TokenID::BACK_SLASH;
@@ -577,7 +642,7 @@ void Lexer::parse_non_ident_or_number(Token &t)
 
         default:
 
-            handle_invalid_char(c); // exits 
+            handle_invalid_char(c, line, col); // exits 
     }
 }
 
@@ -700,3 +765,6 @@ Token Lexer::next_token()
     return t; 
 }
 
+
+// XOR BIT_AND_ASSIGN BIT_OR_ASSIGN BIT_XOR_ASSIGN SHIFT_LEFT_ASSIGN 
+// SHIFT_RIGHT_ASSIGN

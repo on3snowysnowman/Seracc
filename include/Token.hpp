@@ -60,9 +60,11 @@ enum class TokenID
     AT,
     AMPERSAND,
     TILDE,
+    CARROT,
 
     // Operators
     SCOPE_RESOLUTION,
+    TERNARY,
     ARROW,
     ASSIGN,
     PLUS,
@@ -76,6 +78,9 @@ enum class TokenID
     BACK_SLASH,
     MODULO,
     MODULO_ASSIGN,
+    BIT_AND_ASSIGN,
+    BIT_OR_ASSIGN,
+    BIT_XOR_ASSIGN,
     VERT_BAR,
     EQUAL_EQUAL,
     PLUS_PLUS,
@@ -88,7 +93,10 @@ enum class TokenID
     LOGIC_AND,
     LOGIC_OR,
     SHIFT_LEFT,
-    SHIFT_RIGHT
+    SHIFT_LEFT_ASSIGN,
+    SHIFT_RIGHT,
+    SHIFT_RIGHT_ASSIGN,
+    TOKEN_COUNT // Value used to determine enum size
 };
 
 const char * const tokID_readable[]
@@ -146,6 +154,7 @@ const char * const tokID_readable[]
 
     // Operators
     "SCOPE_RESOLUTION",
+    "TERNARY",
     "ARROW",
     "ASSIGN",
     "PLUS",
@@ -159,6 +168,9 @@ const char * const tokID_readable[]
     "BACK_SLASH",
     "MODULO",
     "MODULO_ASSIGN",
+    "BIT_AND_ASSIGN",
+    "BIT_OR_ASSIGN",
+    "BIT_XOR_ASSIGN",
     "VERT_BAR",
     "EQUAL_EQUAL",
     "PLUS_PLUS",
@@ -171,7 +183,9 @@ const char * const tokID_readable[]
     "LOGIC_AND",
     "LOGIC_OR",
     "SHIFT_LEFT",
-    "SHIFT_RIGHT"
+    "SHIFT_LEFT_ASSIGN",
+    "SHIFT_RIGHT",
+    "SHIFT_RIGHT_ASSIGN"
 };
 
 static inline std::ostream& operator<<(std::ostream &os, TokenID id)

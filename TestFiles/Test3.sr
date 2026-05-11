@@ -1,14 +1,11 @@
+// Test3.sr
+
+// type component Compony 
+// {
+//     pub fn (self: ref Compony) func() -> void {}
+// }
 
 export fn main() -> int
 {
-    // (*table[idx++].handler)(ctx, argv[i--]->value) + ++(*table[idx].handler);
-    
-    // result = 1;
-    // result = (*table[idx++].handler)(ctx, argv[i--]->value);
-    // matrix[row++][col--] = (*callbacks[k++])(x->y.z, arr[--n]);
-    
-    while ((*p++ = q->buf[i--]) != '\0') {}
-
-    // node = root->children[i++].next->payload[j--].owner;
-    // ret (*factory(types))->vtable->methods[op++](self, args--);
+    ret 0;
 }
