@@ -42,21 +42,22 @@ struct TypeDecl
     virtual std::unique_ptr<TypeDecl> clone() const = 0;
 };
 
-static void print_ident_path(const std::vector<std::string> &ident_path)
+static void print_ident_path(const std::vector<std::string> &ident_path,
+    std::ostream &os = std::cout)
 {
-    if(ident_path.size() == 0) return; 
+    if(ident_path.size() == 0) return;
 
     size_t i = 0;
 
     while(true)
     {
-        std::cout << ident_path.at(i);
+        os << ident_path.at(i);
 
         ++i;
 
         if(i >= ident_path.size()) break;
 
-        std::cout << "::";
+        os << "::";
     }
 }
 
@@ -735,13 +736,6 @@ struct NamedTypeDecl : TypeDecl
     {
         return std::make_unique<NamedTypeDecl>(*this);
     }
-};
-
-enum class BuiltinPtrType
-{
-    NULL_PTR,
-    OPAQUE_PTR,
-    CSTR_PTR
 };
 
 struct PtrTypeDecl : TypeDecl

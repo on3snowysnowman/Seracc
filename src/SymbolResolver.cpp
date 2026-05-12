@@ -352,7 +352,6 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
 
         case ExpressionType::IDENTIFIER:
         {
-
             IdentExpr * const reint_ptr = 
                 static_cast<IdentExpr*>(ptr);
 
@@ -411,108 +410,6 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
         default: break;
     }
 }
-
-// std::optional<uint64_t> SymbolResolver::symbol_idx_from_expr(
-//     const Expression * const ptr, uint64_t scope_idx)
-// {
-//     switch(ptr->exp_type)
-//     {
-//         case ExpressionType::BIN_LITERAL:
-//         {
-//             std::vector<std::string> temp_ident_path;
-//             temp_ident_path.push_back(BIN_LIT_IDENT);
-
-//             return find_symbol_idx(temp_ident_path, scope_idx, ptr->line, 
-//                 ptr->col);
-//         }
-
-//         case ExpressionType::BINARY:
-//         {
-//             const BinaryExpr * const reint_ptr =  
-//                 static_cast<const BinaryExpr*>(ptr);
-
-//             std::optional<uint64_t> lhs_symbol_idx = 
-//                 symbol_idx_from_expr(reint_ptr->lhs.get(), scope_idx);
-
-//             std::optional<uint64_t> rhs_symbol_idx = 
-//                 symbol_idx_from_expr(reint_ptr->rhs.get(), scope_idx);
-
-//             if(lhs_symbol_idx.has_value()) return lhs_symbol_idx.value();
-//             if(rhs_symbol_idx.has_value()) return rhs_symbol_idx.value();
-
-//             break;
-//         }
-
-//         // case ExpressionType::BOOL_LITERAL:
-
-//         //     break;
-
-//         // case ExpressionType::CALL:
-
-//         //     break;
-
-//         // case ExpressionType::CAST:
-
-//         //     break;
-
-//         // case ExpressionType::CHAR_LITERAL:
-
-//         //     break;
-
-//         // case ExpressionType::FLOAT_LITERAL:
-
-//         //     break;
-
-//         // case ExpressionType::HEX_LITERAL:
-
-//         //     break;
-
-//         // case ExpressionType::IDENTIFIER:
-
-//         //     break;
-
-//         // case ExpressionType::INT_LITERAL:
-
-//         //     break;
-
-//         // case ExpressionType::MEMBER_ACCESS:
-
-//         //     break;
-
-//         // case ExpressionType::NULLPTR_LITERAL:
-
-//         //     break;
-
-//         // case ExpressionType::STR_LITERAL:
-
-//         //     break;
-
-//         // case ExpressionType::STRUCT_INIT:
-
-//         //     break;
-
-//         // case ExpressionType::SUBSCRIPT:
-
-//         //     break;
-
-//         // case ExpressionType::TERNARY:
-
-//         //     break;
-
-//         // case ExpressionType::UNARY:
-
-//         //     break;
-
-//         default:
-
-//             std::cerr << parsed_file << ':' << ptr->line << ':' << ptr->col << 
-//                 " -> Attempted to get index of symbol of expression result, but"
-//                 " this expression does not return a type.\n";
-//             exit(1);
-//     }
-
-//     return {};
-// }
 
 uint64_t SymbolResolver::find_symbol_idx(
     const std::vector<std::string> &ident_path, uint64_t scope_idx, 

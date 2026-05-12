@@ -7,5 +7,9 @@
 
 export fn main() -> int
 {
+    let t0: int;
+
+    let num: Structy = t0;
+
     ret 0;
 }

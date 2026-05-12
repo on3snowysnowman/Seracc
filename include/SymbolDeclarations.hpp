@@ -8,6 +8,7 @@
 #include <string>
 #include <memory>
 #include <cstdint>
+#include <unordered_set>
 
 #include "ASTDeclarations.hpp"
 #include "SeracBuiltins.hpp"
@@ -171,4 +172,5 @@ struct SymbolTable
     std::vector<std::unique_ptr<Symbol>> symbols;
     std::vector<Scope> scopes;
     std::unordered_map<std::string, uint64_t> builtin_to_id;
+    std::unordered_set<uint64_t> type_symbol_ids;
 };

@@ -25,6 +25,7 @@ SymbolTable SymbolTBlder::build(Program &p)
     st.symbols = std::move(symbols);
     st.scopes = std::move(scopes);
     st.builtin_to_id = std::move(builtin_to_symbol_id);
+    st.type_symbol_ids = std::move(type_symbol_ids);
 
     parsed_file = nullptr;
 
@@ -102,6 +103,7 @@ void SymbolTBlder::add_builtin_symbol(uint64_t global_scope_idx,
 {
     uint64_t symbol_idx = get_next_symbol_idx();
     builtin_to_symbol_id.emplace(symbol_name, symbol_idx);
+    type_symbol_ids.emplace(symbol_idx);
     symbols.at(symbol_idx) = std::make_unique<BuiltinSymbol>();
     static_cast<BuiltinSymbol*>(symbols.at(symbol_idx).get())->b_type =
         b_type;
@@ -354,6 +356,8 @@ void SymbolTBlder::build_struct(StructDecl * const ptr,
 
     ptr->symbol_idx = symbol_idx;
 
+    type_symbol_ids.emplace(symbol_idx);
+
     symbols.at(symbol_idx) = std::make_unique<StructSymbol>();
 
     StructSymbol * const type_ptr = 
@@ -480,6 +484,8 @@ void SymbolTBlder::build_component(ComponentDecl * const ptr,
     uint64_t scope_idx = get_next_scope_idx(SymbolType::COMPONENT);
 
     ptr->symbol_idx = symbol_idx;
+
+    type_symbol_ids.emplace(symbol_idx);
 
     symbols.at(symbol_idx) = std::make_unique<ComponentSymbol>();
 

@@ -36,6 +36,8 @@ private:
     // Readable builtins to their constructed symbol id.
     std::unordered_map<std::string, uint64_t> builtin_to_symbol_id;
 
+    std::unordered_set<uint64_t> type_symbol_ids;
+
 
     // Methods
 

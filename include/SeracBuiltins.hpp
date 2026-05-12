@@ -2,13 +2,13 @@
 
 #pragma once
 
-#include <array>
 #include <vector>
+#include <iostream>
 
-static const char * const INT_LIT_IDENT = "INT_LIT";
-static const char * const BIN_LIT_IDENT = "BIN_LIT";
-static const char * const HEX_LIT_IDENT = "HEX_LIT";
-static const char * const FLOAT_LIT_IDENT = "FLOAT_LIT";
+// static const char * const INT_LIT_IDENT = "INT_LIT";
+// static const char * const BIN_LIT_IDENT = "BIN_LIT";
+// static const char * const HEX_LIT_IDENT = "HEX_LIT";
+// static const char * const FLOAT_LIT_IDENT = "FLOAT_LIT";
 
 enum class BuiltinType
 {
@@ -21,16 +21,77 @@ enum class BuiltinType
     U64,
     I64,
     BOOL,
-    // NULLPTR,
-    OPAQUE,
     VOID,
     FLOAT,
     DOUBLE,
-    // INT_LIT,
-    // BIN_LIT,
-    // HEX_LIT,
-    // FLOAT_LIT, 
     INVALID
+};
+
+static inline std::ostream& operator<<(std::ostream &os, BuiltinType type)
+{
+    switch(type)
+    {
+        case BuiltinType::U8:
+            os << "U8";
+            break;
+        
+        case BuiltinType::I8:
+            os << "I8";
+            break;
+
+        case BuiltinType::U16:
+            os << "U16";
+            break;
+
+        case BuiltinType::I16:
+            os << "I16";
+            break;
+
+        case BuiltinType::U32:
+            os << "U32";
+            break;
+
+        case BuiltinType::I32:
+            os << "I32";
+            break;
+
+        case BuiltinType::U64:
+            os << "U64";
+            break;
+
+        case BuiltinType::I64:
+            os << "I64";
+            break;
+
+        case BuiltinType::BOOL:
+            os << "BOOL";
+            break;
+
+        case BuiltinType::VOID:
+            os << "VOID";
+            break;
+
+        case BuiltinType::FLOAT:
+            os << "FLOAT";
+            break;
+
+        case BuiltinType::DOUBLE:
+            os << "DOUBLE";
+            break;
+
+        case BuiltinType::INVALID:
+            os << "INVALID";
+            break;
+    }
+
+    return os;
+}
+
+enum class BuiltinPtrType
+{
+    NULL_PTR,
+    OPAQUE_PTR,
+    CSTR_PTR
 };
 
 const std::vector<std::pair<const char * const, BuiltinType>> 
@@ -48,7 +109,7 @@ const std::vector<std::pair<const char * const, BuiltinType>>
     {"i64", BuiltinType::I64},
     {"bool", BuiltinType::BOOL},
     // {"nullptr", BuiltinType::NULLPTR},
-    {"opaque", BuiltinType::OPAQUE},
+    // {"opaque", BuiltinType::OPAQUE},
     {"void", BuiltinType::VOID},
     {"float", BuiltinType::FLOAT},
     {"double", BuiltinType::DOUBLE},
