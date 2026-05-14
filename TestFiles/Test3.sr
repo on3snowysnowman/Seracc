@@ -1,15 +1,9 @@
 // Test3.sr
 
-// type component Compony 
-// {
-//     pub fn (self: ref Compony) func() -> void {}
-// }
 
-export fn main() -> int
+export fn main() -> void
 {
-    let t0: int;
+    let arr: int[1];
 
-    let num: Structy = t0;
-
-    ret 0;
+    ret;
 }

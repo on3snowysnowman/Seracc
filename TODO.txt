@@ -1,4 +1,2 @@
 
-Don't allow component receiver functions to access member variables by external 
-    scope search 
-
+Add in place struct construction " Structy{.id = 1, .on = true} " for expressions

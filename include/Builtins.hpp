@@ -1,14 +1,9 @@
-// SeracBuiltins.hpp
+// Builtins.hpp
 
 #pragma once
 
 #include <vector>
 #include <iostream>
-
-// static const char * const INT_LIT_IDENT = "INT_LIT";
-// static const char * const BIN_LIT_IDENT = "BIN_LIT";
-// static const char * const HEX_LIT_IDENT = "HEX_LIT";
-// static const char * const FLOAT_LIT_IDENT = "FLOAT_LIT";
 
 enum class BuiltinType
 {
@@ -108,13 +103,7 @@ const std::vector<std::pair<const char * const, BuiltinType>>
     {"u64", BuiltinType::U64},
     {"i64", BuiltinType::I64},
     {"bool", BuiltinType::BOOL},
-    // {"nullptr", BuiltinType::NULLPTR},
-    // {"opaque", BuiltinType::OPAQUE},
     {"void", BuiltinType::VOID},
     {"float", BuiltinType::FLOAT},
     {"double", BuiltinType::DOUBLE},
-    // {INT_LIT_IDENT, BuiltinType::INT_LIT},
-    // {BIN_LIT_IDENT, BuiltinType::BIN_LIT},
-    // {HEX_LIT_IDENT, BuiltinType::HEX_LIT},
-    // {FLOAT_LIT_IDENT, BuiltinType::FLOAT_LIT}
 };

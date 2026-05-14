@@ -14,21 +14,26 @@ SymbolResolver::SymbolResolver() {}
 
 void SymbolResolver::resolve(Program &p, const SymbolTable &s_table)
 {
-    s_table_ptr = &s_table;
+    this->s_table = &s_table;
     parsed_file = p.source_file_name;
        
     resolve_module(p.ast.get());
 
-    s_table_ptr = nullptr;
+    this->s_table = nullptr;
     parsed_file = nullptr;
 }
 
 
 // Private
 
+void SymbolResolver::print_error_location(uint32_t line, uint32_t col) const
+{
+    std::cout << parsed_file << ':' << line << ':' << col;
+}
+
 void SymbolResolver::resolve_module(ModuleDecl * const ptr)
 {
-    uint64_t scope_idx = static_cast<ModuleSymbol*>(s_table_ptr->symbols.at(
+    uint64_t scope_idx = static_cast<ModuleSymbol*>(s_table->symbols.at(
         ptr->symbol_idx.value()).get())->scope_idx.value();
 
     for(const std::unique_ptr<Declaration> &ptr: ptr->decls)
@@ -63,7 +68,7 @@ void SymbolResolver::resolve_module(ModuleDecl * const ptr)
 
             default:
 
-                std::cerr << "Invalid declaration type found for declaration."
+                std::cout << "Invalid declaration type found for declaration."
                     "\n";
                 exit(1); 
         }
@@ -73,14 +78,14 @@ void SymbolResolver::resolve_module(ModuleDecl * const ptr)
 void SymbolResolver::resolve_field(FieldDecl * const ptr)
 {
     Symbol * const symbol_ptr = 
-        s_table_ptr->symbols.at(ptr->symbol_idx.value()).get();
+        s_table->symbols.at(ptr->symbol_idx.value()).get();
 
     resolve_type_decl(ptr->type_decl.get(), symbol_ptr->scope_idx.value());
 }
 
 void SymbolResolver::resolve_struct(StructDecl * const ptr)
 {
-    uint64_t scope_idx = static_cast<StructSymbol*>(s_table_ptr->symbols.at(
+    uint64_t scope_idx = static_cast<StructSymbol*>(s_table->symbols.at(
         ptr->symbol_idx.value()).get())->scope_idx.value();
 
     for(const auto &decl: ptr->decls)
@@ -103,7 +108,7 @@ void SymbolResolver::resolve_function(FunctionDecl * const ptr,
 
 void SymbolResolver::resolve_component(ComponentDecl * const ptr)
 {
-    uint64_t scope_idx = static_cast<ComponentSymbol*>(s_table_ptr->symbols.at(
+    uint64_t scope_idx = static_cast<ComponentSymbol*>(s_table->symbols.at(
         ptr->symbol_idx.value()).get())->scope_idx.value();
 
     for(const auto &decl: ptr->decls)
@@ -121,8 +126,8 @@ void SymbolResolver::resolve_type_decl(TypeDecl * const ptr,
                 static_cast<NamedTypeDecl*>(ptr);
 
             reint_ptr->resolved_symbol_idx = 
-                find_symbol_idx(reint_ptr->ident_path, scope_idx, ptr->line,
-                ptr->col);
+                find_symbol_idx(reint_ptr->ident_path, scope_idx, 
+                    ptr->line, ptr->col);
 
             break;
         }
@@ -151,7 +156,7 @@ void SymbolResolver::resolve_type_decl(TypeDecl * const ptr,
 
         default:
 
-            std::cerr << "SymbolResolver::resolve_type_decl() -> Invalid "
+            std::cout << "SymbolResolver::resolve_type_decl() -> Invalid "
                 "TypeKind for type declaration: "
                 << parsed_file << ':' << ptr->line << ':' << ptr->col << "\n";
             exit(1);
@@ -191,7 +196,7 @@ void SymbolResolver::resolve_declaration(Declaration * const ptr,
 
         default:
 
-            std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col << 
+            std::cout << parsed_file << ":" << ptr->line << ":" << ptr->col << 
                 " -> Invalid type for declaration.\n";
             exit(1);
             break;
@@ -293,7 +298,7 @@ void SymbolResolver::resolve_statement(Statement * const ptr,
 
         default:
 
-            std::cerr << parsed_file << ":" << ptr->line << ":" << ptr->col <<
+            std::cout << parsed_file << ":" << ptr->line << ":" << ptr->col <<
                 " -> Invalid statement type.\n";
             exit(1);
             break;
@@ -356,8 +361,8 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
                 static_cast<IdentExpr*>(ptr);
 
             reint_ptr->resolved_symbol_idx = 
-                find_symbol_idx(reint_ptr->ident_path, scope_idx, reint_ptr->line,
-                    reint_ptr->col);
+                find_symbol_idx(reint_ptr->ident_path, scope_idx, 
+                    reint_ptr->line, reint_ptr->col);
             break;
         }
 
@@ -367,10 +372,16 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
                 static_cast<MemberAccExpr*>(ptr);
 
             resolve_expression(reint_ptr->base_expr.get(), scope_idx);
+            break;
+        }
 
-            // reint_ptr->resolved_symbol_idx = 
-            //     find_symbol_idx(reint_ptr->member_name, scope_idx,
-            //     reint_ptr->line, reint_ptr->col);
+        case ExpressionType::STRUCT_CREATE:
+        {
+            StructCreateExpr * const reint_ptr = 
+                static_cast<StructCreateExpr*>(ptr);
+
+            resolve_expression(reint_ptr->lhs.get(), scope_idx);
+            resolve_expression(reint_ptr->create_expr.get(), scope_idx);
             break;
         }
 
@@ -411,13 +422,116 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
     }
 }
 
+std::pair<uint32_t, uint32_t> SymbolResolver::get_symbol_pos(
+    const Symbol *ptr) const
+{
+    switch(ptr->sym_type)
+    {
+        case SymbolType::BUILTIN:
+
+            return {0, 0};
+
+        case SymbolType::STRUCT:
+        {
+            const StructSymbol *reint_ptr = 
+                static_cast<const StructSymbol*>(ptr);
+
+            return 
+            {
+                reint_ptr->ast_node_ptr->line,
+                reint_ptr->ast_node_ptr->col
+            };
+        }
+
+        case SymbolType::COMPONENT:
+        {
+            const ComponentSymbol *reint_ptr = 
+                static_cast<const ComponentSymbol*>(ptr);
+
+            return
+            {
+                reint_ptr->ast_node_ptr->line,
+                reint_ptr->ast_node_ptr->col
+            };
+
+        }
+
+        case SymbolType::FN:
+        {
+            const FunctionSymbol *reint_ptr = 
+                static_cast<const FunctionSymbol*>(ptr);
+
+            return
+            {
+                reint_ptr->ast_node_ptr->line,
+                reint_ptr->ast_node_ptr->col
+            };
+        }
+
+        case SymbolType::VAR:
+        {
+            const VarSymbol *reint_ptr = 
+                static_cast<const VarSymbol*>(ptr);
+
+            return 
+            {
+                reint_ptr->ast_node_ptr->line,
+                reint_ptr->ast_node_ptr->col
+            };
+        }
+
+        case SymbolType::PARAM:
+        {
+            const ParamSymbol *reint_ptr = 
+                static_cast<const ParamSymbol*>(ptr);
+
+            return 
+            {
+                reint_ptr->ast_node_ptr->line,
+                reint_ptr->ast_node_ptr->col
+            };
+        }
+
+        case SymbolType::MODULE:
+        {
+            std::cout << "Can't find symbol position of a Module symbol\n";
+            exit(1);
+
+            // const ModuleSymbol *reint_ptr = 
+            //     static_cast<const ModuleSymbol*>(ptr);
+
+            // return
+            // {
+            //     reint_ptr->as_node
+            // }
+        }
+
+        case SymbolType::FIELD:
+        {
+            const FieldSymbol *reint_ptr = 
+                static_cast<const FieldSymbol*>(ptr);
+
+            return 
+            {
+                reint_ptr->ast_node_ptr->line,
+                reint_ptr->ast_node_ptr->col
+            };
+        }
+
+        default:
+
+            std::cout << "Attempted to find position of Symbol, but failed.\n";
+            exit(1);
+    }
+}
+
 uint64_t SymbolResolver::find_symbol_idx(
     const std::vector<std::string> &ident_path, uint64_t scope_idx, 
     uint32_t symbol_line, uint32_t symbol_col)
-{ 
+{
     if(ident_path.size() == 0)
-    {
-        std::cerr << "Passed an ident path of size 0 to find_symboL_idx.\n";
+    { 
+        std::cout << "Passed an ident path of size 0 to find_symboL_idx.\n";
         exit(1);
     }
 
@@ -425,8 +539,16 @@ uint64_t SymbolResolver::find_symbol_idx(
     // until we've searched the global scope.
     if(ident_path.size() == 1)
     {   
-        const Scope *parsed_scope = &s_table_ptr->scopes.at(scope_idx);
-    
+        const Scope *parsed_scope = &s_table->scopes.at(scope_idx);
+
+        // bool worry_about_use_before_decl = inside_body;
+        
+        // We want to worry about use before declaration if the symbol we're 
+        // searching for starts inside a function body.
+        bool catch_use_before_decl =
+            parsed_scope->owning_symbol_type == SymbolType::FN || 
+            parsed_scope->owning_symbol_type == SymbolType::SCOPE;
+
         while(true)
         {
             // We don't want to search Component fields, just skip it.
@@ -434,8 +556,40 @@ uint64_t SymbolResolver::find_symbol_idx(
             {
                 for(const auto &elem: parsed_scope->sym_name_to_symbol_idx)
                 {
-                    // Identifier match.
-                    if(elem.first == ident_path[0]) return elem.second;
+                    // If identifier doesn't match.
+                    if(elem.first != ident_path[0]) continue; 
+                    
+                    // Identifier matches. If we're inside a body, make sure 
+                    // that the found identifier is placed ABOVE where we are
+                    // attempting to find it, so things like 
+                    // 
+                    // t0 = 3
+                    // let t0: int;
+                    // 
+                    // fail to compile. (Use before declaration)
+
+                    // We are not worried about use before declaration.
+                    if(!catch_use_before_decl) return elem.second;
+
+                    // Get the symbol of the identifier match we've just found.
+                    const Symbol *found_sym = 
+                        s_table->symbols.at(elem.second).get();
+
+                    std::pair<uint32_t, uint32_t> found_sym_pos = 
+                        get_symbol_pos(found_sym);
+
+                    if(found_sym_pos.first > symbol_line || 
+                        (found_sym_pos.first == symbol_line && 
+                        found_sym_pos.second > symbol_col))
+                    {
+                        print_error_location(symbol_line, symbol_col);
+                        std::cout << " -> Symbol: \"";
+                        print_ident_path(ident_path, std::cout);
+                        std::cout << "\" used before declaration.\n";
+                        exit(1);
+                    }
+
+                    return elem.second;
                 }
             }
 
@@ -443,22 +597,32 @@ uint64_t SymbolResolver::find_symbol_idx(
             // symbol.
             if(!parsed_scope->parent_scope_idx)
             {
-                std::cerr << parsed_file << ":" << symbol_line << ":" << 
+                std::cout << parsed_file << ":" << symbol_line << ":" << 
                 symbol_col << " -> Undefined symbol: " << ident_path[0] << '\n';
                 exit(1);
             }
 
             // Parse the scope above this one.
-            parsed_scope = &s_table_ptr->scopes.at(
+            parsed_scope = &s_table->scopes.at(
                 *parsed_scope->parent_scope_idx);
+
+            // If we are concerned about use before declaration, and we are 
+            // leaving the function we were in, we don't need to worry about 
+            // use before declaration anymore.
+            if(catch_use_before_decl && 
+                (parsed_scope->owning_symbol_type != SymbolType::FN && 
+                 parsed_scope->owning_symbol_type != SymbolType::SCOPE))
+            {
+                catch_use_before_decl = false;
+            }
         }
     }
 
     // We have a scope chain, start from the global namespace and search for
     // the target scope.
 
-    const Scope *parsed_scope = &s_table_ptr->scopes.at(
-        s_table_ptr->symbols.at(s_table_ptr->global_symbol_idx)->
+    const Scope *parsed_scope = &s_table->scopes.at(
+        s_table->symbols.at(s_table->global_symbol_idx)->
         scope_idx.value());
 
     uint64_t targ_symbol_idx = 0;
@@ -485,27 +649,27 @@ uint64_t SymbolResolver::find_symbol_idx(
 
         if(!match)
         {
-            std::cerr << parsed_file << ":" << symbol_line << ":" <<   
-                symbol_col << " -> Could not find Module -> \"" << targ_module << 
+            std::cout << parsed_file << ":" << symbol_line << ":" <<   
+                symbol_col << " -> Could not find Module: \"" << targ_module << 
                 "\"\n";
             exit(1);
         }
 
         // First, check that the symbol we've found that matched the ident path
         // module name is actually a symbol module
-        if(s_table_ptr->symbols.at(targ_symbol_idx)->sym_type != 
+        if(s_table->symbols.at(targ_symbol_idx)->sym_type != 
             SymbolType::MODULE)
         {
-            std::cerr << parsed_file << ':' << symbol_line << ':' << symbol_col
+            std::cout << parsed_file << ':' << symbol_line << ':' << symbol_col
                 << " -> \"" << targ_module << "\" is not a Module and cannot be"
                 " subscripted.\n";
             exit(1);
         }
 
         // Update the parsed scope to now point to this found module's scope.
-        parsed_scope = &s_table_ptr->scopes.at(
+        parsed_scope = &s_table->scopes.at(
             static_cast<const ModuleSymbol*>(
-            s_table_ptr->symbols[targ_symbol_idx].get())->created_scope_idx);
+            s_table->symbols[targ_symbol_idx].get())->created_scope_idx);
     }
 
     // We've followed any Module chain to the depth where the target symbol 
@@ -518,12 +682,12 @@ uint64_t SymbolResolver::find_symbol_idx(
         if(elem.first == targ_symbol_name) return elem.second;
     }
 
-    std::cerr << parsed_file << ':' << symbol_line << ':' << symbol_col << 
+    std::cout << parsed_file << ':' << symbol_line << ':' << symbol_col << 
         " -> Undefined symbol: \"";
 
     print_ident_path(ident_path);
 
-    std::cerr << "\"\n";
+    std::cout << "\"\n";
     exit(1);
 
     // const std::string *targ_ident = &ident_path[0];
@@ -551,7 +715,7 @@ uint64_t SymbolResolver::find_symbol_idx(
 
     //     // We didn't find one of the module names in the scope chain.
 
-    //     std::cerr << parsed_file << ":" << symbol_line << ":" << symbol_col << 
+    //     std::cout << parsed_file << ":" << symbol_line << ":" << symbol_col << 
     //         "Symbol does not exist\n";
     //     exit(1);
     // }

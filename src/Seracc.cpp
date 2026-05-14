@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 {
     if(argc != 3)
     {
-        std::cerr << "Usage: Seracc <in_file.sr> <out_file.C>\n";
+        std::cout << "Usage: Seracc <in_file.sr> <out_file.C>\n";
         return EXIT_FAILURE;
     }
 

@@ -17,6 +17,16 @@ public:
 
 private:
 
+    // Members
+
+    const char * parsed_file = nullptr;
+    const SymbolTable * s_table = nullptr;
+
+
+    // Methods
+
+    void print_error_location(uint32_t line, uint32_t col) const;
+
     void resolve_module(ModuleDecl * const ptr);
     void resolve_field(FieldDecl * const ptr);
     void resolve_struct(StructDecl * const ptr);
@@ -30,14 +40,10 @@ private:
     
     void resolve_expression(Expression * const ptr, uint64_t scope_idx);
 
+    // Given a symbol, gets the position in the code that the symbol points to.
+    std::pair<uint32_t, uint32_t> get_symbol_pos(const Symbol *ptr) const;
+
     uint64_t find_symbol_idx(const std::vector<std::string> &ident_path, 
-        uint64_t scope_idx, uint32_t symbol_line, uint32_t symbol_col);
-
-    // Given an expression, gets the index of the symbol the expression results
-    // in. Returns default optional if the expression does not result in a type
-    // std::optional<uint64_t> symbol_idx_from_expr(
-    //     const Expression * const ptr, uint64_t scope_idx);
-
-    const char * parsed_file = nullptr;
-    const SymbolTable * s_table_ptr = nullptr;
+        uint64_t scope_idx, uint32_t symbol_line, 
+        uint32_t symbol_col);
 };

@@ -11,7 +11,7 @@
 #include <unordered_set>
 
 #include "ASTDeclarations.hpp"
-#include "SeracBuiltins.hpp"
+#include "Builtins.hpp"
 
 enum class SymbolType
 {

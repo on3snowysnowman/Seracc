@@ -42,7 +42,7 @@ uint64_t SymbolTBlder::get_builtin_id(const std::string &builtin_name)
 
 void SymbolTBlder::print_error_location(uint32_t line, uint32_t col) const
 {
-    std::cerr << parsed_file << ':' << line << ':' << col;
+    std::cout << parsed_file << ':' << line << ':' << col;
 }
 
 void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
@@ -67,7 +67,7 @@ void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
             if(it != scopes.at(parsed_scope_idx.value()).
                 sym_name_to_symbol_idx.end())
             {
-                std::cerr << parsed_file << ":" << symbol_line << ":" << 
+                std::cout << parsed_file << ":" << symbol_line << ":" << 
                     symbol_col << " -> Symbol already defined: " << 
                     symbol_name << '\n';
                 exit(1);
@@ -87,7 +87,7 @@ void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
         // This symbol has already been defined here.
         if(it != scopes.at(scope_idx).sym_name_to_symbol_idx.end())
         {
-            std::cerr << parsed_file << ":" << symbol_line << ":" << 
+            std::cout << parsed_file << ":" << symbol_line << ":" << 
                 symbol_col << " -> Symbol already defined: " << 
                 symbol_name << '\n';
             exit(1);
@@ -178,7 +178,7 @@ uint64_t SymbolTBlder::build_top_level(ModuleDecl * const ptr)
 
             default:
 
-                std::cerr << parsed_file << ':' << decl->line << ':' <<
+                std::cout << parsed_file << ':' << decl->line << ':' <<
                     decl->col << " -> Symbol Table Builder parsed incorrect "
                     "declaration for module: " << '\n';
                 exit(1);
@@ -390,7 +390,7 @@ void SymbolTBlder::build_struct(StructDecl * const ptr,
             default:
 
                 print_error_location(decl->line, decl->col);
-                std::cerr << " -> Symbol Table Builder parsed incorrect "
+                std::cout << " -> Symbol Table Builder parsed incorrect "
                     " declaration for struct: " << '\n';
                 exit(1);
         }
@@ -531,7 +531,7 @@ void SymbolTBlder::build_component(ComponentDecl * const ptr,
             default:
 
                 print_error_location(decl->line, decl->col);
-                std::cerr << "Symbol Table Builder parsed incorrect "
+                std::cout << "Symbol Table Builder parsed incorrect "
                     " declaration for component: "  << '\n';
                 exit(1);
         }
@@ -628,7 +628,7 @@ void SymbolTBlder::build_module(ModuleDecl * const ptr,
             default:
 
                 print_error_location(decl->line, decl->col);
-                std::cerr << "Symbol Table Builder parsed incorrect "
+                std::cout << "Symbol Table Builder parsed incorrect "
                     " declaration for module.\n";
                 exit(1);
         }

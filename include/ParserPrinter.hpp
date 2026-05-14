@@ -1149,7 +1149,7 @@ static void print_module(const ModuleDecl * const ptr,
 
             default:
 
-                std::cerr << "Invalid declaration type\n";
+                std::cout << "Invalid declaration type\n";
                 exit(1);
         }
         std::cout << "\n";

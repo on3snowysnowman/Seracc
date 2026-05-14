@@ -2,7 +2,7 @@
 
 #include "Parser.hpp"
 
-#include "SeracBuiltins.hpp"
+#include "Builtins.hpp"
 #include "OperatorPrecedence.hpp"
 
 
@@ -65,25 +65,34 @@ void Parser::print_ident_path(const std::vector<std::string> &ident_path) const
 
     while(true)
     {
-        std::cerr << ident_path.at(i);
+        std::cout << ident_path.at(i);
 
         ++i;
 
         if(i >= ident_path.size()) break;
 
-        std::cerr << "::";
+        std::cout << "::";
     }
 }
 
 void Parser::print_error_location(uint32_t line, uint32_t col) const
 {
-    std::cerr << parsed_file << ":" << line << ':' << col;
+    std::cout << parsed_file << ":" << line << ':' << col;
+}
+
+void Parser::print_missing_brace(uint32_t expected_line, uint32_t expected_col,
+    uint32_t lbrace_line, uint32_t lbrace_col) const
+{
+    print_error_location(expected_line, expected_col);
+    std::cout << " -> Missing '}' to match '{' here: ";
+    print_error_location(lbrace_line, lbrace_col);
+    std::cout << ".\n";
 }
 
 void Parser::handle_tok_mismatch(const Token &got_tok, TokenID expected) 
 {
     print_error_location(got_tok.line, got_tok.col);
-    std::cerr << " -> Expect token of type: " << 
+    std::cout << " -> Expect token of type: " << 
         tokID_readable[static_cast<int>(expected)] << " but got token:\n" << 
         got_tok << '\n';
     exit(1);
@@ -92,7 +101,7 @@ void Parser::handle_tok_mismatch(const Token &got_tok, TokenID expected)
 void Parser::handle_unexpected_token(const Token &got_tok)
 {
     print_error_location(got_tok.line, got_tok.col);
-    std::cerr << " -> Unexpected token:\n" << got_tok;
+    std::cout << " -> Unexpected token:\n" << got_tok;
     exit(1);
 }
 
@@ -105,7 +114,7 @@ void Parser::handle_register_type(const std::string &name, uint32_t line,
     if(it != defined_types.end())
     {
         print_error_location(line, col);
-        std::cerr << " -> Struct type: \"" << name << "\" already defined here: "
+        std::cout << " -> Struct type: \"" << name << "\" already defined here: "
             << it->second.file_defined << ':' << it->second.line << ':' << 
             it->second.col << ".\n";
         exit(1);
@@ -129,7 +138,7 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
     {
         if(is_exported)
         {
-            std::cerr << "Sub Modules cannot be marked \"export\"\n";
+            std::cout << "Sub Modules cannot be marked \"export\"\n";
             exit(1);
         }
 
@@ -144,7 +153,7 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
         if(check(TokenID::KW_COMPONENT)) return parse_component(is_exported);
         
         print_error_location(peek().line, peek().col);
-        std::cerr << " -> \"type\" not followed by a declaration of a struct or "
+        std::cout << " -> \"type\" not followed by a declaration of a struct or "
             "component.\n";
         exit(1);
     }
@@ -216,12 +225,12 @@ std::unique_ptr<ModuleDecl> Parser::parse_module()
 
         if(!decl)
         {
-            std::cerr << parsed_file << " -> Reached end of file expecting '}' "
+            std::cout << parsed_file << " -> Reached end of file expecting '}' "
                 "for module: \""; 
-            std::cerr << top_level_mod->ident;
-            std::cerr << "\" found here: ";
+            std::cout << top_level_mod->ident;
+            std::cout << "\" found here: ";
             print_error_location(top_level_mod->line, top_level_mod->col);
-            std::cerr << '\n';
+            std::cout << '\n';
             exit(1);
         }
 
@@ -248,7 +257,7 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
         if(check(TokenID::KW_MUT))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << " -> Receiver parameter can't be marked mutable.\n";
+            std::cout << " -> Receiver parameter can't be marked mutable.\n";
             exit(1);
         }
 
@@ -287,7 +296,7 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
         // if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << " -> Trailing comma in parameter list\n";
+            std::cout << " -> Trailing comma in parameter list\n";
             exit(1);
         }
     }
@@ -319,11 +328,21 @@ std::unique_ptr<StructDecl> Parser::parse_struct(bool is_pub)
     
     handle_register_type(ptr->name, ident_line, ident_col);
 
+    uint32_t lbrace_line = peek().line;
+    uint32_t lbrace_col = peek().col;
+
     expect(TokenID::LBRACE);
 
     // Parse struct body.
     while(!check(TokenID::RBRACE))
     {
+        if(check(TokenID::END_OF_FILE))
+        {
+            print_missing_brace(peek().line, peek().col, lbrace_line, 
+                lbrace_col);
+            exit(1);
+        }
+        
         // Parsing a nested struct
         if(consume_if(TokenID::KW_TYPE))
         {
@@ -376,7 +395,7 @@ std::unique_ptr<ComponentDecl> Parser::parse_component(bool is_pub)
             else
             {
                 print_error_location(peek().line, peek().col);
-                std::cerr << " -> \"type\" not followed by a declaration of a "
+                std::cout << " -> \"type\" not followed by a declaration of a "
                     "struct or component.\n";
                 exit(1);
             }
@@ -464,7 +483,7 @@ std::unique_ptr<Statement> Parser::parse_statement()
         else
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << " -> \"type\" not followed by a declaration of a struct or "
+            std::cout << " -> \"type\" not followed by a declaration of a struct or "
                 "component.\n";
             exit(1);
         }
@@ -574,9 +593,9 @@ std::unique_ptr<Statement> Parser::parse_statement()
 
     else
     {
-        // std::cerr << "Parsing expression: ";
+        // std::cout << "Parsing expression: ";
         // print_error_location(start_line, start_col);
-        // std::cerr << '\n';
+        // std::cout << '\n';
 
         // Anything else we assume is an expression and attempt to parse it.
         ptr = std::make_unique<ExprStmt>();
@@ -611,7 +630,7 @@ std::unique_ptr<Expression> Parser::parse_arr_init()
         if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << " -> Trailing comma in initialization list\n";
+            std::cout << " -> Trailing comma in initialization list\n";
             exit(1);
         }
     }
@@ -642,7 +661,7 @@ std::unique_ptr<Expression> Parser::parse_struct_init()
         if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << " -> Trailing comma in initialization list\n";
+            std::cout << " -> Trailing comma in initialization list\n";
             exit(1);
         }
     }
@@ -690,6 +709,22 @@ std::unique_ptr<Expression> Parser::pratt_parse(
         if(tok_id == TokenID::PLUS_PLUS)
         {
             lhs = parse_post_inc_dec(std::move(lhs));
+            continue;
+        }
+
+        // Struct init expr
+        if(tok_id == TokenID::LBRACE)
+        {
+            std::unique_ptr<StructCreateExpr> ptr = 
+                std::make_unique<StructCreateExpr>();
+
+            ptr->line = lhs->line;
+            ptr->col = lhs->col;
+
+            ptr->lhs = std::move(lhs);
+            ptr->create_expr = parse_struct_init();
+
+            lhs = std::move(ptr);
             continue;
         }
 
@@ -805,7 +840,7 @@ std::unique_ptr<Expression> Parser::parse_infix(
 
     // Invalid token
     print_error_location(peek().line, peek().col);
-    std::cerr << " -> Invalid expression, unexpected token: " << 
+    std::cout << " -> Invalid expression, unexpected token: " << 
         peek().id << '\n';
     exit(1);
 }
@@ -838,7 +873,7 @@ std::unique_ptr<Expression> Parser::parse_func_call(
         if(check(TokenID::RPAREN))
         {
             print_error_location(line, col);
-            std::cerr << " -> Trailing comma in parameter list\n";
+            std::cout << " -> Trailing comma in parameter list\n";
             exit(1);
         }
     }
@@ -1113,7 +1148,7 @@ std::unique_ptr<Expression> Parser::parse_prefix()
 
         default:
             print_error_location(peek().line, peek().col);
-            std::cerr << " -> Invalid expression, unexpected token: " << 
+            std::cout << " -> Invalid expression, unexpected token: " << 
                 peek().id << '\n';
             exit(1);
     }
@@ -1160,6 +1195,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
     return ptr;
 }
 
+
 // std::unique_ptr<Expression> Parser::parse_expression(
 //     std::initializer_list<TokenID> delimeters)
 // {
@@ -1187,23 +1223,23 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //         if(current_token_idx == start_tok_idx)
 //         {
 //             print_error_location(peek().line, peek().col);
-//             std::cerr << " -> Expected Token of type: ";
+//             std::cout << " -> Expected Token of type: ";
 
 //             auto del_begin = delimeters.begin();
 
 //             while(del_begin != delimeters.end())
 //             {
-//                 std::cerr << *del_begin;
+//                 std::cout << *del_begin;
 
 //                 ++del_begin;
 
 //                 if(del_begin != delimeters.end())
 //                 {
-//                     std::cerr << " or ";
+//                     std::cout << " or ";
 //                 }
 //             }
 
-//             std::cerr << " but got token: \n" << peek() << '\n';
+//             std::cout << " but got token: \n" << peek() << '\n';
 //             exit(1);
 //         }
 //     }
@@ -1220,14 +1256,14 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_col = peek().col;
 
 //     // print_error_location(start_line, start_col);
-//     // std::cerr << " -> Checking for assignment\n";
+//     // std::cout << " -> Checking for assignment\n";
 
 //     bool pre_expr_null = false;
 
 //     if(pre_expr == nullptr)
 //     {
 //         pre_expr_null = true;
-//         // std::cerr << "pre_expr was nullptr\n";
+//         // std::cout << "pre_expr was nullptr\n";
 //         pre_expr = parse_log_or(nullptr);
 //     }
 
@@ -1261,7 +1297,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_col = peek().col;
 
 //     // print_error_location(start_line, start_col);
-//     // std::cerr << " -> Checking for log_or\n";
+//     // std::cout << " -> Checking for log_or\n";
 
 //     bool pre_expr_null = false;
 
@@ -1297,7 +1333,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_col = peek().col;
 
 //     // print_error_location(start_line, start_col);
-//     // std::cerr << " -> Checking for log_and\n";
+//     // std::cout << " -> Checking for log_and\n";
 
 //     bool pre_expr_null = false;
 
@@ -1333,14 +1369,14 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_col = peek().col;
 
 //     // print_error_location(start_line, start_col);
-//     // std::cerr << " -> Checking for equality\n";
+//     // std::cout << " -> Checking for equality\n";
 
 //     bool pre_expr_null = false;
 
 //     if(pre_expr == nullptr)
 //     {
 //         pre_expr_null = true;
-//         // std::cerr << "pre_expr was nullptr\n";
+//         // std::cout << "pre_expr was nullptr\n";
 
 //         pre_expr = parse_relational(nullptr);
 //     }
@@ -1375,9 +1411,9 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_line = peek().line;
 //     uint32_t start_col = peek().col;
 
-//     // std::cerr << "Checking relational: ";
+//     // std::cout << "Checking relational: ";
 //     // print_error_location(peek().line, peek().col);
-//     // std::cerr << '\n';
+//     // std::cout << '\n';
 
 //     bool pre_expr_null = false;
 
@@ -1419,7 +1455,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_col = peek().col;
 
 //     // print_error_location(start_line, start_col);
-//     // std::cerr << " -> Checking additive\n";
+//     // std::cout << " -> Checking additive\n";
 
 //     bool pre_expr_null = false;
 
@@ -1427,11 +1463,11 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     {
 //         pre_expr_null = true;
 
-//         // std::cerr << "pre_expr was nullptr\n";
+//         // std::cout << "pre_expr was nullptr\n";
 //         pre_expr = parse_multiplicative(nullptr);
-//         // std::cerr << "After getting pre expr, we are at: ";
+//         // std::cout << "After getting pre expr, we are at: ";
 //         // print_error_location(peek().line, peek().col);
-//         // std::cerr << '\n';
+//         // std::cout << '\n';
 //     }
 
 //     while(true)
@@ -1464,7 +1500,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_col = peek().col;
 
 //     // print_error_location(start_line, start_col);
-//     // std::cerr << " -> Checking multi\n";
+//     // std::cout << " -> Checking multi\n";
 
 //     bool pre_expr_null = false;
 
@@ -1472,7 +1508,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     {
 //         pre_expr_null = true;
 
-//         // std::cerr << "pre_expr was nullptr\n";
+//         // std::cout << "pre_expr was nullptr\n";
 //         pre_expr = parse_unary(nullptr);
 //     }
 
@@ -1503,17 +1539,17 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     std::unique_ptr<Expression> pre_expr)
 // {
 //     // print_error_location(peek().line, peek().col);
-//     // std::cerr << " -> Checking unary\n";
+//     // std::cout << " -> Checking unary\n";
     
 //     if(check(TokenID::PLUS_PLUS))
 //     {   
 //         if(pre_expr != nullptr)
 //         {
 //             print_error_location(peek().line, peek().col);
-//             std::cerr << " -> PRE INC can't have pre expression?\n";
+//             std::cout << " -> PRE INC can't have pre expression?\n";
 //             exit(1);
         
-//             // std::cerr << "unary pre_expr was nullptr\n";
+//             // std::cout << "unary pre_expr was nullptr\n";
 //             return parse_postfix(std::move(pre_expr));
 //         }
 
@@ -1534,7 +1570,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //         if(pre_expr != nullptr)
 //         {
 //             print_error_location(peek().line, peek().col);
-//             std::cerr << " -> PRE DEC can't have pre expression?\n";
+//             std::cout << " -> PRE DEC can't have pre expression?\n";
 //             exit(1);
 
 //             return parse_postfix(std::move(pre_expr));
@@ -1567,7 +1603,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //         else
 //         {
 //             print_error_location(t.line, t.col);
-//             std::cerr << " -> NEGATE can't have pre expression?\n";
+//             std::cout << " -> NEGATE can't have pre expression?\n";
 //             exit(1);
 //         }
 //         ptr->line = t.line;
@@ -1591,7 +1627,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //         else
 //         {
 //             print_error_location(t.line, t.col);
-//             std::cerr << " -> LOG_NOT can't have pre expression?\n";
+//             std::cout << " -> LOG_NOT can't have pre expression?\n";
 //             exit(1);
 //         }
 //         ptr->line = t.line;
@@ -1614,7 +1650,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //         else
 //         {
 //             print_error_location(t.line, t.col);
-//             std::cerr << " -> TILDE can't have pre expression?\n";
+//             std::cout << " -> TILDE can't have pre expression?\n";
 //             exit(1);
 //         }
 //         ptr->line = t.line;
@@ -1637,7 +1673,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //         else
 //         {
 //             print_error_location(t.line, t.col);
-//             std::cerr << " -> AMPERSAND can't have pre expression?\n";
+//             std::cout << " -> AMPERSAND can't have pre expression?\n";
 //             exit(1);
 //         }
 //         ptr->line = t.line;
@@ -1660,7 +1696,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //         else
 //         {
 //             print_error_location(t.line, t.col);
-//             std::cerr << " -> DEREF can't have pre expression?\n";
+//             std::cout << " -> DEREF can't have pre expression?\n";
 //             exit(1);
 //         }
 //         ptr->line = t.line;
@@ -1727,7 +1763,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_col = peek().col;
 
 //     // print_error_location(start_line, start_col);
-//     // std::cerr << " -> Checking postfix\n";
+//     // std::cout << " -> Checking postfix\n";
 
 //     // bool pre_expr_null = false;
 
@@ -1764,7 +1800,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //                 if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
 //                 {
 //                     print_error_location(peek().line, peek().col);
-//                     std::cerr << " -> Trailing comma in argument list\n";
+//                     std::cout << " -> Trailing comma in argument list\n";
 //                     exit(1);
 //                 }
 //             }
@@ -1875,7 +1911,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     uint32_t start_col = peek().col;
 
 //     // print_error_location(start_line, start_col);
-//     // std::cerr << " -> Checking primary\n";
+//     // std::cout << " -> Checking primary\n";
 
 //     if(check(TokenID::INT_LITERAL))
 //     {
@@ -1973,7 +2009,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 
 //     if(consume_if(TokenID::LPAREN))
 //     {
-//         std::cerr << "Shouldn't make it here\n";
+//         std::cout << "Shouldn't make it here\n";
 //         exit(1);
 
 //         auto ptr = parse_expression();
@@ -2002,7 +2038,7 @@ std::unique_ptr<Expression> Parser::parse_paren_or_cast()
 //     }
 
 //     print_error_location(start_line, start_col);    
-//     std::cerr << " -> Invalid expression, got unexpected token: \n" << 
+//     std::cout << " -> Invalid expression, got unexpected token: \n" << 
 //         peek() << '\n';
 //     exit(1);    
 // }
@@ -2040,9 +2076,9 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
         //     if(error_on_invalid)
         //     {
         //         print_error_location(ident_line, ident_col);
-        //         std::cerr << " -> Undefined symbol (Parser): \"";
+        //         std::cout << " -> Undefined symbol (Parser): \"";
         //         print_ident_path(reint_ptr->ident_path);
-        //         std::cerr << "\"\n";
+        //         std::cout << "\"\n";
         //         exit(1);
         //     }
 
@@ -2084,7 +2120,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
         if(reint_ptr->referred->kind == TypeKind::REF)
         {
             print_error_location(start_line, start_col);
-            std::cerr << " Cannot have a reference of a reference\n";
+            std::cout << " Cannot have a reference of a reference\n";
             exit(1);
         }
     }
@@ -2155,7 +2191,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(
         if(error_on_invalid)
         {
             print_error_location(start_line, start_col);
-            std::cerr << " -> Invalid type declaration.\n";
+            std::cout << " -> Invalid type declaration.\n";
             exit(1);
         }
 
@@ -2216,6 +2252,12 @@ ScopeBody Parser::parse_scope()
 
     while(!check(TokenID::RBRACE))
     {
+        if(peek().id == TokenID::END_OF_FILE)
+        {
+            print_missing_brace(peek().line, peek().col, body.line, body.col);
+            exit(1);
+        }
+
         body.statements.push_back(parse_statement());
     }
 
@@ -2248,7 +2290,7 @@ Parameter Parser::parse_param()
         if(check(TokenID::KW_REF))
         {
             print_error_location(peek().line, peek().col);
-            std::cerr << " -> Reference parameters cannot be passed in by val.\n";
+            std::cout << " -> Reference parameters cannot be passed in by val.\n";
             exit(1); 
         }
 

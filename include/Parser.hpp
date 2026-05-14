@@ -47,6 +47,8 @@ private:
 
     void print_ident_path(const std::vector<std::string> &ident_path) const;
     void print_error_location(uint32_t line,uint32_t col) const;
+    void print_missing_brace(uint32_t expected_line, uint32_t expected_col,
+        uint32_t lbrace_line, uint32_t lbrace_col) const;
     void handle_tok_mismatch(const Token &got_tok, TokenID expected);
     void handle_unexpected_token(const Token &got_tok);
     void handle_register_type(const std::string &type_name, uint32_t line, 

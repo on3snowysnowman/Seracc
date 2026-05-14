@@ -20,7 +20,7 @@ std::vector<Token> Lexer::lex(const char *in_file_path)
 
     if(!in_file)
     {
-        std::cerr << "Failed to open input file: " << in_file_path << '\n';
+        std::cout << "Failed to open input file: " << in_file_path << '\n';
         exit(1);
     }
 
@@ -55,13 +55,13 @@ bool Lexer::at_eof() const { return current_idx >= source.size(); }
 
 void Lexer::print_error_location(uint32_t line, uint32_t col)
 {
-    std::cerr << file_being_parsed << ":" << line << ":" << col;
+    std::cout << file_being_parsed << ":" << line << ":" << col;
 }
 
 void Lexer::handle_invalid_char(char c, uint32_t line, uint32_t col)
 {
     print_error_location(line, col);
-    std::cerr << " -> Invalid character: " << c << '\n';
+    std::cout << " -> Invalid character: " << c << '\n';
     exit(1);
 }
 
@@ -69,7 +69,7 @@ void Lexer::handle_unexpected_eof()
 {
     if(!at_eof()) return;
 
-    std::cerr << file_being_parsed << ":" << current_line << ":" << current_col  
+    std::cout << file_being_parsed << ":" << current_line << ":" << current_col  
         << " -> Reached end of file expecting more characters\n";
     exit(1);
 }
@@ -186,7 +186,7 @@ void Lexer::parse_int_or_flt_literal(Token &t)
     // Trailing dot at end of value.
     if(dot_found && *(--t.text.end()) == '.')
     {
-        std::cerr << file_being_parsed << ":" << t.line << ":" << t.col << 
+        std::cout << file_being_parsed << ":" << t.line << ":" << t.col << 
             " -> Trailing dot at end of float literal.\n\n";
         exit(1);
     }
@@ -265,7 +265,7 @@ void Lexer::parse_str_literal(Token &t)
         if(at_eof())
         {
             print_error_location(line, col);
-            std::cerr << " -> Reached end of file while parsing string literal "
+            std::cout << " -> Reached end of file while parsing string literal "
                 "starting on line: " << t.line << '\n';
             exit(1);
         }
@@ -276,7 +276,7 @@ void Lexer::parse_str_literal(Token &t)
     if(c != '"')
     {
         print_error_location(line, col);
-        std::cerr << " -> Missing closing double quote for string literal\n";
+        std::cout << " -> Missing closing double quote for string literal\n";
         exit(1);
     }
 
@@ -310,7 +310,7 @@ void Lexer::parse_char_literal(Token &t)
     if(c != '\'')
     {
         print_error_location(line, col);
-        std::cerr << " -> Either too many characters in char literal or missing "
+        std::cout << " -> Either too many characters in char literal or missing "
             "closing quote\n";
         exit(1);
     }
@@ -655,7 +655,7 @@ char Lexer::peek(uint32_t offset) const
 {
     if(!is_peek_within_range(offset))
     {
-        std::cerr << "Lexer attempted to peek outside source\n";
+        std::cout << "Lexer attempted to peek outside source\n";
         exit(1);
     }
 

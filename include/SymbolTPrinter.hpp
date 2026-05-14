@@ -123,7 +123,7 @@ void print_symbol(uint64_t sym_idx, const SymbolTable &sym_t, int tab_depth,
 
         default:
 
-            std::cerr << "Invalid symbol type: " << sym_name << '\n';
+            std::cout << "Invalid symbol type: " << sym_name << '\n';
             exit(1);
     }
 }

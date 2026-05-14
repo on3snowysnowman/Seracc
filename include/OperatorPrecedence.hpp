@@ -60,7 +60,7 @@ static constexpr OpData
     /* LPAREN */              { 90, Associativity::LEFT }, // function call
     /* RPAREN */              {  0, Associativity::NONE },
 
-    /* LBRACE */              {  0, Associativity::NONE },
+    /* LBRACE */              {  90, Associativity::LEFT },
     /* RBRACE */              {  0, Associativity::NONE },
 
     /* LBRACKET */            { 90, Associativity::LEFT }, // subscript
