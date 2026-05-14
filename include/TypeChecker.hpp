@@ -48,7 +48,7 @@ private:
 
     // Get the symbol idx that a TypeDecl references
     uint64_t resolve_type_decl(const TypeDecl *ptr) const;
-    bool is_type_int_literal(const TypeDecl *ptr) const
+    bool is_type_uint_literal(const TypeDecl *ptr) const;
 
     // Given a scope id (accessing_sym_id) that wants to access a private 
     // field in some scope (targ_scope_id), check to make sure that this is a 

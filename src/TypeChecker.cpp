@@ -151,7 +151,7 @@ void TypeChecker::print_invalid_init_expr(uint32_t line, uint32_t col,
     std::cout << "\"\n";
 }
 
-uint64_t TypeChecker::resolve_type_decl(const TypeDecl * ptr) const
+uint64_t TypeChecker::resolve_type_decl(const TypeDecl *ptr) const
 {
     switch(ptr->kind)
     {
@@ -195,6 +195,33 @@ uint64_t TypeChecker::resolve_type_decl(const TypeDecl * ptr) const
             std::cout << " -> Invalid kind found for TypeDecl\n";
             exit(1);
     }   
+}
+
+bool TypeChecker::is_type_uint_literal(const TypeDecl *ptr) const
+{
+    if(ptr->kind != TypeKind::NAMED) return false;
+
+    const NamedTypeDecl *reint_ptr = 
+        static_cast<const NamedTypeDecl*>(ptr);
+
+    if(!reint_ptr->builtin_type.has_value()) return false;
+
+    switch(*reint_ptr->builtin_type)
+    {
+        case BuiltinType::U8:
+            return true;
+
+        case BuiltinType::U16:
+            return true;
+
+        case BuiltinType::U32:
+            return true;
+
+        case BuiltinType::U64:
+            return true;
+
+        default: return false;
+    }
 }
 
 void TypeChecker::check_private_access(const uint64_t targ_scope_id, 
@@ -498,7 +525,7 @@ void TypeChecker::check_type(const TypeDecl *ptr,
             const ArrTypeDecl *reint_ptr = 
                 static_cast<const ArrTypeDecl*>(ptr);
 
-            check_type(reint_ptr->element_type.get());
+            check_type(reint_ptr->element_type.get(), type_scope_id);
 
             for(uint8_t i = 0; i < reint_ptr->depth; ++i)
             {
@@ -506,11 +533,13 @@ void TypeChecker::check_type(const TypeDecl *ptr,
                     check_expression(reint_ptr->size_exprs.at(i).get(),
                     type_scope_id);
 
-                if(!is_type_int_literal(depth_expr_result.type_decl))
+                if(!is_type_uint_literal(depth_expr_result.type_decl))
                 {
                     print_error_location(reint_ptr->size_exprs[i]->line,
                         reint_ptr->size_exprs[i]->col);
-                    std::cout << ""
+                    std::cout << " -> Array size expression must be an unsigned"
+                        " int literal type.\n";
+                    exit(1);
                 }
             }
 
@@ -622,14 +651,14 @@ void TypeChecker::check_scope_body(const ScopeBody * ptr,
 
 void TypeChecker::check_var_decl_stmt(const VarDeclStmt *ptr)
 {
-    check_type(ptr->type_decl.get());
+    const Symbol *var_sym = 
+        s_table->symbols.at(ptr->symbol_idx).get();
+
+    check_type(ptr->type_decl.get(), var_sym->scope_idx.value());
 
     if(ptr->init_expr == nullptr) return;
 
     // We have an init expression.
-
-    const Symbol *var_sym = 
-        s_table->symbols.at(ptr->symbol_idx).get();
 
     if(ptr->init_expr->exp_type == ExpressionType::STRUCT_INIT)
     {
@@ -652,7 +681,7 @@ void TypeChecker::check_var_decl_stmt(const VarDeclStmt *ptr)
     }
 
     const CheckExprResult init_expr_result = 
-        check_expression(ptr->init_expr.get(), var_sym->scope_idx.value());
+        check_expression(ptr->init_expr.get(), *var_sym->scope_idx);
 
     cmp_types(ptr->type_decl.get(),
         init_expr_result.type_decl, ptr->init_expr->line,
@@ -791,6 +820,9 @@ void TypeChecker::check_decl(const Declaration * ptr,
             const FieldDecl *reint_ptr = 
                 static_cast<const FieldDecl*>(ptr);
             
+            const Symbol *field_sym =  
+                s_table->symbols.at(reint_ptr->symbol_idx.value()).get();
+
             std::cout << "Checking Field: " << reint_ptr->name << '\n';
 
             if(reint_ptr->init_expr != nullptr)
@@ -801,7 +833,8 @@ void TypeChecker::check_decl(const Declaration * ptr,
                 exit(1);
             }
 
-            check_type(reint_ptr->type_decl.get());
+            check_type(reint_ptr->type_decl.get(), 
+                field_sym->scope_idx.value());
             break;
         }
 
@@ -871,26 +904,18 @@ bool fits_in(const std::string &s, FitsInOption option)
 void TypeChecker::init_literal_typedecl(NamedTypeDecl *new_decl, 
     const std::string &s, FitsInOption option) const 
 {
-    if(fits_in<int8_t>(s, option))
-    {
-        new_decl->builtin_type.emplace(BuiltinType::I8);
-        new_decl->ident_path.push_back("i8");
-        new_decl->resolved_symbol_idx = s_table->builtin_to_id.at("i8");
-    }
-
-    else if(fits_in<uint8_t>(s, option))
+    if(fits_in<uint8_t>(s, option))
     {
         new_decl->builtin_type.emplace(BuiltinType::U8);
         new_decl->ident_path.push_back("u8");
         new_decl->resolved_symbol_idx = s_table->builtin_to_id.at("u8");
     }
 
-    else if(fits_in<int16_t>(s, option))
+    else if(fits_in<int8_t>(s, option))
     {
-        new_decl->builtin_type.emplace(BuiltinType::I16);
-        new_decl->ident_path.push_back("i16");
-        new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("i16");
+        new_decl->builtin_type.emplace(BuiltinType::I8);
+        new_decl->ident_path.push_back("i8");
+        new_decl->resolved_symbol_idx = s_table->builtin_to_id.at("i8");
     }
 
     else if(fits_in<uint16_t>(s, option))
@@ -901,12 +926,12 @@ void TypeChecker::init_literal_typedecl(NamedTypeDecl *new_decl,
             s_table->builtin_to_id.at("u16");
     }
 
-    else if(fits_in<int32_t>(s, option))
+    else if(fits_in<int16_t>(s, option))
     {
-        new_decl->builtin_type.emplace(BuiltinType::I32);
-        new_decl->ident_path.push_back("i32");
+        new_decl->builtin_type.emplace(BuiltinType::I16);
+        new_decl->ident_path.push_back("i16");
         new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("i32");
+            s_table->builtin_to_id.at("i16");
     }
 
     else if(fits_in<uint32_t>(s, option))
@@ -917,12 +942,12 @@ void TypeChecker::init_literal_typedecl(NamedTypeDecl *new_decl,
             s_table->builtin_to_id.at("u32");
     }
 
-    else if(fits_in<int64_t>(s, option))
+    else if(fits_in<int32_t>(s, option))
     {
-        new_decl->builtin_type.emplace(BuiltinType::I64);
-        new_decl->ident_path.push_back("i64");
+        new_decl->builtin_type.emplace(BuiltinType::I32);
+        new_decl->ident_path.push_back("i32");
         new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("i64");
+            s_table->builtin_to_id.at("i32");
     }
 
     else if(fits_in<uint64_t>(s, option))
@@ -931,6 +956,15 @@ void TypeChecker::init_literal_typedecl(NamedTypeDecl *new_decl,
         new_decl->ident_path.push_back("u64");
         new_decl->resolved_symbol_idx = 
             s_table->builtin_to_id.at("u64");
+    }
+
+
+    else if(fits_in<int64_t>(s, option))
+    {
+        new_decl->builtin_type.emplace(BuiltinType::I64);
+        new_decl->ident_path.push_back("i64");
+        new_decl->resolved_symbol_idx = 
+            s_table->builtin_to_id.at("i64");
     }
 
     else

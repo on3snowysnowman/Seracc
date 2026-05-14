@@ -1,2 +1,2 @@
 
-Add in place struct construction " Structy{.id = 1, .on = true} " for expressions
+Fix arr init expressions to parse as multiple nested curly braces when there is multiple array depths

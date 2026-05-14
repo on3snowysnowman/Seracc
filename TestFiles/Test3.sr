@@ -3,7 +3,7 @@
 
 export fn main() -> void
 {
-    let arr: int[1];
+    let arr: int[3][2] = { {} };
 
     ret;
 }
