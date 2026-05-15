@@ -622,22 +622,54 @@ std::unique_ptr<Expression> Parser::parse_arr_init()
 
     expect(TokenID::LBRACE);
 
-    while(!check(TokenID::RBRACE))
+    //                                     Here v 
+    // If we have a nested Arr expression, ie { {1, 2}, {1, 2}}
+    if(check(TokenID::LBRACE))
     {
-        ptr->init_args.push_back(parse_expression());
-
-        // Trailing comma 
-        if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
+        while(true)
         {
-            print_error_location(peek().line, peek().col);
-            std::cout << " -> Trailing comma in initialization list\n";
-            exit(1);
+            ptr->init_args.push_back(parse_arr_init());
+            if(!consume_if(TokenID::COMMA)) break;
+        }
+    }
+
+    // Parse as an expression
+    else
+    {
+        while(true)
+        {
+            ptr->init_args.push_back(parse_expression());
+            if(!consume_if(TokenID::COMMA)) break;
         }
     }
 
     expect(TokenID::RBRACE);
 
     return ptr;
+
+    // std::unique_ptr<ArrInitExpr> ptr = std::make_unique<ArrInitExpr>();
+
+    // ptr->line = peek().line;
+    // ptr->col = peek().col;
+
+    // expect(TokenID::LBRACE);
+
+    // while(!check(TokenID::RBRACE))
+    // {
+    //     ptr->init_args.push_back(parse_expression());
+
+    //     // Trailing comma 
+    //     if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
+    //     {
+    //         print_error_location(peek().line, peek().col);
+    //         std::cout << " -> Trailing comma in initialization list\n";
+    //         exit(1);
+    //     }
+    // }
+
+    // expect(TokenID::RBRACE);
+
+    // return ptr;
 }
 
 std::unique_ptr<Expression> Parser::parse_struct_init()

@@ -54,6 +54,8 @@ private:
     void handle_register_type(const std::string &type_name, uint32_t line, 
         uint32_t col);
 
+    
+
     std::unique_ptr<Declaration> parse_top_level();
     std::unique_ptr<ModuleDecl> parse_module();
     std::unique_ptr<FunctionDecl> parse_function(bool is_pub);

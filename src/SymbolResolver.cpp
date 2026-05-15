@@ -305,11 +305,21 @@ void SymbolResolver::resolve_statement(Statement * const ptr,
     }
 }
 
+
+
 void SymbolResolver::resolve_expression(Expression * const ptr,
     uint64_t scope_idx) 
 {
     switch(ptr->exp_type)
     {
+        case ExpressionType::ARR_INIT:
+        {
+            ArrInitExpr * const reint_ptr = 
+                static_cast<ArrInitExpr*>(ptr);
+                
+            
+        }
+
         case ExpressionType::ASSIGN:
         {
             AssignExpr * const reint_ptr = 
@@ -373,7 +383,7 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
 
             resolve_expression(reint_ptr->base_expr.get(), scope_idx);
             break;
-        }
+        }     
 
         case ExpressionType::STRUCT_CREATE:
         {
@@ -384,6 +394,18 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
             resolve_expression(reint_ptr->create_expr.get(), scope_idx);
             break;
         }
+
+        case ExpressionType::STRUCT_INIT:
+        {
+            StructInitExpr * const reint_ptr = 
+                static_cast<StructInitExpr*>(ptr);
+
+            for(auto &elem : reint_ptr->init_args)
+            {
+                resolve_expression(elem.second.get(), scope_idx);
+            }
+            break;
+        }   
 
         case ExpressionType::SUBSCRIPT:
         {

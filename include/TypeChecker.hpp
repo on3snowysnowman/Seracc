@@ -101,8 +101,11 @@ private:
         const TypeDecl *var_type, const uint64_t var_scope_id);
     CheckExprResult check_struct_create_expr(const StructCreateExpr *expr,
         const uint64_t scope_id);
+    void recurse_check_arr_init(const ArrInitExpr *init_expr, 
+        const uint8_t depth, const std::vector<size_t> &size_values, 
+        const TypeDecl *element_type, const uint64_t scope_id);
     CheckExprResult check_arr_init_expr(const ArrInitExpr *expr, 
-        const TypeDecl *var_type, const uint64_t var_scope_id);
+        const ArrTypeDecl *arr_type, const uint64_t var_scope_id);
     CheckExprResult check_ident_expr(const IdentExpr *ptr, 
         const uint64_t scope_id);
     CheckExprResult check_expression(const Expression *ptr, 

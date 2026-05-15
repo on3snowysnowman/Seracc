@@ -672,13 +672,26 @@ void TypeChecker::check_var_decl_stmt(const VarDeclStmt *ptr)
 
     if(ptr->init_expr->exp_type == ExpressionType::ARR_INIT)
     {
+        if(ptr->type_decl->kind != TypeKind::ARRAY)
+        {
+            print_error_location(ptr->init_expr->line, ptr->init_expr->col);
+            std::cout << " -> Cannot initialize non Array type with an Array "
+                "initialization expression\n";
+            exit(1);
+        }
+
+        const ArrTypeDecl *arr_type = 
+            static_cast<const ArrTypeDecl*>(ptr->type_decl.get());
+
         const ArrInitExpr *init_expr = 
             static_cast<const ArrInitExpr*>(ptr->init_expr.get());
 
         check_arr_init_expr(
-            init_expr, ptr->type_decl.get(), var_sym->scope_idx.value());
+            init_expr, arr_type, var_sym->scope_idx.value());
         return;
     }
+
+    // -- Non Struct or Array type -- 
 
     const CheckExprResult init_expr_result = 
         check_expression(ptr->init_expr.get(), *var_sym->scope_idx);
@@ -1091,22 +1104,98 @@ TypeChecker::CheckExprResult TypeChecker::check_struct_init_expr(
     return expr_result;
 }
 
+void TypeChecker::recurse_check_arr_init(const ArrInitExpr *init_expr, 
+    const uint8_t depth, const std::vector<size_t> &size_values,
+    const TypeDecl *element_type, const uint64_t scope_id)
+{
+    if(size_values.at(depth) != init_expr->init_args.size())
+    {
+        print_error_location(init_expr->line, init_expr->col);
+        std::cout << " -> Number of initialization arguments does not match "
+            " Array type dimensions.\n";
+        exit(1);
+    }
+
+    // We are not at the final depth of the array yet so we don't need to 
+    // compare expression types yet.
+    if(depth < size_values.size() - 1)
+    {
+        for(const std::unique_ptr<Expression> & init_arg : 
+            init_expr->init_args)
+        {
+            if(init_arg->exp_type != ExpressionType::ARR_INIT)
+            {
+                print_error_location(init_arg->line, init_arg->col);
+                std::cout << " -> Expected Array initialization expression\n";
+                exit(1);
+            }
+
+            const ArrInitExpr *reint_init_arg = 
+                static_cast<const ArrInitExpr*>(init_arg.get());
+
+            recurse_check_arr_init(reint_init_arg, depth + 1, size_values,
+                element_type, scope_id);
+        }
+    
+        return;
+    }
+
+    // We are at the final depth. Parse each init expression 
+    for(const std::unique_ptr<Expression> &init_arg : init_expr->init_args)
+    {
+        CheckExprResult init_arg_res = 
+            check_expression(init_arg.get(), scope_id);
+
+        cmp_types(element_type, init_arg_res.type_decl, init_arg->line, 
+            init_arg->col);
+    }    
+}
+
 TypeChecker::CheckExprResult TypeChecker::check_arr_init_expr(
-    const ArrInitExpr *expr, const TypeDecl *var_type, 
+    const ArrInitExpr *init_expr, const ArrTypeDecl *arr_type, 
     const uint64_t var_scope_id)
 {
     std::cout << "Checking expression of type: " <<
         ExpressionType::ARR_INIT << '\n';
 
-    for(const std::unique_ptr<Expression> &init_expr: expr->init_args)
+    // First convert all of our size expressions to actual values.
+
+    std::vector<size_t> size_values;
+
+    for(const std::unique_ptr<Expression> &size_expr : arr_type->size_exprs)
     {
-    }    
+        const IntLitExpr *depth_expr = 
+        static_cast<IntLitExpr*>(size_expr.get());
+
+        size_t size_at_depth = 0;
         
+        std::from_chars_result from_ch_res = std::from_chars(
+            depth_expr->value.data(), 
+            depth_expr->value.data() + depth_expr->value.size(), size_at_depth);
+
+        // Check if conversion was successful
+        if(from_ch_res.ec != std::errc() || 
+            from_ch_res.ptr != 
+            depth_expr->value.data() + depth_expr->value.size())
+        {
+            print_error_location(depth_expr->line, depth_expr->col);
+            std::cout << " -> Failed to convert string number to an integer.\n";
+            exit(1);
+        }
+
+        std::cout << "Got array size: " << size_at_depth << '\n';
+
+        size_values.push_back(size_at_depth);
+    }
+
+    recurse_check_arr_init(init_expr, 0, size_values, 
+        arr_type->element_type.get(), var_scope_id);
+
     CheckExprResult expr_result;
 
     expr_result.is_lvalue = false;
     expr_result.is_var_and_mutable = false;
-    expr_result.type_decl = var_type;
+    expr_result.type_decl = arr_type;
 
     std::cout << "Array init expr checking not implemented\n";
     exit(1);

@@ -1,14 +1,1 @@
-Checking Module: global
-
-Checking Declaration of type: MODULE
-Checking Module: Module0
-
-Checking Declaration of type: FIELD
-
-Checking Declaration of type: FUNCTION
-Checking Function: main
-Checking Scope Body
-
-Checking Statement of type: EXPR
-Checking expression of type: IDENTIFIER
-TestFiles/Test3.sr:12:5 -> The variable: "Module0::t0" is private and not accessible from this context
+TestFiles/Test3.sr:8:9 -> Invalid expression, unexpected token: LBRACE
