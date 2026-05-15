@@ -218,6 +218,73 @@ enum class UnaryOp
     DEREF
 };
 
+static inline std::ostream& operator<<(std::ostream &os, UnaryOp op)
+{
+    switch(op)
+    {
+        case UnaryOp::PRE_INC:
+        {
+            os << "PRE_INC";
+            break;
+        }
+
+        case UnaryOp::PRE_DEC:
+        {
+            os << "PRE_DEC";
+            break;
+        }
+
+        case UnaryOp::POST_INC:
+        {
+            os << "POST_INC";
+            break;
+        }
+
+        case UnaryOp::POST_DEC:
+        {
+            os << "POST_DEC";
+            break;
+        }
+
+        case UnaryOp::NEGATE:
+        {
+            os << "NEGATE";
+            break;
+        }
+
+        case UnaryOp::BIT_NOT:
+        {
+            os << "BIT_NOT";
+            break;
+        }
+
+        case UnaryOp::LOG_NOT:
+        {
+            os << "LOG_NOT";
+            break;
+        }
+
+        case UnaryOp::ADDRESS_OF:
+        {
+            os << "ADDRESS_OF";
+            break;
+        }
+
+        case UnaryOp::DEREF:
+        {
+            os << "DEREF";
+            break;
+        }
+
+        case UnaryOp::INVALID:
+
+            os << "INVALID";
+            break;
+    }
+
+    return os;
+}
+
 enum class BinaryOp
 {
     INVALID, // Uninitialized Sentinel

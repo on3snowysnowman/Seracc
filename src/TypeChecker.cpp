@@ -224,6 +224,15 @@ bool TypeChecker::is_type_uint_literal(const TypeDecl *ptr) const
     }
 }
 
+bool TypeChecker::is_type_integral(const TypeDecl *ptr) const
+{
+    if(ptr->kind != TypeKind::NAMED) return false;
+
+    const NamedTypeDecl *reint_ptr = static_cast<const NamedTypeDecl*>(ptr);
+
+    
+}
+
 void TypeChecker::check_private_access(const uint64_t targ_scope_id, 
     const uint64_t accessing_scope_id, uint32_t expr_line, uint32_t expr_col,
     const std::vector<std::string> &ident_path) const
@@ -1315,6 +1324,101 @@ TypeChecker::CheckExprResult TypeChecker::check_ident_expr(
     return expr_result;
 }
 
+TypeChecker::CheckExprResult TypeChecker::check_prepost_incdec(
+    const UnaryExpr * ptr, const uint64_t scope_id)
+{
+    CheckExprResult operand_res = 
+        check_expression(ptr->operand.get(), scope_id);
+
+    if(!operand_res.is_lvalue)
+    {
+        print_error_location(ptr->line, ptr->col);
+        std::cout << " -> Expression result must be an lvalue.\n";
+        exit(1);
+    }
+
+    if(!operand_res.is_var_and_mutable)
+    {
+        print_error_location(ptr->line, ptr->col);
+        std::cout << " -> Variable is not mutable.\n";
+        exit(1);
+    }
+
+    if(operand_res.type_decl->kind == TypeKind::PTR) return operand_res;
+
+    if(!is_type_integral(operand_res.type_decl))
+    {
+        print_error_location(ptr->line, ptr->col);
+        std::cout << " -> Expression result must be an integral type\n";
+        exit(1);
+    }
+
+    return operand_res;
+}
+
+TypeChecker::CheckExprResult TypeChecker::check_unary_expr(
+    const UnaryExpr *ptr, const uint64_t scope_id)
+{
+    std::cout << "Checking Unary Expressino of type: " <<
+        ptr->op_type << '\n';
+
+    CheckExprResult expr_result;
+
+    switch(ptr->op_type)
+    {
+        case UnaryOp::PRE_INC: 
+        
+            return check_prepost_incdec(ptr, scope_id);
+
+        case UnaryOp::PRE_DEC: 
+        
+            return check_prepost_incdec(ptr, scope_id);
+
+        case UnaryOp::POST_INC: 
+        
+            return check_prepost_incdec(ptr, scope_id);
+
+        case UnaryOp::POST_DEC: 
+        
+            return check_prepost_incdec(ptr, scope_id);
+
+        // case UnaryOp::NEGATE:
+        // {
+            
+
+        //     break;
+        // }
+
+        // case UnaryOp::BIT_NOT:
+        // {
+        //     break;
+        // }
+
+        // case UnaryOp::LOG_NOT:
+        // {
+        //     break;
+        // }
+
+        // case UnaryOp::ADDRESS_OF:
+        // {
+        //     break;
+        // }
+
+        // case UnaryOp::DEREF:
+        // {
+        //     break;
+        // }
+
+        default:
+            
+            print_error_location(ptr->line, ptr->col);
+            std::cout << " -> Invalid OpType found\n";
+            exit(1);
+    }
+
+    return expr_result;
+}
+
 TypeChecker::CheckExprResult TypeChecker::check_expression
     (const Expression *ptr, const uint64_t scope_id)
 {
@@ -1501,10 +1605,9 @@ TypeChecker::CheckExprResult TypeChecker::check_expression
             exit(1);
         }
 
-        // case ExpressionType::UNARY:
-        // {
-        //     break;
-        // }
+        case ExpressionType::UNARY:
+            return check_unary_expr(static_cast<const UnaryExpr*>(ptr), 
+                scope_id);
 
         // case ExpressionType::BINARY:
         // {

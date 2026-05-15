@@ -38,6 +38,7 @@ private:
 
     void resolve_statement(Statement * const ptr, uint64_t scope_idx);
     
+    // void recurse_resolve_arr_init_expr(ArrInitExpr * const ptr);
     void resolve_expression(Expression * const ptr, uint64_t scope_idx);
 
     // Given a symbol, gets the position in the code that the symbol points to.
