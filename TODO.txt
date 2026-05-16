@@ -1,0 +1,9 @@
+
+
+Finish function pointer support
+
+Long Term:
+
+    Switch statements
+    Enums
+    Templates

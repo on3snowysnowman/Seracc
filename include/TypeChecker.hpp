@@ -45,10 +45,14 @@ private:
         uint32_t expr_line, uint32_t expr_col) const;
     void print_invalid_init_expr(uint32_t line, uint32_t col,
         const TypeDecl *type) const;
+    void print_invalid_type_assignment(const TypeDecl *first, 
+        const TypeDecl *second, uint32_t expr_line, uint32_t expr_col) const;
 
     // Get the symbol idx that a TypeDecl references
     uint64_t resolve_type_decl(const TypeDecl *ptr) const;
     bool is_type_integral(const TypeDecl *ptr) const;
+    bool is_type_uintegral(const TypeDecl *ptr) const;
+    bool is_type_int_literal(const TypeDecl *ptr) const;
     bool is_type_uint_literal(const TypeDecl *ptr) const;
     bool is_type_numerical(const TypeDecl *ptr) const;
     bool is_type_bool(const TypeDecl *ptr) const;
@@ -61,13 +65,11 @@ private:
         uint32_t expr_col, const std::vector<std::string> &ident_path) const;
 
     // Type checking/comparing
-    void cmp_ptr_types(const PtrTypeDecl *first, 
-        const PtrTypeDecl *second, uint32_t expr_line, uint32_t expr_col) const;
-    void cmp_named_types(const NamedTypeDecl *first, 
-        const NamedTypeDecl *second, uint32_t expr_line, uint32_t expr_col) 
+    bool cmp_ptr_types(const PtrTypeDecl *first, const PtrTypeDecl *second) 
         const;
-    void cmp_types(const TypeDecl *first, const TypeDecl *second,
-        uint32_t expr_line, uint32_t expr_col) const;
+    bool cmp_named_types(const NamedTypeDecl *first, 
+        const NamedTypeDecl *second) const;
+    bool cmp_types(const TypeDecl *first, const TypeDecl *second) const;
     void check_type(const TypeDecl *ptr, const uint64_t type_scope_id);
 
     // Main checking
@@ -121,7 +123,11 @@ private:
         const uint64_t scope_id);
     CheckExprResult check_unary_expr(const UnaryExpr *ptr,
         const uint64_t scope_id);
-    CheckExprResult check_addsub_expr(const BinaryExpr *ptr, 
+    CheckExprResult check_arith_expr(const BinaryExpr *ptr,
+        const uint64_t scope_id, bool is_addsub_expr);
+    CheckExprResult check_shift_expr(const BinaryExpr *ptr,
+        const uint64_t scope_id);
+    CheckExprResult check_cmp_expr(const BinaryExpr *ptr,
         const uint64_t scope_id);
     CheckExprResult check_binary_expr(const BinaryExpr *ptr, 
         const uint64_t scope_id);

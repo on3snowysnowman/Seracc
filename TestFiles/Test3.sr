@@ -4,7 +4,9 @@
 
 export fn main() -> void
 {
-    
+    let t0: int;
+
+    let t1: int = t0 << 1;
 
     ret;
 }

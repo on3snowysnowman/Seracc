@@ -151,6 +151,17 @@ void TypeChecker::print_invalid_init_expr(uint32_t line, uint32_t col,
     std::cout << "\"\n";
 }
 
+void TypeChecker::print_invalid_type_assignment(const TypeDecl *first,
+    const TypeDecl *second, uint32_t expr_line, uint32_t expr_col) const
+{
+    print_error_location(expr_line, expr_col);
+    std::cout << " -> Cannot assign type: \"";
+    print_type(second);
+    std::cout << "\" to type: \"";
+    print_type(first);
+    std::cout << "\".\n";
+}
+
 uint64_t TypeChecker::resolve_type_decl(const TypeDecl *ptr) const
 {
     switch(ptr->kind)
@@ -217,6 +228,68 @@ bool TypeChecker::is_type_integral(const TypeDecl *ptr) const
         type_id == s_table->builtin_to_id.at("u32") || 
         type_id == s_table->builtin_to_id.at("i64") || 
         type_id == s_table->builtin_to_id.at("u64");
+}
+
+bool TypeChecker::is_type_uintegral(const TypeDecl *ptr) const
+{
+    // Need to check if this is an uint literal for uintegral types, since 
+    // a positive i8 literal will flag a false negative here.
+    if(is_type_uint_literal(ptr)) return true;
+
+    if(ptr->kind != TypeKind::NAMED) return false;
+
+    const NamedTypeDecl *reint_ptr = 
+        static_cast<const NamedTypeDecl*>(ptr);
+
+    const uint64_t type_id = 
+        reint_ptr->resolved_symbol_idx.value();
+    
+    return 
+        type_id == s_table->builtin_to_id.at("u8") ||  
+        type_id == s_table->builtin_to_id.at("u16") ||   
+        type_id == s_table->builtin_to_id.at("u32") ||  
+        type_id == s_table->builtin_to_id.at("u64");
+}
+
+bool TypeChecker::is_type_int_literal(const TypeDecl *ptr) const
+{
+    if(ptr->kind != TypeKind::NAMED) return false;
+
+    const NamedTypeDecl *reint_ptr = 
+        static_cast<const NamedTypeDecl*>(ptr);
+
+    if(!reint_ptr->builtin_data.has_value()) return false;
+
+    const BuiltinData &bt_data = *reint_ptr->builtin_data;
+
+    switch(bt_data.builtin_type)
+    {
+        case BuiltinType::I8:
+            return true;
+
+        case BuiltinType::U8:
+            return true;
+
+        case BuiltinType::I16:
+            return true;
+
+        case BuiltinType::U16:
+            return true;
+
+        case BuiltinType::I32:
+            return true;
+
+        case BuiltinType::U32:
+            return true;
+
+        case BuiltinType::I64:
+            return true;
+
+        case BuiltinType::U64:
+            return true;
+
+        default: return false;
+    }
 }
 
 bool TypeChecker::is_type_uint_literal(const TypeDecl *ptr) const
@@ -335,15 +408,15 @@ void TypeChecker::check_private_access(const uint64_t targ_scope_id,
     exit(1);
 }
 
-void TypeChecker::cmp_ptr_types(const PtrTypeDecl *first, 
-    const PtrTypeDecl *second, uint32_t expr_line, uint32_t expr_col) const
+bool TypeChecker::cmp_ptr_types(const PtrTypeDecl *first, 
+    const PtrTypeDecl *second) const
 {
     if(second->builtin_type.has_value() && 
         *second->builtin_type == BuiltinPtrType::NULL_PTR)
     {
         std::cout << "rhs is a null_ptr\n";
         // Nullptr can be assigned to any pointer.
-        return;
+        return true;
     }
 
     if(first->builtin_type.has_value() && 
@@ -352,34 +425,34 @@ void TypeChecker::cmp_ptr_types(const PtrTypeDecl *first,
         if(!second->builtin_type.has_value() || 
             *second->builtin_type != BuiltinPtrType::OPAQUE_PTR)
         {
-            print_type_mismatch(first, second, expr_line, expr_col);
-            exit(1);
+            // print_type_mismatch(first, second, expr_line, expr_col);
+            // exit(1);
+            return false;
         }
 
-        return;
+        return true;
     }
 
     if(first->points_to_mutable && !second->points_to_mutable)
     {
-        print_error_location(expr_line, expr_col);
-        std::cout << " -> Cannot assign pointer to non mutable: \"";
-        print_type(second);
-        std::cout << "\" to pointer to mutable: \"";
-        print_type(first);
-        std::cout << "\"\n";
-        exit(1);
+        // print_error_location(expr_line, expr_col);
+        // std::cout << " -> Cannot assign pointer to non mutable: \"";
+        // print_type(second);
+        // std::cout << "\" to pointer to mutable: \"";
+        // print_type(first);
+        // std::cout << "\"\n";
+        // exit(1);
+        return false;
     }
 
-    cmp_types(first->pointee.get(), second->pointee.get(), expr_line, 
-        expr_col);
+    return cmp_types(first->pointee.get(), second->pointee.get());
 }
 
-void TypeChecker::cmp_named_types(const NamedTypeDecl *first, 
-    const NamedTypeDecl *second, uint32_t expr_line, uint32_t expr_col) const
+bool TypeChecker::cmp_named_types(const NamedTypeDecl *first, 
+    const NamedTypeDecl *second) const
 {
     if(second->builtin_data.has_value())
     {
-        // std::vector<BuiltinType> allowed_types;
         std::vector<uint64_t> allowed_types;
 
         const BuiltinData &bt_data = *second->builtin_data;
@@ -394,6 +467,7 @@ void TypeChecker::cmp_named_types(const NamedTypeDecl *first,
             allowed_types.push_back(s_table->builtin_to_id.at("i8"));
             allowed_types.push_back(s_table->builtin_to_id.at("i16"));
             allowed_types.push_back(s_table->builtin_to_id.at("i32"));
+            allowed_types.push_back(s_table->builtin_to_id.at("int"));
             allowed_types.push_back(s_table->builtin_to_id.at("i64"));
 
             if(!bt_data.is_integral_and_negative)
@@ -411,6 +485,7 @@ void TypeChecker::cmp_named_types(const NamedTypeDecl *first,
             allowed_types.push_back(s_table->builtin_to_id.at("i16"));
             allowed_types.push_back(s_table->builtin_to_id.at("u16"));
             allowed_types.push_back(s_table->builtin_to_id.at("i32"));
+            allowed_types.push_back(s_table->builtin_to_id.at("int"));
             allowed_types.push_back(s_table->builtin_to_id.at("u32"));
             allowed_types.push_back(s_table->builtin_to_id.at("i64"));
             allowed_types.push_back(s_table->builtin_to_id.at("u64"));
@@ -420,6 +495,7 @@ void TypeChecker::cmp_named_types(const NamedTypeDecl *first,
         {
             allowed_types.push_back(s_table->builtin_to_id.at("i16"));
             allowed_types.push_back(s_table->builtin_to_id.at("i32"));
+            allowed_types.push_back(s_table->builtin_to_id.at("int"));
             allowed_types.push_back(s_table->builtin_to_id.at("i64"));
 
             if(!bt_data.is_integral_and_negative)
@@ -434,6 +510,7 @@ void TypeChecker::cmp_named_types(const NamedTypeDecl *first,
         {
             allowed_types.push_back(s_table->builtin_to_id.at("u16"));
             allowed_types.push_back(s_table->builtin_to_id.at("i32"));
+            allowed_types.push_back(s_table->builtin_to_id.at("int"));
             allowed_types.push_back(s_table->builtin_to_id.at("u32"));
             allowed_types.push_back(s_table->builtin_to_id.at("i64"));
             allowed_types.push_back(s_table->builtin_to_id.at("u64"));
@@ -442,6 +519,7 @@ void TypeChecker::cmp_named_types(const NamedTypeDecl *first,
         else if(bt_data.builtin_type == BuiltinType::I32)
         {
             allowed_types.push_back(s_table->builtin_to_id.at("i32"));
+            allowed_types.push_back(s_table->builtin_to_id.at("int"));
             allowed_types.push_back(s_table->builtin_to_id.at("i64"));
 
             if(!bt_data.is_integral_and_negative)
@@ -506,29 +584,39 @@ void TypeChecker::cmp_named_types(const NamedTypeDecl *first,
 
         if(!allowed)
         {
-            print_error_location(second->line, second->col);
-            std::cout << " -> Cannot assign literal of type: \"" << 
-                second->builtin_data->builtin_type << "\" to a type of: \"";
-            print_type(first);
-            std::cout << "\"\n";
-            exit(1);
+            // print_error_location(expr_line, expr_col);
+            // std::cout << " -> Type: \"";
+            // print_type(second);
+            // std::cout << "\" does not match type: \"";
+            // print_type(first);
+            // std::cout << "\".\n";
+            // exit(1);
+
+            // print_error_location(second->line, second->col);
+            // std::cout << " -> Cannot assign literal of type: \"" << 
+            //     second->builtin_data->builtin_type << "\" to a type of: \"";
+            // print_type(first);
+            // std::cout << "\"\n";
+            return false;
         }
 
         std::cout << "Literal is allowed\n";
 
-        return;
+        return true;
     }
 
     if(first->resolved_symbol_idx.value() != 
         second->resolved_symbol_idx.value())
     {
-        print_type_mismatch(first, second, expr_line, expr_col);
-        exit(1);
+        // print_type_mismatch(first, second, );
+        // exit(1);
+        return false;
     }
+
+    return true;
 }
 
-void TypeChecker::cmp_types(const TypeDecl *first, const TypeDecl *second,
-    uint32_t expr_line, uint32_t expr_col)
+bool TypeChecker::cmp_types(const TypeDecl *first, const TypeDecl *second)
     const
 {
     std::cout << "Checking types: ";
@@ -539,25 +627,23 @@ void TypeChecker::cmp_types(const TypeDecl *first, const TypeDecl *second,
 
     if(first->kind != second->kind)
     {
-        print_type_mismatch(first, second, expr_line, expr_col);
-        exit(1); 
+        // print_type_mismatch(first, second, expr_line, expr_col);
+        // exit(1); 
+        return false;
     }
  
     switch(first->kind)
     {
         case TypeKind::NAMED:
         {
-            cmp_named_types(static_cast<const NamedTypeDecl*>(first),
-                static_cast<const NamedTypeDecl*>(second), expr_line,
-                expr_col);
-            return;
+            return cmp_named_types(static_cast<const NamedTypeDecl*>(first),
+                static_cast<const NamedTypeDecl*>(second));
         }
 
         case TypeKind::PTR:
         {
-            cmp_ptr_types(static_cast<const PtrTypeDecl*>(first),
-                static_cast<const PtrTypeDecl*>(second), expr_line, expr_col);
-            return;
+            return cmp_ptr_types(static_cast<const PtrTypeDecl*>(first),
+                static_cast<const PtrTypeDecl*>(second));
         }
 
         // case TypeKind::REF:
@@ -808,9 +894,14 @@ void TypeChecker::check_var_decl_stmt(const VarDeclStmt *ptr)
     const CheckExprResult init_expr_result = 
         check_expression(ptr->init_expr.get(), *var_sym->scope_idx);
 
-    cmp_types(ptr->type_decl.get(),
-        init_expr_result.type_decl, ptr->init_expr->line,
-        ptr->init_expr->col);
+    if(!cmp_types(ptr->type_decl.get(),
+        init_expr_result.type_decl))
+    {
+        print_invalid_type_assignment(ptr->type_decl.get(), 
+            init_expr_result.type_decl, ptr->init_expr->line, 
+            ptr->init_expr->col);
+        exit(1);
+    }
 }
 
 void TypeChecker::check_statement(const Statement * ptr, 
@@ -886,8 +977,13 @@ void TypeChecker::check_statement(const Statement * ptr,
                 const CheckExprResult ret_expr_result = 
                 check_expression(reint_ptr->ret_expr.get(), scope_id);
 
-                cmp_types(*expected_return_type, ret_expr_result.type_decl, 
-                    reint_ptr->ret_expr->line, reint_ptr->ret_expr->col);
+                if(!cmp_types(*expected_return_type, ret_expr_result.type_decl))
+                {
+                    print_invalid_type_assignment(*expected_return_type, 
+                        ret_expr_result.type_decl, reint_ptr->ret_expr->line,
+                        reint_ptr->ret_expr->col);
+                    exit(1);
+                }
             }
 
             break;
@@ -1146,29 +1242,6 @@ TypeChecker::CheckExprResult TypeChecker::check_struct_init_expr(
     const StructDecl *struct_decl = get_struct_decl_from_type(
         var_type, expr->line, expr->col);
 
-    // // First, make sure that the type of the variable is a struct.
-    // if(var_type->kind != TypeKind::NAMED)
-    // {
-    //     print_invalid_init_expr(expr->line, expr->col, var_type);
-    //     exit(1);
-    // }
-
-    // const StructDecl *struct_decl = nullptr;
-    // {
-    //     const Symbol *symbol_of_type = 
-    //         s_table->symbols.at(static_cast<const NamedTypeDecl*>(var_type)->
-    //         resolved_symbol_idx.value()).get();
-
-    //     if(symbol_of_type->sym_type != SymbolType::STRUCT)
-    //     {
-    //         print_invalid_init_expr(expr->line, expr->col, var_type);
-    //         exit(1);
-    //     }
-
-    //     struct_decl = 
-    //         static_cast<const StructSymbol*>(symbol_of_type)->ast_node_ptr;
-    // }
-
     // The variable type is a valid struct type.
 
     if(expr->init_args.size() != struct_decl->decls.size())
@@ -1209,9 +1282,16 @@ TypeChecker::CheckExprResult TypeChecker::check_struct_init_expr(
         CheckExprResult init_expr_result = 
             check_expression(targ_init_expr, var_scope_id);
 
-        cmp_types(field_decl->type_decl.get(), init_expr_result.type_decl, 
-            targ_init_expr->line, 
-            targ_init_expr->col);
+        if(!cmp_types(field_decl->type_decl.get(), init_expr_result.type_decl))
+        {
+            print_error_location(targ_init_expr->line, targ_init_expr->col);
+            std::cout << " -> Type mismatch between init arg of type: \"";
+            print_type(init_expr_result.type_decl);
+            std::cout << "\" and Struct member type: \"";
+            print_type(field_decl->type_decl.get());
+            std::cout << "\".\n";
+            exit(1);
+        }
     }
 
     expr_result.is_lvalue = false;
@@ -1263,8 +1343,16 @@ void TypeChecker::recurse_check_arr_init(const ArrInitExpr *init_expr,
         CheckExprResult init_arg_res = 
             check_expression(init_arg.get(), scope_id);
 
-        cmp_types(element_type, init_arg_res.type_decl, init_arg->line, 
-            init_arg->col);
+        if(!cmp_types(element_type, init_arg_res.type_decl))
+        {
+            print_error_location(init_arg->line, init_arg->col);
+            std::cout << " -> Type mismatch between init arg of type: \"";
+            print_type(init_arg_res.type_decl);
+            std::cout << "\" and Array type: \"";
+            print_type(element_type);
+            std::cout << "\".\n";
+            exit(1);
+        }
     }    
 }
 
@@ -1633,7 +1721,112 @@ TypeChecker::CheckExprResult TypeChecker::check_unary_expr(
     return expr_result;
 }
 
-TypeChecker::CheckExprResult TypeChecker::check_addsub_expr(
+TypeChecker::CheckExprResult TypeChecker::check_arith_expr(
+    const BinaryExpr *ptr, const uint64_t scope_id, bool is_addsub_expr)
+{
+    CheckExprResult lhs_result = 
+        check_expression(ptr->lhs.get(), scope_id);
+    CheckExprResult rhs_result = 
+        check_expression(ptr->rhs.get(), scope_id);
+
+    bool lhs_is_integral = is_type_integral(lhs_result.type_decl);
+    bool rhs_is_integral = is_type_integral(rhs_result.type_decl);
+
+    if(is_addsub_expr)
+    {
+        if(lhs_result.type_decl->kind == TypeKind::PTR)
+        {
+            if(!rhs_is_integral)
+            {
+                print_error_location(ptr->line, ptr->col);
+                std::cout << " -> Pointers only support arithmetic with "
+                    "integral types\n";
+                exit(1);
+            }
+
+            return lhs_result;
+        }
+
+        if(rhs_result.type_decl->kind == TypeKind::PTR)
+        {
+            if(!lhs_is_integral)
+            {
+                print_error_location(ptr->line, ptr->col);
+                std::cout << " -> Pointers only support arithmetic with "
+                    "integral types\n";
+                exit(1);
+            }
+
+            return rhs_result;
+        }
+    }
+
+    if(!lhs_is_integral)
+    {
+        print_error_location(ptr->lhs->line, ptr->lhs->col);
+        std::cout << " -> Invalid type for arithmetic.\n";
+        exit(1);
+    }
+
+    if(!rhs_is_integral)
+    {
+        print_error_location(ptr->rhs->line, ptr->rhs->col);
+        std::cout << " -> Invalid type for arithmetic.\n";
+        exit(1);
+    }
+
+    // If lhs is a literal
+    if(is_type_int_literal(lhs_result.type_decl))
+    {
+        if(!cmp_types(rhs_result.type_decl, lhs_result.type_decl))
+        {
+            print_error_location(ptr->line, ptr->col);
+            std::cout << " -> Unable to perform arithmetic between non matching"
+                " types: \"";
+            print_type(lhs_result.type_decl);
+            std::cout << "\" and type: \"";
+            print_type(rhs_result.type_decl);
+            std::cout << "\".\n";
+            exit(1);
+        }
+
+        return rhs_result;
+    }
+
+    if(is_type_int_literal(rhs_result.type_decl))
+    {
+        if(!cmp_types(lhs_result.type_decl, rhs_result.type_decl))
+        {
+            print_error_location(ptr->line, ptr->col);
+            std::cout << " -> Unable to perform arithmetic between non matching"
+                " types: \"";
+            print_type(lhs_result.type_decl);
+            std::cout << "\" and type: \"";
+            print_type(rhs_result.type_decl);
+            std::cout << "\".\n";
+            exit(1);
+        }
+
+        return lhs_result;
+    }
+    
+    if(cmp_types(lhs_result.type_decl, rhs_result.type_decl)) 
+        return lhs_result;
+
+    // if(cmp_types(rhs_result.type_decl, lhs_result.type_decl)) 
+    //     return rhs_result;
+
+    print_error_location(ptr->line, ptr->col);
+    std::cout << " -> Unable to perform arithmetic between non matching types:"
+        " \"";
+    print_type(lhs_result.type_decl);
+    std::cout << "\" and type: \"";
+    print_type(rhs_result.type_decl);
+    std::cout << "\".\n";
+    exit(1);
+}
+
+TypeChecker::CheckExprResult TypeChecker::check_shift_expr(
     const BinaryExpr *ptr, const uint64_t scope_id)
 {
     CheckExprResult lhs_result = 
@@ -1641,10 +1834,33 @@ TypeChecker::CheckExprResult TypeChecker::check_addsub_expr(
     CheckExprResult rhs_result = 
         check_expression(ptr->rhs.get(), scope_id);
 
-    if(lhs_result.type_decl->kind == TypeKind::PTR)
+    if(!is_type_integral(lhs_result.type_decl))
     {
-        
+        print_error_location(ptr->lhs->line, ptr->lhs->col);
+        std::cout << " -> Expression result must have integral type.\n";
+        exit(1);
     }
+
+    if(!is_type_uintegral(rhs_result.type_decl))
+    {
+        print_error_location(ptr->rhs->line, ptr->rhs->col);
+        std::cout << " -> Expression result must have an unsigned integral "
+            "type.\n";
+        exit(1);
+    }
+
+    return lhs_result;
+}
+
+TypeChecker::CheckExprResult TypeChecker::check_cmp_expr(const BinaryExpr *ptr,
+    const uint64_t scope_id)
+{
+    CheckExprResult lhs_result = 
+        check_expression(ptr->lhs.get(), scope_id);
+    CheckExprResult rhs_result = 
+        check_expression(ptr->rhs.get(), scope_id);
+
+        
 }
 
 TypeChecker::CheckExprResult TypeChecker::check_binary_expr(
@@ -1652,26 +1868,26 @@ TypeChecker::CheckExprResult TypeChecker::check_binary_expr(
 {
     switch(ptr->op_type)
     {
-        // case BinaryOp::ADD:
-        //     break;
+        case BinaryOp::ADD:
+            return check_arith_expr(ptr, scope_id, true);
 
-        // case BinaryOp::SUB:
-        //     break;
+        case BinaryOp::SUB:
+            return check_arith_expr(ptr, scope_id, true);
 
-        // case BinaryOp::MUL:
-        //     break;
+        case BinaryOp::MUL:
+            return check_arith_expr(ptr, scope_id, false);
 
-        // case BinaryOp::DIV:
-        //     break;
+        case BinaryOp::DIV:
+            return check_arith_expr(ptr, scope_id, false);
 
-        // case BinaryOp::MOD:
-        //     break;
+        case BinaryOp::MOD:
+            return check_arith_expr(ptr, scope_id, false);
 
-        // case BinaryOp::LSHIFT:
-        //     break;
+        case BinaryOp::LSHIFT:
+            return check_shift_expr(ptr, scope_id);
 
-        // case BinaryOp::RSHIFT:
-        //     break;
+        case BinaryOp::RSHIFT:
+            return check_shift_expr(ptr, scope_id);
 
         // case BinaryOp::LT:
         //     break;
@@ -1691,14 +1907,14 @@ TypeChecker::CheckExprResult TypeChecker::check_binary_expr(
         // case BinaryOp::NE:
         //     break;
 
-        // case BinaryOp::BIT_AND:
-        //     break;
+        case BinaryOp::BIT_AND:
+            return check_arith_expr(ptr, scope_id, false);
 
-        // case BinaryOp::BIT_OR:
-        //     break;
+        case BinaryOp::BIT_OR:
+            return check_arith_expr(ptr, scope_id, false);
 
-        // case BinaryOp::BIT_XOR:
-        //     break;
+        case BinaryOp::BIT_XOR:
+            return check_arith_expr(ptr, scope_id, false);
 
         // case BinaryOp::LOG_AND:
         //     break;
@@ -1906,10 +2122,9 @@ TypeChecker::CheckExprResult TypeChecker::check_expression
             return check_unary_expr(static_cast<const UnaryExpr*>(ptr), 
                 scope_id);
 
-        // case ExpressionType::BINARY:
-        // {
-        //     break;
-        // }
+        case ExpressionType::BINARY:
+            return check_binary_expr(static_cast<const BinaryExpr*>(ptr),
+                scope_id);
 
         // case ExpressionType::TERNARY:
         // {
