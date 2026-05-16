@@ -133,10 +133,17 @@ void SymbolResolver::resolve_type_decl(TypeDecl * const ptr,
         }
 
         case TypeKind::PTR:
+        {
+            PtrTypeDecl *reint_ptr = static_cast<PtrTypeDecl*>(ptr);
+
+            // We do not need to resolve opaque_ptr types.
+            if(reint_ptr->builtin_type.has_value() && 
+                *reint_ptr->builtin_type == BuiltinPtrType::OPAQUE_PTR) break;
 
             resolve_type_decl(static_cast<PtrTypeDecl*>(ptr)->pointee.get(),
                 scope_idx);
             break;
+        }
 
         case TypeKind::REF:
 
@@ -639,8 +646,10 @@ uint64_t SymbolResolver::find_symbol_idx(
             // symbol.
             if(!parsed_scope->parent_scope_idx)
             {
-                std::cout << parsed_file << ":" << symbol_line << ":" << 
-                symbol_col << " -> Undefined symbol: " << ident_path[0] << '\n';
+                print_error_location(symbol_line, symbol_col);
+                std::cout << " -> Undefined symbol: \"";
+                print_ident_path(ident_path);
+                std::cout << "\".\n";
                 exit(1);
             }
 
@@ -724,41 +733,9 @@ uint64_t SymbolResolver::find_symbol_idx(
         if(elem.first == targ_symbol_name) return elem.second;
     }
 
-    std::cout << parsed_file << ':' << symbol_line << ':' << symbol_col << 
-        " -> Undefined symbol: \"";
-
+    print_error_location(symbol_line, symbol_col);
+    std::cout << " -> Undefined symbol: \"";
     print_ident_path(ident_path);
-
-    std::cout << "\"\n";
+    std::cout << "\".\n";
     exit(1);
-
-    // const std::string *targ_ident = &ident_path[0];
-
-    // uint64_t target_symbol_idx;
-
-    // while(true)
-    // {
-    //     bool match = false;
-        
-    //     for(const auto &elem: parsed_scope->sym_name_to_symbol_idx)
-    //     {
-    //         // Identifier match.
-    //         if(elem.first == *targ_ident)
-    //         {
-    //             // We need to make sure the symbol we've found is a module, and
-    //             // not just a random symbol.
-
-    //             match = true; 
-    //             break;
-    //         }
-    //     }
-
-    //     if(match) break;
-
-    //     // We didn't find one of the module names in the scope chain.
-
-    //     std::cout << parsed_file << ":" << symbol_line << ":" << symbol_col << 
-    //         "Symbol does not exist\n";
-    //     exit(1);
-    // }
 } 

@@ -151,6 +151,7 @@ const char * const tokID_readable[]
     "AT",
     "AMPERSAND",
     "TILDE",
+    "CARROT",
 
     // Operators
     "SCOPE_RESOLUTION",
@@ -185,7 +186,8 @@ const char * const tokID_readable[]
     "SHIFT_LEFT",
     "SHIFT_LEFT_ASSIGN",
     "SHIFT_RIGHT",
-    "SHIFT_RIGHT_ASSIGN"
+    "SHIFT_RIGHT_ASSIGN",
+    "TOKEN_COUNT"
 };
 
 static inline std::ostream& operator<<(std::ostream &os, TokenID id)

@@ -738,7 +738,7 @@ std::unique_ptr<Expression> Parser::pratt_parse(
             continue;
         }
 
-        if(tok_id == TokenID::PLUS_PLUS)
+        if(tok_id == TokenID::PLUS_PLUS || tok_id == TokenID::MINUS_MINUS)
         {
             lhs = parse_post_inc_dec(std::move(lhs));
             continue;
@@ -2082,47 +2082,41 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
     
+    // Consume the global addressing scope if there is one ie "::SomeModule"
+    consume_if(TokenID::SCOPE_RESOLUTION);
+
     // Named 
     if(check(TokenID::IDENTIFIER))
     {
-        ptr = std::make_unique<NamedTypeDecl>();
-        ptr->kind = TypeKind::NAMED;
-        NamedTypeDecl *reint_ptr = static_cast<NamedTypeDecl*>(ptr.get());
-
-        // if(!check(TokenID::IDENTIFIER)) return nullptr;
-
-        // uint32_t ident_line = peek().line;
-        // uint32_t ident_col = peek().col;
-
-        reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
-    
-        while(consume_if(TokenID::SCOPE_RESOLUTION))
+        if(peek().text == "opaque_ptr")
         {
-            reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
+            expect(TokenID::IDENTIFIER);
+            ptr = std::make_unique<PtrTypeDecl>();
+            
+            PtrTypeDecl *reint_ptr = static_cast<PtrTypeDecl*>(ptr.get());
+
+            reint_ptr->builtin_type = BuiltinPtrType::OPAQUE_PTR;
         }
 
-        // // If the identifier is not a type symbol, this can't be a type.
-        // if(defined_types.find(reint_ptr->ident_path.back()) == 
-        //     defined_types.end())
-        // {
-        //     if(error_on_invalid)
-        //     {
-        //         print_error_location(ident_line, ident_col);
-        //         std::cout << " -> Undefined symbol (Parser): \"";
-        //         print_ident_path(reint_ptr->ident_path);
-        //         std::cout << "\"\n";
-        //         exit(1);
-        //     }
+        else
+        {
+            ptr = std::make_unique<NamedTypeDecl>();
+            NamedTypeDecl *reint_ptr = static_cast<NamedTypeDecl*>(ptr.get());
 
-        //     return nullptr;
-        // }
+            reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
+        
+            while(consume_if(TokenID::SCOPE_RESOLUTION))
+            {
+                reint_ptr->ident_path.push_back(
+                    expect(TokenID::IDENTIFIER).text);
+            }
+        }
     }
 
     // Pointer 
     else if(consume_if(TokenID::ASTERISK))
     {
         ptr = std::make_unique<PtrTypeDecl>();
-        ptr->kind = TypeKind::PTR;
         PtrTypeDecl *reint_ptr = static_cast<PtrTypeDecl*>(ptr.get());
 
         reint_ptr->points_to_mutable = consume_if(TokenID::KW_MUT);
@@ -2138,7 +2132,6 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
     else if(consume_if(TokenID::KW_REF))
     {   
         ptr = std::make_unique<RefTypeDecl>();
-        ptr->kind = TypeKind::REF;
         RefTypeDecl *reint_ptr = static_cast<RefTypeDecl*>(ptr.get());
 
         reint_ptr->ref_to_mutable = consume_if(TokenID::KW_MUT);
@@ -2161,7 +2154,6 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
     else if(consume_if(TokenID::KW_FN))
     {
         ptr = std::make_unique<FuncPtrDecl>();
-        ptr->kind = TypeKind::FUNC_PTR;
         FuncPtrDecl *reint_ptr = static_cast<FuncPtrDecl*>(ptr.get());
 
         if(!check(TokenID::LPAREN)) return nullptr;

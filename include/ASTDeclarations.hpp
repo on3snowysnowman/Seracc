@@ -855,12 +855,18 @@ struct BlockStmt : Statement
 
 // DECLARATIONS ================================================================
 
+struct BuiltinData
+{
+    BuiltinType builtin_type = BuiltinType::INVALID;
+    bool is_integral_and_negative = false;
+};
+
 struct NamedTypeDecl : TypeDecl
 {
     NamedTypeDecl() { kind = TypeKind::NAMED; }
     std::vector<std::string> ident_path;
     std::optional<uint64_t> resolved_symbol_idx;
-    std::optional<BuiltinType> builtin_type;
+    std::optional<BuiltinData> builtin_data;
 
     std::unique_ptr<TypeDecl> clone() const final
     {

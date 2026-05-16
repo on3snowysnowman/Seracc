@@ -1,10 +1,10 @@
 // Test3.sr
 
 
+
 export fn main() -> void
 {
-    let mut t0: int;
-    let t1: int = ++t0;
+    
 
     ret;
 }

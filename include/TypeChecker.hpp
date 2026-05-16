@@ -48,8 +48,10 @@ private:
 
     // Get the symbol idx that a TypeDecl references
     uint64_t resolve_type_decl(const TypeDecl *ptr) const;
-    bool is_type_uint_literal(const TypeDecl *ptr) const;
     bool is_type_integral(const TypeDecl *ptr) const;
+    bool is_type_uint_literal(const TypeDecl *ptr) const;
+    bool is_type_numerical(const TypeDecl *ptr) const;
+    bool is_type_bool(const TypeDecl *ptr) const;
 
     // Given a scope id (accessing_sym_id) that wants to access a private 
     // field in some scope (targ_scope_id), check to make sure that this is a 
@@ -111,7 +113,17 @@ private:
         const uint64_t scope_id);
     CheckExprResult check_prepost_incdec(const UnaryExpr *ptr,
         const uint64_t scope_id);
+    CheckExprResult check_expr_ensure_integral(const Expression *ptr, 
+        const uint64_t scope_id);
+    CheckExprResult check_addr_of_expr(const UnaryExpr *ptr, 
+        const uint64_t scope_id);
+    CheckExprResult check_deref_expr(const UnaryExpr *ptr,
+        const uint64_t scope_id);
     CheckExprResult check_unary_expr(const UnaryExpr *ptr,
+        const uint64_t scope_id);
+    CheckExprResult check_addsub_expr(const BinaryExpr *ptr, 
+        const uint64_t scope_id);
+    CheckExprResult check_binary_expr(const BinaryExpr *ptr, 
         const uint64_t scope_id);
     CheckExprResult check_expression(const Expression *ptr, 
         const uint64_t scope_id); 

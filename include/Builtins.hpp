@@ -19,6 +19,7 @@ enum class BuiltinType
     VOID,
     FLOAT,
     DOUBLE,
+    OPAQUE_PTR,
     INVALID
 };
 
@@ -27,51 +28,55 @@ static inline std::ostream& operator<<(std::ostream &os, BuiltinType type)
     switch(type)
     {
         case BuiltinType::U8:
-            os << "U8";
+            os << "u8";
             break;
         
         case BuiltinType::I8:
-            os << "I8";
+            os << "i8";
             break;
 
         case BuiltinType::U16:
-            os << "U16";
+            os << "u16";
             break;
 
         case BuiltinType::I16:
-            os << "I16";
+            os << "i16";
             break;
 
         case BuiltinType::U32:
-            os << "U32";
+            os << "u32";
             break;
 
         case BuiltinType::I32:
-            os << "I32";
+            os << "i32";
             break;
 
         case BuiltinType::U64:
-            os << "U64";
+            os << "u64";
             break;
 
         case BuiltinType::I64:
-            os << "I64";
+            os << "i64";
             break;
 
         case BuiltinType::BOOL:
-            os << "BOOL";
+            os << "bool";
             break;
 
         case BuiltinType::VOID:
-            os << "VOID";
+            os << "void";
             break;
 
         case BuiltinType::FLOAT:
-            os << "FLOAT";
+            os << "float";
             break;
 
         case BuiltinType::DOUBLE:
-            os << "DOUBLE";
+            os << "double";
+            break;
+
+        case BuiltinType::OPAQUE_PTR:
+            os << "opaque_ptr";
             break;
 
         case BuiltinType::INVALID:
@@ -106,4 +111,5 @@ const std::vector<std::pair<const char * const, BuiltinType>>
     {"void", BuiltinType::VOID},
     {"float", BuiltinType::FLOAT},
     {"double", BuiltinType::DOUBLE},
+    {"opaque_ptr", BuiltinType::OPAQUE_PTR}
 };

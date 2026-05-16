@@ -130,7 +130,7 @@ void Lexer::parse_ident(Token &t)
         t.id = it->second;
     }
 
-    else if(t.text == "nullptr")
+    else if(t.text == "null_ptr")
     {
         t.id = TokenID::NULLPTR_LITERAL;
     }
@@ -764,7 +764,3 @@ Token Lexer::next_token()
 
     return t; 
 }
-
-
-// XOR BIT_AND_ASSIGN BIT_OR_ASSIGN BIT_XOR_ASSIGN SHIFT_LEFT_ASSIGN 
-// SHIFT_RIGHT_ASSIGN

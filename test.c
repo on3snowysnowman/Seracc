@@ -1,12 +1,12 @@
 
+#include <stdlib.h>
+
 int main(void)
 {
-    int num;
-    int *ptr = &num;
+    int* ptr;
 
-    float f;
 
-    ++f;
-
+    int* pt2 = ptr + 23;
+    
     return 0;
 }
