@@ -50,11 +50,13 @@ private:
 
     // Get the symbol idx that a TypeDecl references
     uint64_t resolve_type_decl(const TypeDecl *ptr) const;
+    bool is_type_numeric(const TypeDecl *ptr) const;
     bool is_type_integral(const TypeDecl *ptr) const;
     bool is_type_uintegral(const TypeDecl *ptr) const;
+    bool is_type_numeric_literal(const TypeDecl *ptr) const;
     bool is_type_int_literal(const TypeDecl *ptr) const;
     bool is_type_uint_literal(const TypeDecl *ptr) const;
-    bool is_type_numerical(const TypeDecl *ptr) const;
+    // bool is_type_numeric(const TypeDecl *ptr) const;
     bool is_type_bool(const TypeDecl *ptr) const;
 
     // Given a scope id (accessing_sym_id) that wants to access a private 
@@ -67,6 +69,8 @@ private:
     // Type checking/comparing
     bool cmp_ptr_types(const PtrTypeDecl *first, const PtrTypeDecl *second) 
         const;
+    bool cmp_builtin_type(const NamedTypeDecl *builtin_type, 
+        const NamedTypeDecl *other_type) const;
     bool cmp_named_types(const NamedTypeDecl *first, 
         const NamedTypeDecl *second) const;
     bool cmp_types(const TypeDecl *first, const TypeDecl *second) const;
@@ -128,7 +132,7 @@ private:
     CheckExprResult check_shift_expr(const BinaryExpr *ptr,
         const uint64_t scope_id);
     CheckExprResult check_cmp_expr(const BinaryExpr *ptr,
-        const uint64_t scope_id);
+        const uint64_t scope_id, bool is_equals_expr);
     CheckExprResult check_binary_expr(const BinaryExpr *ptr, 
         const uint64_t scope_id);
     CheckExprResult check_expression(const Expression *ptr, 

@@ -19,6 +19,7 @@ enum class BuiltinType
     VOID,
     FLOAT,
     DOUBLE,
+    CHAR,
     OPAQUE_PTR,
     INVALID
 };
@@ -75,6 +76,10 @@ static inline std::ostream& operator<<(std::ostream &os, BuiltinType type)
             os << "double";
             break;
 
+        case BuiltinType::CHAR:
+            os << "char";
+            break;
+
         case BuiltinType::OPAQUE_PTR:
             os << "opaque_ptr";
             break;
@@ -97,7 +102,6 @@ enum class BuiltinPtrType
 const std::vector<std::pair<const char * const, BuiltinType>> 
     readable_to_builtin
 {
-    {"char", BuiltinType::U8},
     {"u8", BuiltinType::U8},
     {"i8", BuiltinType::I8},
     {"u16", BuiltinType::U16},
@@ -111,5 +115,6 @@ const std::vector<std::pair<const char * const, BuiltinType>>
     {"void", BuiltinType::VOID},
     {"float", BuiltinType::FLOAT},
     {"double", BuiltinType::DOUBLE},
+    {"char", BuiltinType::CHAR},
     {"opaque_ptr", BuiltinType::OPAQUE_PTR}
 };

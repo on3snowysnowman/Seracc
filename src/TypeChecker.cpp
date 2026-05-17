@@ -208,12 +208,46 @@ uint64_t TypeChecker::resolve_type_decl(const TypeDecl *ptr) const
     }   
 }
 
+bool TypeChecker::is_type_numeric(const TypeDecl *ptr) const
+{
+    if(ptr->kind != TypeKind::NAMED) return false;
+
+    const NamedTypeDecl *reint_ptr = 
+        static_cast<const NamedTypeDecl*>(ptr);
+
+    if(reint_ptr->builtin_data.has_value())
+    {
+        return is_type_numeric_literal(ptr);
+    }
+
+    const uint64_t type_id = 
+        reint_ptr->resolved_symbol_idx.value();
+
+    return 
+        type_id == s_table->builtin_to_id.at("i8") || 
+        type_id == s_table->builtin_to_id.at("u8") || 
+        type_id == s_table->builtin_to_id.at("i16") || 
+        type_id == s_table->builtin_to_id.at("u16") || 
+        type_id == s_table->builtin_to_id.at("i32") || 
+        type_id == s_table->builtin_to_id.at("int") || 
+        type_id == s_table->builtin_to_id.at("u32") || 
+        type_id == s_table->builtin_to_id.at("i64") || 
+        type_id == s_table->builtin_to_id.at("u64") || 
+        type_id == s_table->builtin_to_id.at("float") ||
+        type_id == s_table->builtin_to_id.at("double");
+}
+
 bool TypeChecker::is_type_integral(const TypeDecl *ptr) const
 {
     if(ptr->kind != TypeKind::NAMED) return false;
 
     const NamedTypeDecl *reint_ptr = 
         static_cast<const NamedTypeDecl*>(ptr);
+
+    if(reint_ptr->builtin_data.has_value())
+    {
+        return is_type_int_literal(ptr);
+    }
 
     const uint64_t type_id = 
         reint_ptr->resolved_symbol_idx.value();
@@ -234,12 +268,18 @@ bool TypeChecker::is_type_uintegral(const TypeDecl *ptr) const
 {
     // Need to check if this is an uint literal for uintegral types, since 
     // a positive i8 literal will flag a false negative here.
-    if(is_type_uint_literal(ptr)) return true;
+    // if(is_type_uint_literal(ptr)) return true;
 
     if(ptr->kind != TypeKind::NAMED) return false;
 
     const NamedTypeDecl *reint_ptr = 
         static_cast<const NamedTypeDecl*>(ptr);
+
+    // If we are dealing with a builtin type.
+    if(reint_ptr->builtin_data.has_value())
+    {
+        return is_type_uint_literal(ptr);
+    }
 
     const uint64_t type_id = 
         reint_ptr->resolved_symbol_idx.value();
@@ -251,7 +291,8 @@ bool TypeChecker::is_type_uintegral(const TypeDecl *ptr) const
         type_id == s_table->builtin_to_id.at("u64");
 }
 
-bool TypeChecker::is_type_int_literal(const TypeDecl *ptr) const
+bool is_type_literal_helper(const TypeDecl *ptr, 
+    const std::unordered_set<uint64_t> acceptable_ids)
 {
     if(ptr->kind != TypeKind::NAMED) return false;
 
@@ -262,109 +303,188 @@ bool TypeChecker::is_type_int_literal(const TypeDecl *ptr) const
 
     const BuiltinData &bt_data = *reint_ptr->builtin_data;
 
-    switch(bt_data.builtin_type)
+    for(uint64_t bt_id : bt_data.acceptable_builtin_ids)
     {
-        case BuiltinType::I8:
-            return true;
-
-        case BuiltinType::U8:
-            return true;
-
-        case BuiltinType::I16:
-            return true;
-
-        case BuiltinType::U16:
-            return true;
-
-        case BuiltinType::I32:
-            return true;
-
-        case BuiltinType::U32:
-            return true;
-
-        case BuiltinType::I64:
-            return true;
-
-        case BuiltinType::U64:
-            return true;
-
-        default: return false;
+        if(acceptable_ids.find(bt_id) !=  acceptable_ids.end()) return true;
     }
+
+    return false;
+}
+
+bool TypeChecker::is_type_numeric_literal(const TypeDecl *ptr) const
+{
+    std::unordered_set<uint64_t> acceptable_ids;
+    acceptable_ids.emplace(s_table->builtin_to_id.at("i8"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u8"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("i16"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u16"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("i32"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u32"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("i64"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u64"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("float"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("double"));
+
+    return is_type_literal_helper(ptr, acceptable_ids);
+
+    // if(ptr->kind != TypeKind::NAMED) return false;
+
+    // const NamedTypeDecl *reint_ptr = 
+    //     static_cast<const NamedTypeDecl*>(ptr);
+
+    // if(!reint_ptr->builtin_data.has_value()) return false;
+
+    // const BuiltinData &bt_data = *reint_ptr->builtin_data;
+
+    // std::cout << "is_numeric_literal not implemented\n";
+    // exit(1);
+
+    // switch(bt_data.builtin_type)
+    // {
+    //     case BuiltinType::I8:
+    //         return true;
+
+    //     case BuiltinType::U8:
+    //         return true;
+
+    //     case BuiltinType::I16:
+    //         return true;
+
+    //     case BuiltinType::U16:
+    //         return true;
+
+    //     case BuiltinType::I32:
+    //         return true;
+
+    //     case BuiltinType::U32:
+    //         return true;
+
+    //     case BuiltinType::I64:
+    //         return true;
+
+    //     case BuiltinType::U64:
+    //         return true;
+
+    //     case BuiltinType::FLOAT:
+    //         return true;
+
+    //     case BuiltinType::DOUBLE:
+    //         return true;
+
+    //     default: return false;
+    // }
+}
+
+bool TypeChecker::is_type_int_literal(const TypeDecl *ptr) const
+{
+    std::unordered_set<uint64_t> acceptable_ids;
+    acceptable_ids.emplace(s_table->builtin_to_id.at("i8"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u8"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("i16"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u16"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("i32"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u32"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("i64"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u64"));
+
+    return is_type_literal_helper(ptr, acceptable_ids);
+
+    // if(ptr->kind != TypeKind::NAMED) return false;
+
+    // const NamedTypeDecl *reint_ptr = 
+    //     static_cast<const NamedTypeDecl*>(ptr);
+
+    // if(!reint_ptr->builtin_data.has_value()) return false;
+
+    // const BuiltinData &bt_data = *reint_ptr->builtin_data;
+
+    // std::cout << "is_int_literal not implemented\n";
+    // exit(1);
+
+    // switch(bt_data.builtin_type)
+    // {
+    //     case BuiltinType::I8:
+    //         return true;
+
+    //     case BuiltinType::U8:
+    //         return true;
+
+    //     case BuiltinType::I16:
+    //         return true;
+
+    //     case BuiltinType::U16:
+    //         return true;
+
+    //     case BuiltinType::I32:
+    //         return true;
+
+    //     case BuiltinType::U32:
+    //         return true;
+
+    //     case BuiltinType::I64:
+    //         return true;
+
+    //     case BuiltinType::U64:
+    //         return true;
+
+    //     default: return false;
+    // }
 }
 
 bool TypeChecker::is_type_uint_literal(const TypeDecl *ptr) const
 {
-    if(ptr->kind != TypeKind::NAMED) return false;
+    // if(ptr->kind != TypeKind::NAMED) return false;
 
-    const NamedTypeDecl *reint_ptr = 
-        static_cast<const NamedTypeDecl*>(ptr);
+    // const NamedTypeDecl *reint_ptr = 
+    //     static_cast<const NamedTypeDecl*>(ptr);
 
-    if(!reint_ptr->builtin_data.has_value()) return false;
+    // if(!reint_ptr->builtin_data.has_value()) return false;
 
-    const BuiltinData &bt_data = *reint_ptr->builtin_data;
+    // const BuiltinData &bt_data = *reint_ptr->builtin_data;
 
-    switch(bt_data.builtin_type)
-    {
-        case BuiltinType::I8:
-            return !bt_data.is_integral_and_negative;
+    std::unordered_set<uint64_t> acceptable_ids;
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u8"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u16"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u32"));
+    acceptable_ids.emplace(s_table->builtin_to_id.at("u64"));
 
-        case BuiltinType::U8:
-            return true;
+    return is_type_literal_helper(ptr, acceptable_ids);
 
-        case BuiltinType::I16:
-            return !bt_data.is_integral_and_negative;
+    // for(uint64_t bt_id : bt_data.acceptable_builtin_ids)
+    // {
+    //     if(acceptable_ids.find(bt_id) !=  acceptable_ids.end()) return true;
+    // }
 
-        case BuiltinType::U16:
-            return true;
+    // return false;
 
-        case BuiltinType::I32:
-            return !bt_data.is_integral_and_negative;
+    // switch(bt_data.builtin_type)
+    // {
+    //     case BuiltinType::I8:
+    //         return !bt_data.is_integral_and_negative;
 
-        case BuiltinType::U32:
-            return true;
+    //     case BuiltinType::U8:
+    //         return true;
 
-        case BuiltinType::I64:
-            return !bt_data.is_integral_and_negative;
+    //     case BuiltinType::I16:
+    //         return !bt_data.is_integral_and_negative;
 
-        case BuiltinType::U64:
-            return true;
+    //     case BuiltinType::U16:
+    //         return true;
 
-        default: return false;
-    }
-}
+    //     case BuiltinType::I32:
+    //         return !bt_data.is_integral_and_negative;
 
-bool TypeChecker::is_type_numerical(const TypeDecl *ptr) const
-{
-    if(ptr->kind != TypeKind::NAMED) return false;
+    //     case BuiltinType::U32:
+    //         return true;
 
-    const NamedTypeDecl *reint_ptr = static_cast<const NamedTypeDecl*>(ptr);
+    //     case BuiltinType::I64:
+    //         return !bt_data.is_integral_and_negative;
 
-    // Builtins live at the top scope.
-    if(reint_ptr->ident_path.size() != 1) return false;
+    //     case BuiltinType::U64:
+    //         return true;
 
-    static const std::vector<std::string> integral_typenames = 
-    {
-        "u8",
-        "i8",
-        "u16",
-        "i16",
-        "u32",
-        "i32",
-        "int",
-        "u64",
-        "i64",
-        "float",
-        "double"
-    };
-
-    const std::string &ident_name = reint_ptr->ident_path.front();
-
-    for(const std::string &str : integral_typenames)
-    {
-        if(ident_name == str) return true;
-    }
-
-    return false;
+    //     default: return false;
+    // }
 }
 
 bool TypeChecker::is_type_bool(const TypeDecl *ptr) const
@@ -375,7 +495,7 @@ bool TypeChecker::is_type_bool(const TypeDecl *ptr) const
 
     // Builtins live at the top scope.
     if(reint_ptr->ident_path.size() != 1) return false;
-
+    
     return reint_ptr->ident_path.front() == "bool";
 }
 
@@ -448,170 +568,31 @@ bool TypeChecker::cmp_ptr_types(const PtrTypeDecl *first,
     return cmp_types(first->pointee.get(), second->pointee.get());
 }
 
+bool TypeChecker::cmp_builtin_type(const NamedTypeDecl *builtin_type,
+    const NamedTypeDecl *other_type) const
+{
+    // If we are dealing with two builtin types.
+    if(other_type->builtin_data.has_value()) return false;
+
+    // -- We are dealing with only a single builtin 
+
+    std::cout << "Dealing with single builtin type not implemented\n";
+    exit(1);
+
+    return true;
+}
+
 bool TypeChecker::cmp_named_types(const NamedTypeDecl *first, 
     const NamedTypeDecl *second) const
 {
+    if(first->builtin_data.has_value())
+        return cmp_builtin_type(first, second);
+
     if(second->builtin_data.has_value())
-    {
-        std::vector<uint64_t> allowed_types;
+        return cmp_builtin_type(second, first);
 
-        const BuiltinData &bt_data = *second->builtin_data;
-
-        std::cout << "lhs is ";
-        print_type(first);
-        std::cout << '\n';
-        std::cout << "rhs is a literal: " << bt_data.builtin_type << '\n';
-
-        if(bt_data.builtin_type == BuiltinType::I8)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("i8"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i16"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i32"));
-            allowed_types.push_back(s_table->builtin_to_id.at("int"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i64"));
-
-            if(!bt_data.is_integral_and_negative)
-            {
-                allowed_types.push_back(s_table->builtin_to_id.at("u8"));
-                allowed_types.push_back(s_table->builtin_to_id.at("u16"));
-                allowed_types.push_back(s_table->builtin_to_id.at("u32"));
-                allowed_types.push_back(s_table->builtin_to_id.at("u64"));
-            }
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::U8)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("u8"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i16"));
-            allowed_types.push_back(s_table->builtin_to_id.at("u16"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i32"));
-            allowed_types.push_back(s_table->builtin_to_id.at("int"));
-            allowed_types.push_back(s_table->builtin_to_id.at("u32"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i64"));
-            allowed_types.push_back(s_table->builtin_to_id.at("u64"));
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::I16)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("i16"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i32"));
-            allowed_types.push_back(s_table->builtin_to_id.at("int"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i64"));
-
-            if(!bt_data.is_integral_and_negative)
-            {
-                allowed_types.push_back(s_table->builtin_to_id.at("u16"));
-                allowed_types.push_back(s_table->builtin_to_id.at("u32"));
-                allowed_types.push_back(s_table->builtin_to_id.at("u64"));
-            }
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::U16)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("u16"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i32"));
-            allowed_types.push_back(s_table->builtin_to_id.at("int"));
-            allowed_types.push_back(s_table->builtin_to_id.at("u32"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i64"));
-            allowed_types.push_back(s_table->builtin_to_id.at("u64"));
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::I32)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("i32"));
-            allowed_types.push_back(s_table->builtin_to_id.at("int"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i64"));
-
-            if(!bt_data.is_integral_and_negative)
-            {
-                allowed_types.push_back(s_table->builtin_to_id.at("u32"));
-                allowed_types.push_back(s_table->builtin_to_id.at("u64"));
-            }
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::U32)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("u32"));
-            allowed_types.push_back(s_table->builtin_to_id.at("i64"));
-            allowed_types.push_back(s_table->builtin_to_id.at("u64"));
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::I64)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("i64"));
-
-            if(!bt_data.is_integral_and_negative)
-            {
-                allowed_types.push_back(s_table->builtin_to_id.at("u64"));
-            }
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::U64)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("u64"));
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::BOOL)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("bool"));
-
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::FLOAT)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("float"));
-
-        }
-
-        else if(bt_data.builtin_type == BuiltinType::DOUBLE)
-        {
-            allowed_types.push_back(s_table->builtin_to_id.at("double"));
-        }
-
-        bool allowed = false;
-
-        const uint64_t first_sym_id = 
-            first->resolved_symbol_idx.value();
-
-        for(uint64_t allowed_id : allowed_types)
-        {
-            if(first_sym_id == allowed_id)
-            {
-                allowed = true;
-                break;
-            }
-        }
-
-        if(!allowed)
-        {
-            // print_error_location(expr_line, expr_col);
-            // std::cout << " -> Type: \"";
-            // print_type(second);
-            // std::cout << "\" does not match type: \"";
-            // print_type(first);
-            // std::cout << "\".\n";
-            // exit(1);
-
-            // print_error_location(second->line, second->col);
-            // std::cout << " -> Cannot assign literal of type: \"" << 
-            //     second->builtin_data->builtin_type << "\" to a type of: \"";
-            // print_type(first);
-            // std::cout << "\"\n";
-            return false;
-        }
-
-        std::cout << "Literal is allowed\n";
-
-        return true;
-    }
-
-    if(first->resolved_symbol_idx.value() != 
-        second->resolved_symbol_idx.value())
-    {
-        // print_type_mismatch(first, second, );
-        // exit(1);
-        return false;
-    }
+    return first->resolved_symbol_idx.value() ==
+           second->resolved_symbol_idx.value();
 
     return true;
 }
@@ -1122,80 +1103,44 @@ bool fits_in(const std::string &s, FitsInOption option)
     return false;
 }
 
+template<typename T>
+void handle_fits_in(NamedTypeDecl *new_decl, const std::string &s, 
+    FitsInOption option, const uint64_t builtin_id, 
+    std::string &&builtin_readable)
+{
+    if(fits_in<T>(s, option))
+    {
+        new_decl->builtin_data->acceptable_builtin_ids.push_back(builtin_id);
+        new_decl->ident_path.push_back(std::move(builtin_readable));
+    }
+}
+
 void TypeChecker::init_literal_typedecl(NamedTypeDecl *new_decl, 
     const std::string &s, FitsInOption option) const 
 {
-    if(fits_in<int8_t>(s, option))
-    {
-        new_decl->builtin_data.emplace(
-            BuiltinData{BuiltinType::I8, s.at(0) == '-'});
-        new_decl->ident_path.push_back("i8");
-        new_decl->resolved_symbol_idx = s_table->builtin_to_id.at("i8");
-    }
+    new_decl->builtin_data.emplace(BuiltinData{});
+    
+    handle_fits_in<int8_t>(new_decl, s, option, 
+        s_table->builtin_to_id.at("i8"), "i8");
+    handle_fits_in<uint8_t>(new_decl, s, option, 
+        s_table->builtin_to_id.at("u8"), "u8");
+    handle_fits_in<int16_t>(new_decl, s, option, 
+        s_table->builtin_to_id.at("i16"), "i16");
+    handle_fits_in<uint16_t>(new_decl, s, option, 
+        s_table->builtin_to_id.at("u16"), "u16");
+    handle_fits_in<int32_t>(new_decl, s, option, 
+        s_table->builtin_to_id.at("i32"), "i32");
+    handle_fits_in<uint32_t>(new_decl, s, option, 
+        s_table->builtin_to_id.at("u32"), "u32");
+    handle_fits_in<int64_t>(new_decl, s, option, 
+        s_table->builtin_to_id.at("i64"), "i64");
+    handle_fits_in<uint64_t>(new_decl, s, option, 
+        s_table->builtin_to_id.at("u64"), "u64");
 
-    else if(fits_in<uint8_t>(s, option))
-    {
-        new_decl->builtin_data.emplace(BuiltinData{BuiltinType::U8, false});
-        new_decl->ident_path.push_back("u8");
-        new_decl->resolved_symbol_idx = s_table->builtin_to_id.at("u8");
-    }
-
-    else if(fits_in<int16_t>(s, option))
-    {
-        new_decl->builtin_data.emplace(
-            BuiltinData{BuiltinType::I16, s.at(0) == '-'});
-        new_decl->ident_path.push_back("i16");
-        new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("i16");
-    }
-
-    else if(fits_in<uint16_t>(s, option))
-    {
-        new_decl->builtin_data.emplace(BuiltinData{BuiltinType::U16, false});
-        new_decl->ident_path.push_back("u16");
-        new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("u16");
-    }
-
-    else if(fits_in<int32_t>(s, option))
-    {
-        new_decl->builtin_data.emplace(
-            BuiltinData{BuiltinType::I32, s.at(0) == '-'});
-        new_decl->ident_path.push_back("i32");
-        new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("i32");
-    }
-
-    else if(fits_in<uint32_t>(s, option))
-    {
-        new_decl->builtin_data.emplace(
-            BuiltinData{BuiltinType::U32, false});
-        new_decl->ident_path.push_back("u32");
-        new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("u32");
-    }
-
-    else if(fits_in<int64_t>(s, option))
-    {
-        new_decl->builtin_data.emplace(
-            BuiltinData{BuiltinType::I64, s.at(0) == '-'});
-        new_decl->ident_path.push_back("i64");
-        new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("i64");
-    }
-
-    else if(fits_in<uint64_t>(s, option))
-    {
-        new_decl->builtin_data.emplace(BuiltinData{BuiltinType::U64, false});
-        new_decl->ident_path.push_back("u64");
-        new_decl->resolved_symbol_idx = 
-            s_table->builtin_to_id.at("u64");
-    }
-
-    else
+    if(new_decl->builtin_data->acceptable_builtin_ids.size() == 0)
     {
         print_error_location(new_decl->line, new_decl->col);
-        std::cout << " -> Unable to convert Binary number: " << s << 
+        std::cout << " -> Unable to convert number: " << s << 
             '\n';
         exit(1);
     }
@@ -1542,7 +1487,7 @@ TypeChecker::CheckExprResult TypeChecker::check_prepost_incdec(
 
     if(operand_res.type_decl->kind == TypeKind::PTR) return operand_res;
 
-    if(!is_type_numerical(operand_res.type_decl))
+    if(!is_type_numeric(operand_res.type_decl))
     {
         print_error_location(ptr->line, ptr->col);
         std::cout << " -> Expression result must be an integral type\n";
@@ -1557,7 +1502,7 @@ TypeChecker::CheckExprResult TypeChecker::check_expr_ensure_integral(
 {
     CheckExprResult expr_result = check_expression(ptr, scope_id);
                 
-    if(!is_type_numerical(expr_result.type_decl))
+    if(!is_type_numeric(expr_result.type_decl))
     {
         print_error_location(ptr->line, ptr->col);
         std::cout << " -> Expression result must be an integral type\n";
@@ -1729,14 +1674,14 @@ TypeChecker::CheckExprResult TypeChecker::check_arith_expr(
     CheckExprResult rhs_result = 
         check_expression(ptr->rhs.get(), scope_id);
 
-    bool lhs_is_integral = is_type_integral(lhs_result.type_decl);
-    bool rhs_is_integral = is_type_integral(rhs_result.type_decl);
+    bool lhs_is_numerical = is_type_numeric(lhs_result.type_decl);
+    bool rhs_is_numerical = is_type_numeric(rhs_result.type_decl);
 
     if(is_addsub_expr)
     {
         if(lhs_result.type_decl->kind == TypeKind::PTR)
         {
-            if(!rhs_is_integral)
+            if(!rhs_is_numerical)
             {
                 print_error_location(ptr->line, ptr->col);
                 std::cout << " -> Pointers only support arithmetic with "
@@ -1749,7 +1694,7 @@ TypeChecker::CheckExprResult TypeChecker::check_arith_expr(
 
         if(rhs_result.type_decl->kind == TypeKind::PTR)
         {
-            if(!lhs_is_integral)
+            if(!lhs_is_numerical)
             {
                 print_error_location(ptr->line, ptr->col);
                 std::cout << " -> Pointers only support arithmetic with "
@@ -1761,14 +1706,14 @@ TypeChecker::CheckExprResult TypeChecker::check_arith_expr(
         }
     }
 
-    if(!lhs_is_integral)
+    if(!lhs_is_numerical)
     {
         print_error_location(ptr->lhs->line, ptr->lhs->col);
         std::cout << " -> Invalid type for arithmetic.\n";
         exit(1);
     }
 
-    if(!rhs_is_integral)
+    if(!rhs_is_numerical)
     {
         print_error_location(ptr->rhs->line, ptr->rhs->col);
         std::cout << " -> Invalid type for arithmetic.\n";
@@ -1776,45 +1721,43 @@ TypeChecker::CheckExprResult TypeChecker::check_arith_expr(
     }
 
     // If lhs is a literal
-    if(is_type_int_literal(lhs_result.type_decl))
-    {
-        if(!cmp_types(rhs_result.type_decl, lhs_result.type_decl))
-        {
-            print_error_location(ptr->line, ptr->col);
-            std::cout << " -> Unable to perform arithmetic between non matching"
-                " types: \"";
-            print_type(lhs_result.type_decl);
-            std::cout << "\" and type: \"";
-            print_type(rhs_result.type_decl);
-            std::cout << "\".\n";
-            exit(1);
-        }
+    // if(is_type_numeric_literal(lhs_result.type_decl))
+    // {
+    //     if(!cmp_types(rhs_result.type_decl, lhs_result.type_decl))
+    //     {
+    //         print_error_location(ptr->line, ptr->col);
+    //         std::cout << " -> Unable to perform arithmetic between non matching"
+    //             " types: \"";
+    //         print_type(lhs_result.type_decl);
+    //         std::cout << "\" and type: \"";
+    //         print_type(rhs_result.type_decl);
+    //         std::cout << "\".\n";
+    //         exit(1);
+    //     }
 
-        return rhs_result;
-    }
+    //     return rhs_result;
+    // }
 
-    if(is_type_int_literal(rhs_result.type_decl))
-    {
-        if(!cmp_types(lhs_result.type_decl, rhs_result.type_decl))
-        {
-            print_error_location(ptr->line, ptr->col);
-            std::cout << " -> Unable to perform arithmetic between non matching"
-                " types: \"";
-            print_type(lhs_result.type_decl);
-            std::cout << "\" and type: \"";
-            print_type(rhs_result.type_decl);
-            std::cout << "\".\n";
-            exit(1);
-        }
+    // // If rhs is a literal
+    // if(is_type_numeric_literal(rhs_result.type_decl))
+    // {
+    //     if(!cmp_types(lhs_result.type_decl, rhs_result.type_decl))
+    //     {
+    //         print_error_location(ptr->line, ptr->col);
+    //         std::cout << " -> Unable to perform arithmetic between non matching"
+    //             " types: \"";
+    //         print_type(lhs_result.type_decl);
+    //         std::cout << "\" and type: \"";
+    //         print_type(rhs_result.type_decl);
+    //         std::cout << "\".\n";
+    //         exit(1);
+    //     }
 
-        return lhs_result;
-    }
+    //     return lhs_result;
+    // }
     
     if(cmp_types(lhs_result.type_decl, rhs_result.type_decl)) 
         return lhs_result;
-
-    // if(cmp_types(rhs_result.type_decl, lhs_result.type_decl)) 
-    //     return rhs_result;
 
     print_error_location(ptr->line, ptr->col);
     std::cout << " -> Unable to perform arithmetic between non matching types:"
@@ -1853,14 +1796,50 @@ TypeChecker::CheckExprResult TypeChecker::check_shift_expr(
 }
 
 TypeChecker::CheckExprResult TypeChecker::check_cmp_expr(const BinaryExpr *ptr,
-    const uint64_t scope_id)
+    const uint64_t scope_id, bool is_equals_expr)
 {
     CheckExprResult lhs_result = 
         check_expression(ptr->lhs.get(), scope_id);
     CheckExprResult rhs_result = 
         check_expression(ptr->rhs.get(), scope_id);
 
-        
+   if(!is_type_numeric(lhs_result.type_decl) && 
+        !(is_equals_expr && is_type_bool(lhs_result.type_decl)))
+    {
+        print_error_location(ptr->lhs->line, ptr->lhs->col);
+        std::cout << " -> Invalid type for comparison.\n";
+        exit(1);
+    }
+
+    if(!cmp_types(lhs_result.type_decl, rhs_result.type_decl))
+    {
+        print_error_location(ptr->lhs->line, ptr->lhs->col);
+        std::cout << " -> Type mismatch in comparing type: \"";
+        print_type(lhs_result.type_decl);
+        std::cout << "\" with type: \"";
+        print_type(rhs_result.type_decl);
+        std::cout << "\".\n";
+        exit(1);
+    }
+
+    NamedTypeDecl *new_decl = new NamedTypeDecl();
+    decls_to_delete.push_back(new_decl);
+
+    new_decl->line = ptr->lhs->line;
+    new_decl->col = ptr->lhs->col;
+
+    new_decl->builtin_data.emplace(BuiltinData{
+        {s_table->builtin_to_id.at("bool")}});
+    new_decl->ident_path.push_back("bool");
+    new_decl->resolved_symbol_idx.emplace(s_table->builtin_to_id.at("bool"));
+    
+    CheckExprResult final_result;
+    
+    final_result.is_lvalue = false;
+    final_result.is_var_and_mutable = false;
+    final_result.type_decl = new_decl;
+    
+    return final_result;
 }
 
 TypeChecker::CheckExprResult TypeChecker::check_binary_expr(
@@ -1889,23 +1868,23 @@ TypeChecker::CheckExprResult TypeChecker::check_binary_expr(
         case BinaryOp::RSHIFT:
             return check_shift_expr(ptr, scope_id);
 
-        // case BinaryOp::LT:
-        //     break;
+        case BinaryOp::LT:
+            return check_cmp_expr(ptr, scope_id, false);
 
-        // case BinaryOp::GT:
-        //     break;
+        case BinaryOp::GT:
+            return check_cmp_expr(ptr, scope_id, false);
 
-        // case BinaryOp::LE:
-        //     break;
+        case BinaryOp::LE:
+            return check_cmp_expr(ptr, scope_id, false);
 
-        // case BinaryOp::GE:
-        //     break;
+        case BinaryOp::GE:
+            return check_cmp_expr(ptr, scope_id, false);
 
-        // case BinaryOp::EQ:
-        //     break;
+        case BinaryOp::EQ:
+            return check_cmp_expr(ptr, scope_id, true);
 
-        // case BinaryOp::NE:
-        //     break;
+        case BinaryOp::NE:
+            return check_cmp_expr(ptr, scope_id, true);
 
         case BinaryOp::BIT_AND:
             return check_arith_expr(ptr, scope_id, false);
@@ -2007,11 +1986,17 @@ TypeChecker::CheckExprResult TypeChecker::check_expression
             new_decl->line = ptr->line;
             new_decl->col = ptr->col;
             
+            const uint64_t builtin_float_id = 
+                s_table->builtin_to_id.at("float");
+
+            // new_decl->builtin_data.emplace(
+            //     BuiltinData{{BuiltinType::FLOAT, BuiltinType::DOUBLE}});
             new_decl->builtin_data.emplace(
-                BuiltinData{BuiltinType::FLOAT, false});
+                BuiltinData{
+                    {builtin_float_id,
+                    s_table->builtin_to_id.at("double")}});
             new_decl->ident_path.push_back("float");
-            new_decl->resolved_symbol_idx.emplace(
-                s_table->builtin_to_id.at("float"));
+            new_decl->resolved_symbol_idx.emplace(builtin_float_id);
 
             expr_result.is_var_and_mutable = false;
             expr_result.type_decl = new_decl;
@@ -2044,10 +2029,14 @@ TypeChecker::CheckExprResult TypeChecker::check_expression
             new_decl->line = ptr->line;
             new_decl->col = ptr->col;
             
-            new_decl->builtin_data.emplace(BuiltinData{BuiltinType::U8, false});
-            new_decl->ident_path.push_back("u8");
-            new_decl->resolved_symbol_idx.emplace(
-                s_table->builtin_to_id.at("u8"));
+            const uint64_t builtin_char_id = 
+                s_table->builtin_to_id.at("char");
+
+            // new_decl->builtin_data.emplace(BuiltinData{{BuiltinType::CHAR}});
+            new_decl->builtin_data.emplace(
+                BuiltinData{{builtin_char_id}});
+            new_decl->ident_path.push_back("char");
+            new_decl->resolved_symbol_idx.emplace(builtin_char_id);
 
             expr_result.is_var_and_mutable = false;
             expr_result.type_decl = new_decl;
@@ -2063,11 +2052,15 @@ TypeChecker::CheckExprResult TypeChecker::check_expression
             new_decl->line = ptr->line;
             new_decl->col = ptr->col;
             
+            const uint64_t builtin_bool_id = 
+                s_table->builtin_to_id.at("bool");
+
+            // new_decl->builtin_data.emplace(
+            //     BuiltinData{{BuiltinType::BOOL}});
             new_decl->builtin_data.emplace(
-                BuiltinData{BuiltinType::BOOL, false});
+                BuiltinData{{builtin_bool_id}});
             new_decl->ident_path.push_back("bool");
-            new_decl->resolved_symbol_idx.emplace(
-                s_table->builtin_to_id.at("bool"));
+            new_decl->resolved_symbol_idx.emplace(builtin_bool_id);
 
             expr_result.is_var_and_mutable = false;
             expr_result.type_decl = new_decl;

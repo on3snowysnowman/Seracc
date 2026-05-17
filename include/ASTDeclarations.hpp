@@ -857,8 +857,12 @@ struct BlockStmt : Statement
 
 struct BuiltinData
 {
-    BuiltinType builtin_type = BuiltinType::INVALID;
-    bool is_integral_and_negative = false;
+    // BuiltinType builtin_type = BuiltinType::INVALID;
+
+    // List of builtin type ids that this type can take on. ie -1 can be i8, 
+    // i16, int and so on...
+    std::vector<uint64_t> acceptable_builtin_ids;
+    // bool is_integral_and_negative = false;
 };
 
 struct NamedTypeDecl : TypeDecl
