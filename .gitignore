@@ -1,4 +1,7 @@
 
 /build
 /.vscode
-Seracc
+
+OUT.txt
+
+*.bin

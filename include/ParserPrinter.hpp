@@ -100,8 +100,8 @@ static void print_type_decl(const TypeDecl * const ptr,
 
             std::cout << "ARRAY";
             handle_newline(tab_depth);
-            std::cout << "Depth: " << (int)reint_ptr->depth;
-            handle_newline(tab_depth);
+            // std::cout << "Depth: " << (int)reint_ptr->depth;
+            // handle_newline(tab_depth);
             std::cout << "Type: ";
             handle_newline(tab_depth);
             std::cout << "{\n";
@@ -168,8 +168,6 @@ static void print_param(const Parameter &param, int tab_depth)
     std::cout << "Col: " << param.col;
     handle_newline(tab_depth); 
     std::cout << "Binding Mutable: " << param.is_binding_mutable;
-    handle_newline(tab_depth);
-    std::cout << "Unqual param: " << param.is_unqual_param;
     handle_newline(tab_depth);
     std::cout << "Passed by copy: " << param.passed_by_copy;
     handle_newline(tab_depth);
@@ -521,11 +519,16 @@ static void print_sbscrpt_expr(const SubscriptExpr * const ptr,
     handle_tab_print(tab_depth);
     std::cout << "}";
     handle_newline(tab_depth);
-    std::cout << "Index Expression:";
+    std::cout << "Index Expressions:";
     handle_newline(tab_depth);
     std::cout << "{\n";
-    print_expression(ptr->index_expr.get(), tab_depth + 1);
-    handle_tab_print(tab_depth);
+
+    for(const std::unique_ptr<Expression> &ptr : ptr->index_exprs)
+    {
+        print_expression(ptr.get(), tab_depth + 1);
+        handle_tab_print(tab_depth);
+    }
+
     std::cout << "}\n";
 }
 

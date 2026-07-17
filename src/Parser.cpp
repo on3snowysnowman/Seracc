@@ -2,6 +2,8 @@
 
 #include "Parser.hpp"
 
+#include <charconv>
+
 #include "Builtins.hpp"
 #include "OperatorPrecedence.hpp"
 
@@ -41,6 +43,8 @@ Program Parser::parse(const char *in_file_path)
     }
 
     parsed_file = nullptr;
+
+    prog.func_sigs = std::move(func_sigs);
 
     return prog;
 }
@@ -92,7 +96,7 @@ void Parser::print_missing_brace(uint32_t expected_line, uint32_t expected_col,
 void Parser::handle_tok_mismatch(const Token &got_tok, TokenID expected) 
 {
     print_error_location(got_tok.line, got_tok.col);
-    std::cout << " -> Expect token of type: " << 
+    std::cout << " -> Expected token of type: " << 
         tokID_readable[static_cast<int>(expected)] << " but got token:\n" << 
         got_tok << '\n';
     exit(1);
@@ -124,19 +128,113 @@ void Parser::handle_register_type(const std::string &name, uint32_t line,
     defined_types.emplace(name, DefinedType{line, col, parsed_file});
 }
 
+
+std::optional<uint64_t> Parser::expr_to_u64(const Expression *ptr) 
+{
+    if(ptr->exp_type != ExpressionType::INT_LITERAL) return {};
+
+    const IntLitExpr *reint_ptr = static_cast<const IntLitExpr*>(ptr);
+
+    std::from_chars_result result;
+    uint64_t output = 0;
+
+    result = std::from_chars(reint_ptr->value.data(), 
+        reint_ptr->value.data() + reint_ptr->value.size(), output);
+
+    const bool success = 
+        result.ec == std::errc() && result.ptr == reint_ptr->value.data() + 
+        reint_ptr->value.size();
+
+    return success ? output : std::optional<uint64_t>{};
+}
+
+
+std::string Parser::type_to_rdbl(TypeDecl *ptr)
+{
+    std::string res;
+
+    switch(ptr->kind)
+    {
+        case TypeKind::ARRAY:
+        {
+            const ArrTypeDecl *reint_ptr = 
+                static_cast<const ArrTypeDecl *>(ptr); 
+
+            res.push_back('[');
+            res += type_to_rdbl(reint_ptr->element_type.get());
+            res.push_back(']');
+
+            for(uint64_t i = 0; i < reint_ptr->size_exprs.size(); ++i)
+            {
+                res.push_back('[');
+                res += std::to_string(reint_ptr->size_expr_as_num.at(i));
+                res.push_back(']');
+            }
+            break;
+        }
+
+        case TypeKind::FUNC_PTR:
+
+            break;
+
+        case TypeKind::NAMED:
+        {
+            const NamedTypeDecl *reint_ptr = 
+                static_cast<const NamedTypeDecl*>(ptr);
+
+            res += reint_ptr->ident_path.back();
+            break;
+        }
+
+        case TypeKind::PTR:
+        {
+            const PtrTypeDecl *reint_ptr = 
+                static_cast<const PtrTypeDecl*>(ptr);
+
+            res += "ptr";
+            if(reint_ptr->points_to_mutable) res += "mut";
+            res.push_back('_');
+
+            res += type_to_rdbl(reint_ptr->pointee.get());
+            break;
+        }
+
+        case TypeKind::REF:
+        {
+            const RefTypeDecl *reint_ptr =  
+                static_cast<const RefTypeDecl*>(ptr);
+
+            res += "ref";
+            if(reint_ptr->ref_to_mutable) res += "mut";
+            res.push_back('_');
+
+            res += type_to_rdbl(reint_ptr->referred.get());
+            break;
+        }
+
+        default:
+
+            print_error_location(ptr->line, ptr->col);
+            std::cout << " -> Invalid TypeKind found.\n";
+            exit(1);
+    }
+
+    return res;
+}
+
 std::unique_ptr<Declaration> Parser::parse_top_level() 
 {
     Token t = peek();
     
-    bool is_exported = false;
+    bool is_pub = false;
 
-    if(consume_if(TokenID::KW_EXPORT)) is_exported = true;
+    if(consume_if(TokenID::KW_PUB)) is_pub = true;
 
     if(check(TokenID::END_OF_FILE)) return nullptr;
 
     if(check(TokenID::KW_MODULE)) 
     {
-        if(is_exported)
+        if(is_pub)
         {
             std::cout << "Sub Modules cannot be marked \"export\"\n";
             exit(1);
@@ -145,12 +243,12 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
         return parse_module();
     }
 
-    if(check(TokenID::KW_FN)) return parse_function(is_exported);
+    if(check(TokenID::KW_FN)) return parse_function(is_pub);
 
     if(consume_if(TokenID::KW_TYPE)) 
     {
-        if(check(TokenID::KW_STRUCT)) return parse_struct(is_exported);
-        if(check(TokenID::KW_COMPONENT)) return parse_component(is_exported);
+        if(check(TokenID::KW_STRUCT)) return parse_struct(is_pub);
+        if(check(TokenID::KW_COMPONENT)) return parse_component(is_pub);
         
         print_error_location(peek().line, peek().col);
         std::cout << " -> \"type\" not followed by a declaration of a struct or "
@@ -160,7 +258,7 @@ std::unique_ptr<Declaration> Parser::parse_top_level()
 
     // Global variable
     if(check(TokenID::IDENTIFIER) || check(TokenID::KW_MUT)) 
-        return parse_field(is_exported);
+        return parse_field(is_pub);
 
     handle_unexpected_token(t);
     
@@ -265,7 +363,7 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
         p.line = peek().line;
         p.col = peek().col;
         p.is_binding_mutable = false;
-        p.is_unqual_param = false;
+        // p.is_unqual_param = false;
         p.passed_by_copy = false;
         p.name = expect(TokenID::IDENTIFIER).text;
         expect(TokenID::COLON);
@@ -307,6 +405,10 @@ std::unique_ptr<FunctionDecl> Parser::parse_function(bool is_pub)
     ptr->ret_type = parse_type_decl();
 
     ptr->body = parse_scope();
+
+    std::string func_as_rdbl;
+
+    
 
     return ptr;
 }
@@ -646,30 +748,6 @@ std::unique_ptr<Expression> Parser::parse_arr_init()
     expect(TokenID::RBRACE);
 
     return ptr;
-
-    // std::unique_ptr<ArrInitExpr> ptr = std::make_unique<ArrInitExpr>();
-
-    // ptr->line = peek().line;
-    // ptr->col = peek().col;
-
-    // expect(TokenID::LBRACE);
-
-    // while(!check(TokenID::RBRACE))
-    // {
-    //     ptr->init_args.push_back(parse_expression());
-
-    //     // Trailing comma 
-    //     if(consume_if(TokenID::COMMA) && check(TokenID::RBRACE))
-    //     {
-    //         print_error_location(peek().line, peek().col);
-    //         std::cout << " -> Trailing comma in initialization list\n";
-    //         exit(1);
-    //     }
-    // }
-
-    // expect(TokenID::RBRACE);
-
-    // return ptr;
 }
 
 std::unique_ptr<Expression> Parser::parse_struct_init()
@@ -783,6 +861,9 @@ std::unique_ptr<Expression> Parser::parse_infix(
         {TokenID::ASTERISK, BinaryOp::MUL},
         {TokenID::FORW_SLASH, BinaryOp::DIV},
         {TokenID::MODULO, BinaryOp::MOD},
+        {TokenID::AMPERSAND, BinaryOp::BIT_AND},
+        {TokenID::VERT_BAR, BinaryOp::BIT_OR},
+        {TokenID::CARROT, BinaryOp::BIT_XOR},
         {TokenID::EQUAL_EQUAL, BinaryOp::EQ},
         {TokenID::NOT_EQUAL, BinaryOp::NE},
         {TokenID::LESS_THAN, BinaryOp::LT},
@@ -916,16 +997,35 @@ std::unique_ptr<Expression> Parser::parse_func_call(
 std::unique_ptr<Expression> Parser::parse_arr_sub(
     std::unique_ptr<Expression> lhs)
 {
-    expect(TokenID::LBRACKET);
-
     std::unique_ptr<SubscriptExpr> ptr = std::make_unique<SubscriptExpr>();
 
     ptr->line = lhs->line;
     ptr->col = lhs->col;
 
     ptr->base_expr = std::move(lhs);
-    ptr->index_expr = parse_expression();
-    expect(TokenID::RBRACKET);
+
+    if(!check(TokenID::LBRACKET))
+    {
+        handle_tok_mismatch(peek(), TokenID::LBRACKET);
+        exit(1);
+    }
+
+    while(consume_if(TokenID::LBRACKET))
+    {
+        ptr->index_exprs.push_back(parse_expression());
+        expect(TokenID::RBRACKET);
+    }
+
+    // expect(TokenID::LBRACKET);
+
+    // std::unique_ptr<SubscriptExpr> ptr = std::make_unique<SubscriptExpr>();
+
+    // ptr->line = lhs->line;
+    // ptr->col = lhs->col;
+
+    // ptr->base_expr = std::move(lhs);
+    // ptr->index_expr = parse_expression();
+    // expect(TokenID::RBRACKET);
 
     return ptr;
 }
@@ -1159,6 +1259,22 @@ std::unique_ptr<Expression> Parser::parse_prefix()
             break;
         }
 
+        // Reference of
+        case TokenID::DOLLAR_SIGN:
+        {
+            ptr = std::make_unique<UnaryExpr>();
+
+            UnaryExpr * reint_ptr = static_cast<UnaryExpr*>(ptr.get());
+
+            reint_ptr->op_type = UnaryOp::REF_OF;
+
+            // Consume '$'
+            advance();
+
+            reint_ptr->operand = parse_expression(PREFIX_PRECEDENCE);
+            break;
+        }
+
         // Dereference
         case TokenID::ASTERISK:
         {
@@ -1176,7 +1292,27 @@ std::unique_ptr<Expression> Parser::parse_prefix()
             break;
         }
 
-        case TokenID::LPAREN: return parse_paren_or_cast();
+        // case TokenID::LPAREN: return parse_paren_or_cast();  
+        case TokenID::LPAREN:
+        {   
+            expect(TokenID::LPAREN);
+
+            // Cast expression.
+            if(peek().id == TokenID::COMPILE_DIRECTIVE)
+            {
+                std::unique_ptr<CastExpr> cast_expr = parse_cast();
+                cast_expr->line = start_line;
+                cast_expr->col = start_col;
+                return cast_expr;
+            }
+
+            ptr = std::make_unique<Expression>();
+            ptr = parse_expression();
+        
+            expect(TokenID::RPAREN);
+
+            break;
+        }
 
         default:
             print_error_location(peek().line, peek().col);
@@ -1191,891 +1327,51 @@ std::unique_ptr<Expression> Parser::parse_prefix()
     return ptr;
 }
 
-std::unique_ptr<Expression> Parser::parse_paren_or_cast()
+std::unique_ptr<CastExpr> Parser::parse_cast()
 {
-    expect(TokenID::LPAREN);
-
     uint32_t start_line = peek().line;
     uint32_t start_col = peek().col;
 
-    const uint64_t saved_tok_idx = current_token_idx;
-
-    // Attempt to parse as a type
-    std::unique_ptr<TypeDecl> type_result = parse_type_decl(false);
-
-    // Successfully parsed a type, this is a cast.
-    if(type_result != nullptr)
+    expect(TokenID::COMPILE_DIRECTIVE);
+    
+    const Token &t = peek();
+    
+    if(t.id != TokenID::IDENTIFIER)
     {
-        std::unique_ptr<CastExpr> ptr = std::make_unique<CastExpr>();
-            
-        ptr->to_cast_type = std::move(type_result);
-        ptr->line = start_line;
-        ptr->col = start_col;
-        expect(TokenID::RPAREN);
-        ptr->expr_to_cast = parse_expression(PREFIX_PRECEDENCE);
-        return ptr;
+        print_error_location(t.line, t.col);
+        std::cerr << ": Expected compile directive.\n";
+        exit(1);
     }
 
-    // Not a cast, this is a parenthesized expression.
+    if(t.text != "cast")
+    {
+        print_error_location(t.line, t.col);
+        std::cerr << ": Invalid compile directive.\n";
+        exit(1);
+    }
 
-    rewind(saved_tok_idx);
+    expect(TokenID::IDENTIFIER);
 
-    std::unique_ptr<Expression> ptr = parse_expression();
+    expect(TokenID::LESS_THAN);
+
+    std::unique_ptr<TypeDecl> type_decl = parse_type_decl();
+
+    expect(TokenID::GREATER_THAN);
 
     expect(TokenID::RPAREN);
+
+    std::unique_ptr<CastExpr> ptr = std::make_unique<CastExpr>();
+
+    ptr->line = start_line;
+    ptr->col = start_col;
+    ptr->to_cast_type = std::move(type_decl);
+    ptr->expr_to_cast = parse_expression();
 
     return ptr;
 }
 
-
-// std::unique_ptr<Expression> Parser::parse_expression(
-//     std::initializer_list<TokenID> delimeters)
-// {
-//     std::unique_ptr<Expression> result = parse_assignment(nullptr);
-
-//     bool hit_delimiter = false;
-
-//     while(true)
-//     {
-//         for(TokenID id : delimeters)
-//         {
-//             if(peek().id == id)
-//             {
-//                 hit_delimiter = true;
-//                 break;
-//             }
-//         }
-
-//         if(hit_delimiter) break;
-
-//         uint64_t start_tok_idx = current_token_idx;
-    
-//         result = parse_assignment(std::move(result));
-   
-//         if(current_token_idx == start_tok_idx)
-//         {
-//             print_error_location(peek().line, peek().col);
-//             std::cout << " -> Expected Token of type: ";
-
-//             auto del_begin = delimeters.begin();
-
-//             while(del_begin != delimeters.end())
-//             {
-//                 std::cout << *del_begin;
-
-//                 ++del_begin;
-
-//                 if(del_begin != delimeters.end())
-//                 {
-//                     std::cout << " or ";
-//                 }
-//             }
-
-//             std::cout << " but got token: \n" << peek() << '\n';
-//             exit(1);
-//         }
-//     }
-
-//     return result;
-
-//     // return parse_assignment(nullptr);
-// }
-
-// std::unique_ptr<Expression> Parser::parse_assignment(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // print_error_location(start_line, start_col);
-//     // std::cout << " -> Checking for assignment\n";
-
-//     bool pre_expr_null = false;
-
-//     if(pre_expr == nullptr)
-//     {
-//         pre_expr_null = true;
-//         // std::cout << "pre_expr was nullptr\n";
-//         pre_expr = parse_log_or(nullptr);
-//     }
-
-//     AssignOp op = AssignOp::INVALID;
-
-//     if(consume_if(TokenID::ASSIGN)) op = AssignOp::ASSIGN;
-//     else if(consume_if(TokenID::PLUS_ASSIGN)) op = AssignOp::ADD_ASSIGN;
-//     else if(consume_if(TokenID::MINUS_ASSIGN)) op = AssignOp::SUB_ASSIGN;
-//     else if(consume_if(TokenID::ASTERISK_ASSIGN)) op = AssignOp::MUL_ASSIGN;
-//     else if(consume_if(TokenID::FORW_SLASH_ASSIGN)) op = AssignOp::DIV_ASSIGN;
-//     else if(consume_if(TokenID::MODULO_ASSIGN)) op = AssignOp::MOD_ASSIGN;
-//     else return pre_expr_null ? std::move(pre_expr) : 
-//         parse_log_or(std::move(pre_expr));
-
-//     auto full_expr = std::make_unique<AssignExpr>();
-
-//     full_expr->line = start_line;
-//     full_expr->col = start_col;
-//     full_expr->op_type = op;
-    
-//     full_expr->lhs = std::move(pre_expr);
-//     full_expr->rhs = parse_expression();
-
-//     return full_expr;
-// }
-
-// std::unique_ptr<Expression> Parser::parse_log_or(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // print_error_location(start_line, start_col);
-//     // std::cout << " -> Checking for log_or\n";
-
-//     bool pre_expr_null = false;
-
-//     if(pre_expr == nullptr)
-//     {
-//         pre_expr_null = true;
-//         pre_expr = parse_log_and(std::move(pre_expr));
-//     } 
-
-//     while(true)
-//     {
-//         if(!consume_if(TokenID::LOGIC_OR)) break;
-
-//         auto full_expr = std::make_unique<BinaryExpr>();
-
-//         full_expr->line = start_line;
-//         full_expr->col = start_col;
-//         full_expr->op_type = BinaryOp::LOG_OR;
-//         full_expr->lhs = std::move(pre_expr);
-//         full_expr->rhs = parse_log_and(nullptr);
-
-//         pre_expr = std::move(full_expr);
-//     }
-
-//     return pre_expr_null ? std::move(pre_expr) : 
-//         parse_log_and(std::move(pre_expr));
-// }
-
-// std::unique_ptr<Expression> Parser::parse_log_and(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // print_error_location(start_line, start_col);
-//     // std::cout << " -> Checking for log_and\n";
-
-//     bool pre_expr_null = false;
-
-//     if(pre_expr == nullptr)
-//     {
-//         pre_expr_null = true;
-//         pre_expr = parse_equality(nullptr);
-//     }
-
-//     while(true)
-//     {
-//         if(!consume_if(TokenID::LOGIC_AND)) break;
-
-//         auto full_expr = std::make_unique<BinaryExpr>();
-
-//         full_expr->line = start_line;
-//         full_expr->col = start_col;
-//         full_expr->op_type = BinaryOp::LOG_AND;
-//         full_expr->lhs = std::move(pre_expr);
-//         full_expr->rhs = parse_equality(nullptr);
-
-//         pre_expr = std::move(full_expr);
-//     }
-
-//     return pre_expr_null ? std::move(pre_expr) :
-//         parse_equality(std::move(pre_expr));
-// }
-
-// std::unique_ptr<Expression> Parser::parse_equality(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // print_error_location(start_line, start_col);
-//     // std::cout << " -> Checking for equality\n";
-
-//     bool pre_expr_null = false;
-
-//     if(pre_expr == nullptr)
-//     {
-//         pre_expr_null = true;
-//         // std::cout << "pre_expr was nullptr\n";
-
-//         pre_expr = parse_relational(nullptr);
-//     }
-
-//     while(true)
-//     {
-//         BinaryOp op = BinaryOp::INVALID;
-
-//         if(consume_if(TokenID::EQUAL_EQUAL)) op = BinaryOp::EQ;
-//         else if(consume_if(TokenID::NOT_EQUAL)) op = BinaryOp::NE;
-//         else break;
-
-//         auto full_expr = std::make_unique<BinaryExpr>();
-
-//         full_expr->line = start_line;
-//         full_expr->col = start_col;
-//         full_expr->op_type = op;
-//         full_expr->lhs = std::move(pre_expr);
-//         full_expr->rhs = parse_relational(nullptr);
-
-//         // pre_expr = std::move(full_expr);
-//         return full_expr;
-//     }
-
-//     return pre_expr_null ? std::move(pre_expr) : 
-//         parse_relational(std::move(pre_expr));
-// }
-
-// std::unique_ptr<Expression> Parser::parse_relational(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // std::cout << "Checking relational: ";
-//     // print_error_location(peek().line, peek().col);
-//     // std::cout << '\n';
-
-//     bool pre_expr_null = false;
-
-//     if(pre_expr == nullptr)
-//     {
-//         pre_expr_null = true;
-//         pre_expr = parse_additive(nullptr);
-//     }
-
-//     while(true)
-//     {
-//         BinaryOp op = BinaryOp::INVALID;
-
-//         if(consume_if(TokenID::LESS_THAN)) op = BinaryOp::LT;
-//         else if(consume_if(TokenID::GREATER_THAN)) op = BinaryOp::GT;
-//         else if(consume_if(TokenID::LESS_EQUAL)) op = BinaryOp::LE;
-//         else if(consume_if(TokenID::GREATER_EQUAL)) op = BinaryOp::GE;
-//         else break;
-
-//         auto full_expr = std::make_unique<BinaryExpr>();
-
-//         full_expr->line = start_line;
-//         full_expr->col = start_col;
-//         full_expr->op_type = op;
-//         full_expr->lhs = std::move(pre_expr);
-//         full_expr->rhs = parse_additive(nullptr);
-
-//         pre_expr = std::move(full_expr);
-//     }
-
-//     return pre_expr_null ? std::move(pre_expr) : 
-//         parse_additive(std::move(pre_expr));
-// }
-
-// std::unique_ptr<Expression> Parser::parse_additive(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // print_error_location(start_line, start_col);
-//     // std::cout << " -> Checking additive\n";
-
-//     bool pre_expr_null = false;
-
-//     if(pre_expr == nullptr)
-//     {
-//         pre_expr_null = true;
-
-//         // std::cout << "pre_expr was nullptr\n";
-//         pre_expr = parse_multiplicative(nullptr);
-//         // std::cout << "After getting pre expr, we are at: ";
-//         // print_error_location(peek().line, peek().col);
-//         // std::cout << '\n';
-//     }
-
-//     while(true)
-//     {
-//         BinaryOp op = BinaryOp::INVALID;
-
-//         if(consume_if(TokenID::PLUS)) op = BinaryOp::ADD;
-//         else if(consume_if(TokenID::MINUS)) op = BinaryOp::SUB;
-//         else break; // Did not find a proper operator, we're done.
-        
-//         auto full_expr = std::make_unique<BinaryExpr>();
-
-//         full_expr->line = start_line;
-//         full_expr->col = start_col;
-//         full_expr->op_type = op;
-//         full_expr->lhs = std::move(pre_expr);
-        
-//         full_expr->rhs = parse_multiplicative(nullptr);
-//         pre_expr = std::move(full_expr);
-//     }
-
-//     return pre_expr_null ? std::move(pre_expr) : 
-//         parse_multiplicative(std::move(pre_expr));   
-// }
-
-// std::unique_ptr<Expression> Parser::parse_multiplicative(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // print_error_location(start_line, start_col);
-//     // std::cout << " -> Checking multi\n";
-
-//     bool pre_expr_null = false;
-
-//     if(pre_expr == nullptr)
-//     {
-//         pre_expr_null = true;
-
-//         // std::cout << "pre_expr was nullptr\n";
-//         pre_expr = parse_unary(nullptr);
-//     }
-
-//     while(true)
-//     {
-//         BinaryOp op = BinaryOp::INVALID;
-
-//         if(consume_if(TokenID::ASTERISK)) op = BinaryOp::MUL;
-//         else if(consume_if(TokenID::FORW_SLASH)) op = BinaryOp::DIV;
-//         else if(consume_if(TokenID::MODULO)) op = BinaryOp::MOD;
-//         else break; // Did not find a proper operator, we're done.
-        
-//         auto full_expr = std::make_unique<BinaryExpr>();
-
-//         full_expr->line = start_line;
-//         full_expr->col = start_col;
-//         full_expr->op_type = op;
-//         full_expr->lhs = std::move(pre_expr);
-//         full_expr->rhs = parse_unary(nullptr);
-//         pre_expr = std::move(full_expr);
-//     }
-
-//     return pre_expr_null ? std::move(pre_expr) : 
-//         parse_unary(std::move(pre_expr));
-// }
-
-// std::unique_ptr<Expression> Parser::parse_unary(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     // print_error_location(peek().line, peek().col);
-//     // std::cout << " -> Checking unary\n";
-    
-//     if(check(TokenID::PLUS_PLUS))
-//     {   
-//         if(pre_expr != nullptr)
-//         {
-//             print_error_location(peek().line, peek().col);
-//             std::cout << " -> PRE INC can't have pre expression?\n";
-//             exit(1);
-        
-//             // std::cout << "unary pre_expr was nullptr\n";
-//             return parse_postfix(std::move(pre_expr));
-//         }
-
-//         Token t = expect(TokenID::PLUS_PLUS);
-
-//         auto ptr = std::make_unique<UnaryExpr>();
-        
-//         ptr->op_type = UnaryOp::PRE_INC;
-//         ptr->operand = parse_unary(nullptr);
-//         ptr->line = t.line;
-//         ptr->col = t.col;
-//         return ptr;
-//     }
-
-//     // Pre Dec
-//     else if(check(TokenID::MINUS_MINUS))
-//     {
-//         if(pre_expr != nullptr)
-//         {
-//             print_error_location(peek().line, peek().col);
-//             std::cout << " -> PRE DEC can't have pre expression?\n";
-//             exit(1);
-
-//             return parse_postfix(std::move(pre_expr));
-//         }
-
-//         Token t = expect(TokenID::MINUS_MINUS);
-
-//         auto ptr = std::make_unique<UnaryExpr>();
-        
-//         ptr->op_type = UnaryOp::PRE_DEC;
-//         ptr->operand = parse_unary(nullptr);
-//         ptr->line = t.line;
-//         ptr->col = t.col;
-//         return ptr;
-//     }
-
-//     // Numerical Negation
-//     else if(check(TokenID::MINUS))
-//     {
-//         Token t = expect(TokenID::MINUS);
-
-//         auto ptr = std::make_unique<UnaryExpr>();
-        
-//         ptr->op_type = UnaryOp::NEGATE;
-//         if(pre_expr == nullptr)
-//         {
-//             ptr->operand = parse_unary(nullptr);
-//         }
-//         // else ptr->operand = std::move(pre_expr);
-//         else
-//         {
-//             print_error_location(t.line, t.col);
-//             std::cout << " -> NEGATE can't have pre expression?\n";
-//             exit(1);
-//         }
-//         ptr->line = t.line;
-//         ptr->col = t.col;
-//         return ptr;
-//     }
-
-//     // Logical Negation
-//     else if(check(TokenID::EXCLAMATION_POINT))
-//     {
-//         Token t = expect(TokenID::EXCLAMATION_POINT);
-
-//         auto ptr = std::make_unique<UnaryExpr>();
-        
-//         ptr->op_type = UnaryOp::LOG_NOT;
-//         if(pre_expr == nullptr)
-//         {
-//             ptr->operand = parse_unary(nullptr);
-//         }
-//         // else ptr->operand = std::move(pre_expr);
-//         else
-//         {
-//             print_error_location(t.line, t.col);
-//             std::cout << " -> LOG_NOT can't have pre expression?\n";
-//             exit(1);
-//         }
-//         ptr->line = t.line;
-//         ptr->col = t.col;
-//         return ptr;
-//     }
-
-//     else if(check(TokenID::TILDE))
-//     {
-//         Token t = expect(TokenID::TILDE);
-
-//         auto ptr = std::make_unique<UnaryExpr>();
-        
-//         ptr->op_type = UnaryOp::BIT_NOT;
-//         if(pre_expr == nullptr)
-//         {
-//             ptr->operand = parse_unary(nullptr);
-//         }
-//         // else ptr->operand = std::move(pre_expr);
-//         else
-//         {
-//             print_error_location(t.line, t.col);
-//             std::cout << " -> TILDE can't have pre expression?\n";
-//             exit(1);
-//         }
-//         ptr->line = t.line;
-//         ptr->col = t.col;
-//         return ptr;
-//     }
-
-//     else if(check(TokenID::AMPERSAND))
-//     {
-//         Token t = expect(TokenID::AMPERSAND);
-
-//         auto ptr = std::make_unique<UnaryExpr>();
-        
-//         ptr->op_type = UnaryOp::ADDRESS_OF;
-//         if(pre_expr == nullptr)
-//         {
-//             ptr->operand = parse_unary(nullptr);
-//         }
-//         // else ptr->operand = std::move(pre_expr);
-//         else
-//         {
-//             print_error_location(t.line, t.col);
-//             std::cout << " -> AMPERSAND can't have pre expression?\n";
-//             exit(1);
-//         }
-//         ptr->line = t.line;
-//         ptr->col = t.col;
-//         return ptr;
-//     }
-
-//     else if(check(TokenID::ASTERISK))
-//     {
-//         Token t = expect(TokenID::ASTERISK);
-
-//         auto ptr = std::make_unique<UnaryExpr>();
-        
-//         ptr->op_type = UnaryOp::DEREF;
-//         if(pre_expr == nullptr)
-//         {
-//             ptr->operand = parse_unary(nullptr);
-//         }
-//         // else ptr->operand = std::move(pre_expr);
-//         else
-//         {
-//             print_error_location(t.line, t.col);
-//             std::cout << " -> DEREF can't have pre expression?\n";
-//             exit(1);
-//         }
-//         ptr->line = t.line;
-//         ptr->col = t.col;
-//         return ptr;
-//     }
-
-//     // Parenthesized expression.
-//     else if(check(TokenID::LPAREN) && pre_expr == nullptr)
-//     {
-//         Token t = expect(TokenID::LPAREN);
-
-//         uint64_t saved_tok_idx = current_token_idx;
-
-//         // Attempt to parse a type with error on failure as false. 
-//         auto type_ptr = parse_type_decl(false);
-
-//         // If the ptr was not returned as nullptr, we have successfully parsed
-//         // a type, and this is a cast
-//         if(type_ptr != nullptr) 
-//         {
-//             auto expr_ptr = std::make_unique<CastExpr>();
-            
-//             expr_ptr->to_cast_type = std::move(type_ptr); 
-//             expr_ptr->line = t.line;
-//             expr_ptr->col = t.col;
-//             expect(TokenID::RPAREN);
-//             if(pre_expr == nullptr)
-//             {
-//                 expr_ptr->expr_to_cast = parse_unary(nullptr);
-//             }
-//             else expr_ptr->expr_to_cast = std::move(pre_expr);
-//             return expr_ptr;
-//         }
-
-//         // If the type parsing failed, rewind to the token before we starting
-//         // attempting to consume the non type.
-//         rewind(saved_tok_idx);
-
-//         std::unique_ptr<Expression> full_expr = 
-//             parse_expression();
-
-//         // expect(TokenID::RPAREN);
-
-//         // while(!consume_if(TokenID::RPAREN))
-//         // {
-//         //     full_expr = parse_assignment(std::move(full_expr));
-//         //     // std::cin.get();
-//         // }
-
-//         expect(TokenID::RPAREN);
-
-//         return full_expr;
-
-//     }
-
-//     return parse_postfix(std::move(pre_expr));
-// }
-
-// std::unique_ptr<Expression> Parser::parse_postfix(
-//     std::unique_ptr<Expression> pre_expr)
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // print_error_location(start_line, start_col);
-//     // std::cout << " -> Checking postfix\n";
-
-//     // bool pre_expr_null = false;
-
-//     if(pre_expr == nullptr)
-//     {
-//         // pre_expr_null = true;
-
-//         // Expression that came before the postfix.
-//         pre_expr = parse_primary();
-//         // return parse_primary();
-//     }
-
-//     while(true)
-//     {
-//         // Function call
-//         if(consume_if(TokenID::LPAREN))
-//         {
-//             std::unique_ptr<CallExpr> full_expr = 
-//                 std::make_unique<CallExpr>();
-
-//             full_expr->line = start_line;
-//             full_expr->col = start_col;
-
-//             // Move the pre expression into the full expression's callee expr
-//             full_expr->callee_expr = std::move(pre_expr);
-            
-//             // Parse arguments
-//             while(!check(TokenID::RPAREN))
-//             {
-//                 full_expr->args.push_back(parse_expression(
-//                     {TokenID::COMMA, TokenID::RPAREN}));
-
-//                 // Trailing comma
-//                 if(consume_if(TokenID::COMMA) && check(TokenID::RPAREN))
-//                 {
-//                     print_error_location(peek().line, peek().col);
-//                     std::cout << " -> Trailing comma in argument list\n";
-//                     exit(1);
-//                 }
-//             }
-
-//             expect(TokenID::RPAREN);
-
-//             // Move the full expr now into the pre expr so we can continue 
-//             // parsing any further postfix operations with this as the pre expr.
-//             pre_expr = std::move(full_expr);
-//         }
-
-//         // Subscript
-//         else if(consume_if(TokenID::LBRACKET))
-//         {
-//             std::unique_ptr<SubscriptExpr> full_expr = 
-//                 std::make_unique<SubscriptExpr>();
-            
-//             full_expr->line = start_line;
-//             full_expr->col = start_col;
-
-//             // Move the pre expression into the full expression's base expr
-//             full_expr->base_expr = std::move(pre_expr);
-
-//             // Get the expression for the index. 
-//             full_expr->index_expr = parse_expression({TokenID::RBRACKET});
-
-//             // while(!consume_if(TokenID::RBRACKET))
-//             // {
-//             //     full_expr->index_expr = parse_assignment(
-//             //         std::move(full_expr->index_expr));
-//             // }
-
-//             expect(TokenID::RBRACKET);
-        
-//             pre_expr = std::move(full_expr);
-//         }
-
-//         // Member access by dot
-//         else if(consume_if(TokenID::DOT))
-//         {
-//             std::unique_ptr<MemberAccExpr> full_expr = 
-//                 std::make_unique<MemberAccExpr>();
-
-//             full_expr->line = start_line;
-//             full_expr->col = start_col;
-//             full_expr->base_expr = std::move(pre_expr);
-//             full_expr->member_name = expect(TokenID::IDENTIFIER).text;
-//             full_expr->via_pointer = false;
-
-//             pre_expr = std::move(full_expr);
-//         }
-
-//         // Member access by arrow
-//         else if(consume_if(TokenID::ARROW))
-//         {
-//             std::unique_ptr<MemberAccExpr> full_expr =
-//                 std::make_unique<MemberAccExpr>();
-                
-//             full_expr->line = start_line;
-//             full_expr->col = start_col;
-//             full_expr->base_expr = std::move(pre_expr);
-//             full_expr->member_name = expect(TokenID::IDENTIFIER).text;
-//             full_expr->via_pointer = true;
-
-//             pre_expr = std::move(full_expr);
-//         }
-
-//         // Post increment
-//         else if(consume_if(TokenID::PLUS_PLUS))
-//         {
-//             std::unique_ptr<UnaryExpr> full_expr = 
-//                 std::make_unique<UnaryExpr>();
-
-//             full_expr->line = start_line;
-//             full_expr->col = start_col;
-//             full_expr->op_type = UnaryOp::POST_INC;
-//             full_expr->operand = std::move(pre_expr);
-            
-//             pre_expr = std::move(full_expr);
-//         }
-
-//         else if(consume_if(TokenID::MINUS_MINUS))
-//         {
-//             std::unique_ptr<UnaryExpr> full_expr = 
-//                 std::make_unique<UnaryExpr>();
-
-//             full_expr->line = start_line;
-//             full_expr->col = start_col;
-//             full_expr->op_type = UnaryOp::POST_DEC;
-//             full_expr->operand = std::move(pre_expr);
-
-//             pre_expr = std::move(full_expr);
-//         }
-
-//         // No more postfix expressions.
-//         else break;
-//     }
-
-//     // return pre_expr_null ? std::move(pre_expr) : 
-//     //     parse_primary();
-
-//     return pre_expr;
-// }
-
-// std::unique_ptr<Expression> Parser::parse_primary()
-// {
-//     uint32_t start_line = peek().line;
-//     uint32_t start_col = peek().col;
-
-//     // print_error_location(start_line, start_col);
-//     // std::cout << " -> Checking primary\n";
-
-//     if(check(TokenID::INT_LITERAL))
-//     {
-//         auto ptr = std::make_unique<IntLitExpr>();
-
-//         IntLitExpr * const reint_ptr = static_cast<IntLitExpr*>(ptr.get());
-
-//         ptr->line = start_line;
-//         ptr->col = start_col;
-//         reint_ptr->value = expect(TokenID::INT_LITERAL).text;
-//         return ptr;
-//     }
-
-//     if(check(TokenID::FLOAT_LITERAL))
-//     {
-//         auto ptr = std::make_unique<FloatLitExpr>();
-
-//         FloatLitExpr * const reint_ptr = static_cast<FloatLitExpr*>(ptr.get());
-
-//         ptr->line = peek().line;
-//         ptr->col = peek().col;
-//         reint_ptr->value = expect(TokenID::FLOAT_LITERAL).text;
-//         return ptr;
-//     }
-
-//     if(check(TokenID::HEX_LITERAL))
-//     {
-//         auto ptr = std::make_unique<HexLitExpr>();
-
-//         HexLitExpr * const reint_ptr = static_cast<HexLitExpr*>(ptr.get());
-
-//         ptr->line = peek().line;
-//         ptr->col = peek().col;
-//         reint_ptr->value = expect(TokenID::HEX_LITERAL).text;
-//         return ptr;
-//     }
-
-//     if(check(TokenID::BIN_LITERAL))
-//     {
-//         auto ptr = std::make_unique<BinaryLitExpr>();
-
-//         BinaryLitExpr * const reint_ptr = static_cast<BinaryLitExpr*>(ptr.get());
-
-//         ptr->line = peek().line;
-//         ptr->col = peek().col;
-//         reint_ptr->value = expect(TokenID::BIN_LITERAL).text;
-//         return ptr;
-//     }
-
-//     if(check(TokenID::STR_LITERAL))
-//     {
-//         auto ptr = std::make_unique<StringLitExpr>();
-
-//         StringLitExpr * const reint_ptr = static_cast<StringLitExpr*>(ptr.get());
-
-//         ptr->line = peek().line;
-//         ptr->col = peek().col;
-//         reint_ptr->value = expect(TokenID::STR_LITERAL).text;
-//         return ptr;
-//     }
-
-//     if(check(TokenID::CHAR_LITERAL))
-//     {
-//         auto ptr = std::make_unique<CharLitExpr>();
-
-//         CharLitExpr * const reint_ptr = static_cast<CharLitExpr*>(ptr.get());
-
-//         ptr->line = peek().line;
-//         ptr->col = peek().col;
-//         reint_ptr->value = expect(TokenID::CHAR_LITERAL).text.at(0);
-//         return ptr;
-//     }
-
-//     if(check(TokenID::BOOL_LITERAL))
-//     {
-//         auto ptr = std::make_unique<BoolLitExpr>();
-
-//         BoolLitExpr * const reint_ptr = static_cast<BoolLitExpr*>(ptr.get());
-
-//         ptr->line = peek().line;
-//         ptr->col = peek().col;
-//         reint_ptr->value = expect(TokenID::BOOL_LITERAL).text == "true";
-//         return ptr;
-//     }
-
-//     if(check(TokenID::NULLPTR_LITERAL))
-//     {
-//         auto ptr = std::make_unique<NullptrLitExpr>();
-
-//         ptr->line = peek().line;
-//         ptr->col = peek().col;
-//         expect(TokenID::NULLPTR_LITERAL);
-//         return ptr;
-//     }
-
-//     if(consume_if(TokenID::LPAREN))
-//     {
-//         std::cout << "Shouldn't make it here\n";
-//         exit(1);
-
-//         auto ptr = parse_expression();
-//         expect(TokenID::RPAREN);
-
-//         return ptr;
-//     }
-
-//     if(check(TokenID::IDENTIFIER))
-//     {
-//         auto ptr = std::make_unique<IdentExpr>();
-
-//         IdentExpr * const reint_ptr = static_cast<IdentExpr*>(ptr.get());
-
-//         ptr->line = peek().line;
-//         ptr->col = peek().col;
-
-//         reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
-
-//         while(consume_if(TokenID::SCOPE_RESOLUTION))
-//         {
-//             reint_ptr->ident_path.push_back(expect(TokenID::IDENTIFIER).text);
-//         }
-
-//         return ptr;
-//     }
-
-//     print_error_location(start_line, start_col);    
-//     std::cout << " -> Invalid expression, got unexpected token: \n" << 
-//         peek() << '\n';
-//     exit(1);    
-// }
-
-std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid) 
+// std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid) 
+std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
 {
     std::unique_ptr<TypeDecl> ptr = nullptr;
     
@@ -2121,7 +1417,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
 
         reint_ptr->points_to_mutable = consume_if(TokenID::KW_MUT);
 
-        auto pointee = parse_type_decl_recurse(error_on_invalid);
+        auto pointee = parse_type_decl(error_on_invalid);
 
         if(pointee == nullptr) return nullptr;
 
@@ -2136,7 +1432,7 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
 
         reint_ptr->ref_to_mutable = consume_if(TokenID::KW_MUT);
 
-        auto pointee = parse_type_decl_recurse(error_on_invalid);
+        auto pointee = parse_type_decl(error_on_invalid);
 
         if(pointee == nullptr) return nullptr;
 
@@ -2192,53 +1488,58 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl_recurse(bool error_on_invalid)
         reint_ptr->ret_type = std::move(ret_type);
     }
 
-    else return nullptr;
+    // Array
+    else if(consume_if(TokenID::LBRACKET))
+    {   
+        ptr = std::make_unique<ArrTypeDecl>();
+        ArrTypeDecl *reint_ptr = static_cast<ArrTypeDecl*>(ptr.get());
+
+        reint_ptr->element_type = parse_type_decl();
+        
+        expect(TokenID::RBRACKET);
+
+        while(consume_if(TokenID::LBRACKET))
+        {
+            std::unique_ptr<Expression> expr = parse_expression();
+
+            std::optional<uint64_t> expr_as_num = expr_to_u64(expr.get());
+
+            if(!expr_as_num.value())
+            {
+                print_error_location(expr->line, expr->col);
+                std::cout << " -> Array size expression must be an unsigned"
+                    " int literal type.\n";
+                exit(1);
+            }
+            
+            reint_ptr->size_expr_as_num.push_back(*expr_as_num);
+            reint_ptr->size_exprs.push_back(std::move(expr));
+
+            expect(TokenID::RBRACKET);
+        }
+    }
+
+    else
+    {
+        if(!error_on_invalid) return nullptr;
+        
+        print_error_location(peek().line, peek().col);
+        std::cout << " -> Unexpected token when parsing type: \n" <<
+            peek() << '\n';
+        exit(1);
+    }
 
     ptr->line = start_line;
     ptr->col = start_col;
 
+    std::string type_rdbl = type_to_rdbl(ptr.get());
+
+    print_error_location(ptr->line, ptr->col);
+    std::cout << " -> Parsed Type: " << type_rdbl << '\n';
+
+    ptr->readable = std::move(type_rdbl);
+
     return ptr;
-}
-
-std::unique_ptr<TypeDecl> Parser::parse_type_decl(
-    bool error_on_invalid)
-{
-    uint32_t start_line = peek().line;
-    uint32_t start_col = peek().col;
-
-    std::unique_ptr<TypeDecl> parsed_type = 
-        parse_type_decl_recurse(error_on_invalid);
-
-    // If the first time we parsed a type was a nullptr, we failed to parse
-    if(parsed_type == nullptr)
-    {
-        if(error_on_invalid)
-        {
-            print_error_location(start_line, start_col);
-            std::cout << " -> Invalid type declaration.\n";
-            exit(1);
-        }
-
-        return nullptr; // Return nullptr to signal we failed to parse type decl
-    }
-
-    // After parsing the type declaration, check if this is an array of that 
-    // type.
-    if(!check(TokenID::LBRACKET)) return parsed_type;
-
-    std::unique_ptr<ArrTypeDecl> arr_decl = std::make_unique<ArrTypeDecl>();
-    arr_decl->line = parsed_type->line;
-    arr_decl->col = parsed_type->col;
-    arr_decl->element_type = std::move(parsed_type);
-
-    while(consume_if(TokenID::LBRACKET))
-    {
-        arr_decl->size_exprs.push_back(parse_expression());
-        ++arr_decl->depth;
-        expect(TokenID::RBRACKET);
-    }
-
-    return arr_decl;
 }
 
 std::unique_ptr<FieldDecl> Parser::parse_field(bool is_pub) 
@@ -2303,18 +1604,19 @@ Parameter Parser::parse_param()
     expect(TokenID::COLON);
 
     // This is an unqualified parameter
-    if(check(TokenID::IDENTIFIER))
-    {
-        p.is_unqual_param = true;
-    }
+    // if(check(TokenID::IDENTIFIER))
+    // {
+    //     p.is_unqual_param = true;
+    // }
 
     // Parameter is passed in as copy
-    else if(consume_if(TokenID::KW_VAL))
+    if(consume_if(TokenID::KW_VAL))
     {
         if(check(TokenID::KW_REF))
         {
             print_error_location(peek().line, peek().col);
-            std::cout << " -> Reference parameters cannot be passed in by val.\n";
+            std::cout << " -> Reference parameters cannot be passed in by "
+                "val.\n";
             exit(1); 
         }
 

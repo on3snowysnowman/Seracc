@@ -365,6 +365,14 @@ void Lexer::parse_non_ident_or_number(Token &t)
             return;
         }
 
+        // Check for "+="
+        else if(peek() == '=')
+        {
+            advance();
+            t.id = TokenID::PLUS_ASSIGN;
+            return;
+        }
+
         t.id = TokenID::PLUS;
         return;
     }
@@ -575,6 +583,11 @@ void Lexer::parse_non_ident_or_number(Token &t)
 
     switch(c)
     {
+        case '@':
+
+            t.id = TokenID::COMPILE_DIRECTIVE;
+            break;
+        
         case '(':
 
             t.id = TokenID::LPAREN;
@@ -620,11 +633,6 @@ void Lexer::parse_non_ident_or_number(Token &t)
             t.id = TokenID::DOT;
             break;
 
-        case '@':
-
-            t.id = TokenID::AT;
-            break;
-
         case '?':
 
             t.id = TokenID::TERNARY;
@@ -638,6 +646,11 @@ void Lexer::parse_non_ident_or_number(Token &t)
         case '~':
 
             t.id = TokenID::TILDE;
+            break;
+
+        case '$':
+
+            t.id = TokenID::DOLLAR_SIGN;
             break;
 
         default:

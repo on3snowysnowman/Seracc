@@ -440,7 +440,13 @@ void SymbolResolver::resolve_expression(Expression * const ptr,
                 static_cast<SubscriptExpr*>(ptr);
 
             resolve_expression(reint_ptr->base_expr.get(), scope_idx);
-            resolve_expression(reint_ptr->index_expr.get(), scope_idx);
+
+            for(const std::unique_ptr<Expression> &ptr : reint_ptr->index_exprs)
+            {
+                resolve_expression(ptr.get(), scope_idx);
+            }
+
+            // resolve_expression(reint_ptr->index_expr.get(), scope_idx);
 
             break;
         }

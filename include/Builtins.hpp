@@ -13,8 +13,9 @@ enum class BuiltinType
     I16,
     U32,
     I32,
+    INT,
     U64,
-    I64,
+    I64,    
     BOOL,
     VOID,
     FLOAT,
@@ -49,6 +50,10 @@ static inline std::ostream& operator<<(std::ostream &os, BuiltinType type)
             break;
 
         case BuiltinType::I32:
+            os << "i32";
+            break;
+
+        case BuiltinType::INT:
             os << "i32";
             break;
 

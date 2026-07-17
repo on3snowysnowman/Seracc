@@ -38,6 +38,7 @@ private:
 
     std::unordered_set<uint64_t> type_symbol_ids;
 
+    std::unordered_set<uint64_t> builtin_symbol_ids;
 
     // Methods
 

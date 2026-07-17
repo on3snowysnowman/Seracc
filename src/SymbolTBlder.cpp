@@ -26,6 +26,7 @@ SymbolTable SymbolTBlder::build(Program &p)
     st.scopes = std::move(scopes);
     st.builtin_to_id = std::move(builtin_to_symbol_id);
     st.type_symbol_ids = std::move(type_symbol_ids);
+    st.builtin_symbol_ids = std::move(builtin_symbol_ids);
 
     parsed_file = nullptr;
 
@@ -49,7 +50,7 @@ void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
     std::string symbol_name, uint32_t symbol_line, uint32_t symbol_col,
     bool is_variable)
 {
-    // If this is  variable, we don't want to allow duplicate variable 
+    // If this is a variable, we don't want to allow duplicate variable 
     // declarations shadowing parent scopes.
     if(is_variable)
     {
@@ -101,12 +102,25 @@ void SymbolTBlder::add_symbol_to_scope(uint64_t scope_idx, uint64_t symbol_idx,
 void SymbolTBlder::add_builtin_symbol(uint64_t global_scope_idx, 
     const std::string &symbol_name, BuiltinType b_type)
 {
-    uint64_t symbol_idx = get_next_symbol_idx();
+    uint64_t symbol_idx;
+
+    if(symbol_name == "int")
+    {
+        symbol_idx = builtin_to_symbol_id.at("i32");
+    }
+
+    else
+    {
+        symbol_idx = get_next_symbol_idx();
+        type_symbol_ids.emplace(symbol_idx);
+        builtin_symbol_ids.emplace(symbol_idx);
+        symbols.at(symbol_idx) = std::make_unique<BuiltinSymbol>();
+        static_cast<BuiltinSymbol*>(symbols.at(symbol_idx).get())->b_type =
+            b_type;
+    }
+
     builtin_to_symbol_id.emplace(symbol_name, symbol_idx);
-    type_symbol_ids.emplace(symbol_idx);
-    symbols.at(symbol_idx) = std::make_unique<BuiltinSymbol>();
-    static_cast<BuiltinSymbol*>(symbols.at(symbol_idx).get())->b_type =
-        b_type;
+    
     scopes.at(global_scope_idx).sym_name_to_symbol_idx.emplace(
         symbol_name, symbol_idx);
 }

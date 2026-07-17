@@ -1,9 +1,18 @@
 
 
+Find way to detect and delete temp TypeDecl in TypeChecker
+
+Don't let variables/param with ref types be marked mutable.
+
+Error when no return statement and expecting one.
+
 Finish function pointer support
+
+Function overloading checking in TypeChecker
 
 Long Term:
 
     Switch statements
     Enums
     Templates
+    Compiletime support

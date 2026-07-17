@@ -19,12 +19,12 @@ struct OpData
     Associativity assoc = Associativity::NONE;
 };
 
-static constexpr OpData
-    op_precedence[static_cast<size_t>(TokenID::TOKEN_COUNT)] =
+static constexpr OpData op_precedence[] =
 {
     /* END_OF_FILE */         {  0, Associativity::NONE },
 
     /* IDENTIFIER */          {  0, Associativity::NONE },
+    /* COMPILE_DIRECTIVE */   {  0, Associativity::NONE },
     /* INT_LITERAL */         {  0, Associativity::NONE },
     /* FLOAT_LITERAL */       {  0, Associativity::NONE },
     /* HEX_LITERAL */         {  0, Associativity::NONE },
@@ -59,10 +59,8 @@ static constexpr OpData
 
     /* LPAREN */              { 90, Associativity::LEFT }, // function call
     /* RPAREN */              {  0, Associativity::NONE },
-
     /* LBRACE */              {  90, Associativity::LEFT },
     /* RBRACE */              {  0, Associativity::NONE },
-
     /* LBRACKET */            { 90, Associativity::LEFT }, // subscript
     /* RBRACKET */            {  0, Associativity::NONE },
 
@@ -70,17 +68,15 @@ static constexpr OpData
 
     /* COMMA */               {  0, Associativity::NONE },
     /* SEMICOLON */           {  0, Associativity::NONE },
-
     /* DOT */                 { 90, Associativity::LEFT },
     /* COLON */               {  0, Associativity::NONE },
 
     // Special Characters
 
     /* EXCLAMATION_POINT */   {  0, Associativity::NONE }, // prefix unary
-    /* AT */                  {  0, Associativity::NONE },
-
     /* AMPERSAND */           {  24, Associativity::LEFT }, // bitwise AND
     /* TILDE */               {  0, Associativity::NONE }, // prefix unary
+    /* DOLLAR_SIGN */         {  0, Associativity::NONE }, // prefix unary
     /* CARROT */              {  23, Associativity::LEFT }, // bitwise XOR
 
     // Operators

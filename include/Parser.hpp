@@ -40,6 +40,7 @@ private:
     // Map of defined type names to the line and column they were defined on.
     std::unordered_map<std::string, DefinedType> defined_types;
 
+    std::unordered_map<std::string, const FunctionDecl*> func_sigs;
 
     // Methods
 
@@ -54,7 +55,10 @@ private:
     void handle_register_type(const std::string &type_name, uint32_t line, 
         uint32_t col);
 
+    std::optional<uint64_t> expr_to_u64(const Expression *ptr);
     
+    std::string type_to_rdbl(TypeDecl *ptr);
+
 
     std::unique_ptr<Declaration> parse_top_level();
     std::unique_ptr<ModuleDecl> parse_module();
@@ -69,6 +73,7 @@ private:
     std::unique_ptr<Expression> parse_arr_init();
     std::unique_ptr<Expression> parse_struct_init();
 
+    // std::unique_ptr<CastExpr> attempt_parse_cast();
     std::unique_ptr<Expression> parse_expression(uint32_t min_prec = 0);
     std::unique_ptr<Expression> pratt_parse(
         std::unique_ptr<Expression> lhs, uint32_t min_prec);
@@ -83,31 +88,9 @@ private:
     std::unique_ptr<Expression> parse_post_inc_dec(
         std::unique_ptr<Expression> lhs);
     std::unique_ptr<Expression> parse_prefix();
-    std::unique_ptr<Expression> parse_paren_or_cast();
+    std::unique_ptr<CastExpr> parse_cast();
 
-    // std::unique_ptr<Expression> parse_expression(
-    //     std::initializer_list<TokenID> delimeters);
-    // std::unique_ptr<Expression> parse_assignment(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_log_or(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_log_and(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_equality(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_relational(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_additive(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_multiplicative(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_unary(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_postfix(
-    //     std::unique_ptr<Expression> pre_expr);
-    // std::unique_ptr<Expression> parse_primary();
-
-    std::unique_ptr<TypeDecl> parse_type_decl_recurse(bool error_on_invalid);
+    // std::unique_ptr<TypeDecl> parse_type_decl_recurse(bool error_on_invalid);
     // If error_on_invalid is false, returns nullptr instead of crashing.
     std::unique_ptr<TypeDecl> parse_type_decl(
         bool error_on_invalid = true);

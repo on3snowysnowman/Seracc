@@ -171,6 +171,13 @@ struct SymbolTable
     uint64_t global_symbol_idx = 0;
     std::vector<std::unique_ptr<Symbol>> symbols;
     std::vector<Scope> scopes;
+
+    // Readable builtins to their symbol ids.
     std::unordered_map<std::string, uint64_t> builtin_to_id;
+
+    // Set of all type symbol ids.
     std::unordered_set<uint64_t> type_symbol_ids;
+
+    // Set of all builtin symbol ids.
+    std::unordered_set<uint64_t> builtin_symbol_ids;
 };

@@ -2,9 +2,8 @@
 
 
 
-export fn main() -> void
-{
-    let t0: u16 = 2554 + -1;
 
-    ret;
+fn main() -> void
+{
+    
 }

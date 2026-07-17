@@ -35,6 +35,8 @@ struct TypeDecl
     // bool is_literal = false;
     TypeKind kind = TypeKind::INVALID;
 
+    std::string readable;
+
     virtual ~TypeDecl() = default;
 
     // We need a clone function for the TypeChecker to be able to create its
@@ -215,6 +217,7 @@ enum class UnaryOp
     BIT_NOT,
     LOG_NOT,
     ADDRESS_OF,
+    REF_OF,
     DEREF
 };
 
@@ -269,6 +272,11 @@ static inline std::ostream& operator<<(std::ostream &os, UnaryOp op)
             os << "ADDRESS_OF";
             break;
         }
+
+        case UnaryOp::REF_OF:
+            
+            os << "REFERENCE OF";
+            break;
 
         case UnaryOp::DEREF:
         {
@@ -656,7 +664,8 @@ struct SubscriptExpr : Expression
     SubscriptExpr() { exp_type = ExpressionType::SUBSCRIPT; }
 
     std::unique_ptr<Expression> base_expr;
-    std::unique_ptr<Expression> index_expr;
+    // std::unique_ptr<Expression> index_expr;
+    std::vector<std::unique_ptr<Expression>> index_exprs;
 
     std::unique_ptr<Expression> clone() const final
     {
@@ -667,7 +676,10 @@ struct SubscriptExpr : Expression
         new_obj->col = col;
 
         new_obj->base_expr = base_expr->clone();
-        new_obj->index_expr = index_expr->clone();
+        // new_obj->index_expr = index_expr->clone();
+
+        for(const std::unique_ptr<Expression> &ptr : index_exprs)
+            new_obj->index_exprs.push_back(ptr->clone());
 
         return new_obj;
     }
@@ -855,13 +867,13 @@ struct BlockStmt : Statement
 
 // DECLARATIONS ================================================================
 
-struct BuiltinData
+struct LiteralData
 {
     // BuiltinType builtin_type = BuiltinType::INVALID;
 
-    // List of builtin type ids that this type can take on. ie -1 can be i8, 
+    // List of builtin types that this type can take on. ie -1 can be i8, 
     // i16, int and so on...
-    std::vector<uint64_t> acceptable_builtin_ids;
+    std::vector<BuiltinType> acceptable_builtin_ids;
     // bool is_integral_and_negative = false;
 };
 
@@ -870,7 +882,7 @@ struct NamedTypeDecl : TypeDecl
     NamedTypeDecl() { kind = TypeKind::NAMED; }
     std::vector<std::string> ident_path;
     std::optional<uint64_t> resolved_symbol_idx;
-    std::optional<BuiltinData> builtin_data;
+    std::optional<LiteralData> literal_data;
 
     std::unique_ptr<TypeDecl> clone() const final
     {
@@ -929,10 +941,13 @@ struct ArrTypeDecl : TypeDecl
 {
     ArrTypeDecl() { kind = TypeKind::ARRAY; }
 
-    uint8_t depth = 0;
+    // uint8_t depth = 0;
 
     std::unique_ptr<TypeDecl> element_type;
     std::vector<std::unique_ptr<Expression>> size_exprs;
+    
+    // Numerical values of the size expressions.
+    std::vector<size_t> size_expr_as_num;
 
     std::unique_ptr<TypeDecl> clone() const final
     {
@@ -942,12 +957,17 @@ struct ArrTypeDecl : TypeDecl
         new_obj->line = line;
         new_obj->col = col;
 
-        new_obj->depth = depth;
+        // new_obj->depth = depth;
         new_obj->element_type = element_type->clone();
 
         for(const std::unique_ptr<Expression> &expr : size_exprs)
         {
             new_obj->size_exprs.push_back(expr->clone());
+        }
+
+        for(size_t i : size_expr_as_num)
+        {
+            new_obj->size_expr_as_num.push_back(i);
         }
     
         return new_obj;
@@ -959,7 +979,7 @@ struct Parameter
     uint32_t line = 0;
     uint32_t col = 0;
     std::string name;
-    bool is_unqual_param = false;
+    // bool is_unqual_param = false;
     bool is_binding_mutable = false;
     bool passed_by_copy = false;
     std::unique_ptr<TypeDecl> type_decl;
@@ -972,7 +992,7 @@ struct Parameter
         line = other.line;
         col = other.col;
         name = other.name;
-        is_unqual_param = other.is_unqual_param;
+        // is_unqual_param = other.is_unqual_param;
         is_binding_mutable = other.is_binding_mutable;
         passed_by_copy = other.passed_by_copy;
         type_decl = other.type_decl ? other.type_decl->clone() : nullptr;
@@ -986,7 +1006,7 @@ struct Parameter
         line = other.line;
         col = other.col;
         name = other.name;
-        is_unqual_param = other.is_unqual_param;
+        // is_unqual_param = other.is_unqual_param;
         is_binding_mutable = other.is_binding_mutable;
         passed_by_copy = other.passed_by_copy;
         type_decl = other.type_decl ? other.type_decl->clone() : nullptr;

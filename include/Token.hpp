@@ -8,10 +8,13 @@
 #include <unordered_map>
 
 
+// When modifying this: Also modify tokID_readable AND 
+// operator precedence!
 enum class TokenID
 {
     END_OF_FILE,
     IDENTIFIER,
+    COMPILE_DIRECTIVE,
     INT_LITERAL,
     FLOAT_LITERAL,
     HEX_LITERAL,
@@ -57,9 +60,9 @@ enum class TokenID
 
     // Special Characters
     EXCLAMATION_POINT,
-    AT,
     AMPERSAND,
     TILDE,
+    DOLLAR_SIGN,
     CARROT,
 
     // Operators
@@ -95,14 +98,14 @@ enum class TokenID
     SHIFT_LEFT,
     SHIFT_LEFT_ASSIGN,
     SHIFT_RIGHT,
-    SHIFT_RIGHT_ASSIGN,
-    TOKEN_COUNT // Value used to determine enum size
+    SHIFT_RIGHT_ASSIGN
 };
 
 const char * const tokID_readable[]
 {
     "END_OF_FILE",
     "IDENTIFIER",
+    "COMPILE_DIRECTIVE",
     "INT_LITERAL",
     "FLOAT_LITERAL",
     "HEX_LITERAL",
@@ -148,9 +151,9 @@ const char * const tokID_readable[]
 
     // Special Characters
     "EXCLAMATION_POINT",
-    "AT",
     "AMPERSAND",
     "TILDE",
+    "DOLLAR_SIGN",
     "CARROT",
 
     // Operators
@@ -186,8 +189,7 @@ const char * const tokID_readable[]
     "SHIFT_LEFT",
     "SHIFT_LEFT_ASSIGN",
     "SHIFT_RIGHT",
-    "SHIFT_RIGHT_ASSIGN",
-    "TOKEN_COUNT"
+    "SHIFT_RIGHT_ASSIGN"
 };
 
 static inline std::ostream& operator<<(std::ostream &os, TokenID id)
