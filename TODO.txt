@@ -2,11 +2,12 @@
 
 Find way to detect and delete temp TypeDecl in TypeChecker
 
-Don't let variables/param with ref types be marked mutable.
-
 Error when no return statement and expecting one.
 
 Finish function pointer support
+
+Make sure component receiver objects are checked when calling comp rec 
+    functions.
 
 Function overloading checking in TypeChecker
 

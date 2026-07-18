@@ -40,8 +40,6 @@ private:
     // Map of defined type names to the line and column they were defined on.
     std::unordered_map<std::string, DefinedType> defined_types;
 
-    std::unordered_map<std::string, const FunctionDecl*> func_sigs;
-
     // Methods
 
     void register_builtin_types();
@@ -57,7 +55,7 @@ private:
 
     std::optional<uint64_t> expr_to_u64(const Expression *ptr);
     
-    std::string type_to_rdbl(TypeDecl *ptr);
+    // std::string type_to_rdbl(TypeDecl *ptr);
 
 
     std::unique_ptr<Declaration> parse_top_level();

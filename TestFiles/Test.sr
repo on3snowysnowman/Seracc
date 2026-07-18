@@ -1,31 +1,25 @@
 
 
-// export fn main(param: int) -> int
+
+// type component Compony
 // {
-//     // let arr: int[3] = {1, 2, 3};
+//     pub fn (self: ref Compony) some_func() -> void
+//     {
+//         ret;
+//     }
 
-//     let num_u8: u8 = (u8)param;
-
-//     param = num_u8;
-
-//     let ptr: * u8 = &num_u8;
-
-//     let mutptr: *mut u8 = (*mut u8)ptr; // Illegal 
-
-//     // let num_i8: i8 = (u8)num_u8;
-
-//     let bptr: *bool = &false; // Illegal
-
-//     ret 0;
+//     pub t0: int;
 // }
 
-ptr: int;
 
-export fn main() -> u8
+
+
+pub fn main() -> int 
 {
-    // let num: int = 3;
-
-    ((*(ptr + *(++1))++).value).thing * 3 = 0;
+    // let t0: Compony;
+    
+    // // t0.some_func();
+    // t0.t0;
 
     ret 0;
 }

@@ -1358,12 +1358,23 @@ const FieldDecl* TypeChecker::get_comp_member(const ComponentDecl *decl,
 
 const FunctionDecl* TypeChecker::get_func_decl(const Expression *ptr)
 {
-    if(ptr->exp_type != ExpressionType::IDENTIFIER)
+    if(ptr->exp_type != ExpressionType::IDENTIFIER || 
+        ptr->exp_type != ExpressionType::MEMBER_ACCESS)
     {
         print_error_location(ptr->line, ptr->col);
         std::cout << " -> Type must be a function to call it.\n";
         exit(1);
     }
+
+    // If we are handling a function called by accessing a component object.
+    if(ptr->exp_type == ExpressionType::MEMBER_ACCESS)
+    {
+        const MemberAccExpr *reint_ptr = static_cast<const MemberAccExpr*>(ptr);
+
+        
+
+    }
+
 
     const IdentExpr *reint_ptr = static_cast<const IdentExpr*>(ptr);
 

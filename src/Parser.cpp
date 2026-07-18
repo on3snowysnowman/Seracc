@@ -44,8 +44,6 @@ Program Parser::parse(const char *in_file_path)
 
     parsed_file = nullptr;
 
-    prog.func_sigs = std::move(func_sigs);
-
     return prog;
 }
 
@@ -149,78 +147,78 @@ std::optional<uint64_t> Parser::expr_to_u64(const Expression *ptr)
 }
 
 
-std::string Parser::type_to_rdbl(TypeDecl *ptr)
-{
-    std::string res;
+// std::string Parser::type_to_rdbl(TypeDecl *ptr)
+// {
+//     std::string res;
 
-    switch(ptr->kind)
-    {
-        case TypeKind::ARRAY:
-        {
-            const ArrTypeDecl *reint_ptr = 
-                static_cast<const ArrTypeDecl *>(ptr); 
+//     switch(ptr->kind)
+//     {
+//         case TypeKind::ARRAY:
+//         {
+//             const ArrTypeDecl *reint_ptr = 
+//                 static_cast<const ArrTypeDecl *>(ptr); 
 
-            res.push_back('[');
-            res += type_to_rdbl(reint_ptr->element_type.get());
-            res.push_back(']');
+//             res.push_back('[');
+//             res += type_to_rdbl(reint_ptr->element_type.get());
+//             res.push_back(']');
 
-            for(uint64_t i = 0; i < reint_ptr->size_exprs.size(); ++i)
-            {
-                res.push_back('[');
-                res += std::to_string(reint_ptr->size_expr_as_num.at(i));
-                res.push_back(']');
-            }
-            break;
-        }
+//             for(uint64_t i = 0; i < reint_ptr->size_exprs.size(); ++i)
+//             {
+//                 res.push_back('[');
+//                 res += std::to_string(reint_ptr->size_expr_as_num.at(i));
+//                 res.push_back(']');
+//             }
+//             break;
+//         }
 
-        case TypeKind::FUNC_PTR:
+//         case TypeKind::FUNC_PTR:
 
-            break;
+//             break;
 
-        case TypeKind::NAMED:
-        {
-            const NamedTypeDecl *reint_ptr = 
-                static_cast<const NamedTypeDecl*>(ptr);
+//         case TypeKind::NAMED:
+//         {
+//             const NamedTypeDecl *reint_ptr = 
+//                 static_cast<const NamedTypeDecl*>(ptr);
 
-            res += reint_ptr->ident_path.back();
-            break;
-        }
+//             res += reint_ptr->ident_path.back();
+//             break;
+//         }
 
-        case TypeKind::PTR:
-        {
-            const PtrTypeDecl *reint_ptr = 
-                static_cast<const PtrTypeDecl*>(ptr);
+//         case TypeKind::PTR:
+//         {
+//             const PtrTypeDecl *reint_ptr = 
+//                 static_cast<const PtrTypeDecl*>(ptr);
 
-            res += "ptr";
-            if(reint_ptr->points_to_mutable) res += "mut";
-            res.push_back('_');
+//             res += "ptr";
+//             if(reint_ptr->points_to_mutable) res += "mut";
+//             res.push_back('_');
 
-            res += type_to_rdbl(reint_ptr->pointee.get());
-            break;
-        }
+//             res += type_to_rdbl(reint_ptr->pointee.get());
+//             break;
+//         }
 
-        case TypeKind::REF:
-        {
-            const RefTypeDecl *reint_ptr =  
-                static_cast<const RefTypeDecl*>(ptr);
+//         case TypeKind::REF:
+//         {
+//             const RefTypeDecl *reint_ptr =  
+//                 static_cast<const RefTypeDecl*>(ptr);
 
-            res += "ref";
-            if(reint_ptr->ref_to_mutable) res += "mut";
-            res.push_back('_');
+//             res += "ref";
+//             if(reint_ptr->ref_to_mutable) res += "mut";
+//             res.push_back('_');
 
-            res += type_to_rdbl(reint_ptr->referred.get());
-            break;
-        }
+//             res += type_to_rdbl(reint_ptr->referred.get());
+//             break;
+//         }
 
-        default:
+//         default:
 
-            print_error_location(ptr->line, ptr->col);
-            std::cout << " -> Invalid TypeKind found.\n";
-            exit(1);
-    }
+//             print_error_location(ptr->line, ptr->col);
+//             std::cout << " -> Invalid TypeKind found.\n";
+//             exit(1);
+//     }
 
-    return res;
-}
+//     return res;
+// }
 
 std::unique_ptr<Declaration> Parser::parse_top_level() 
 {
@@ -1043,6 +1041,7 @@ std::unique_ptr<Expression> Parser::parse_member_access(
 
     ptr->base_expr = std::move(lhs);
     ptr->member_name = expect(TokenID::IDENTIFIER).text;
+    
     return ptr;
 }
 
@@ -1532,12 +1531,12 @@ std::unique_ptr<TypeDecl> Parser::parse_type_decl(bool error_on_invalid)
     ptr->line = start_line;
     ptr->col = start_col;
 
-    std::string type_rdbl = type_to_rdbl(ptr.get());
+    // std::string type_rdbl = type_to_rdbl(ptr.get());
 
-    print_error_location(ptr->line, ptr->col);
-    std::cout << " -> Parsed Type: " << type_rdbl << '\n';
+    // print_error_location(ptr->line, ptr->col);
+    // std::cout << " -> Parsed Type: " << type_rdbl << '\n';
 
-    ptr->readable = std::move(type_rdbl);
+    // ptr->readable = std::move(type_rdbl);
 
     return ptr;
 }

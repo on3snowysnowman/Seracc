@@ -312,23 +312,6 @@ void SymbolResolver::resolve_statement(Statement * const ptr,
     }
 }
 
-// void SymbolResolver::recurse_resolve_arr_init_expr(
-//     ArrInitExpr * const ptr)
-// {
-//     for(const std::unique_ptr<Expression> &init_arg : ptr->init_args)
-//     {
-//         if(init_arg->exp_type == ExpressionType::ARR_INIT)
-//         {
-//             recurse_resolve_arr_init_expr(
-//                 static_cast<ArrInitExpr*>(init_arg.get()));
-//         }
-//         else
-//         {
-//             resolve_expression()
-//         }
-//     }
-// }
-
 void SymbolResolver::resolve_expression(Expression * const ptr,
     uint64_t scope_idx) 
 {

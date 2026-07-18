@@ -35,7 +35,7 @@ struct TypeDecl
     // bool is_literal = false;
     TypeKind kind = TypeKind::INVALID;
 
-    std::string readable;
+    // std::string readable;
 
     virtual ~TypeDecl() = default;
 
@@ -1152,5 +1152,11 @@ struct ModuleDecl : Declaration
     
     std::string ident;
     std::vector<std::unique_ptr<Declaration>> decls;
+
+    // Names of functions defined in this module to the declarations that 
+    // share that name. We can have multiple functions with the same name 
+    // but different parameters with overloading.
+    std::unordered_map<std::string, std::vector<const FunctionDecl*>> 
+        func_name_to_decl;
 };
 

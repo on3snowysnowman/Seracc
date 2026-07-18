@@ -1,0 +1,9 @@
+"force_public" flag for components that make all members public for debugging? 
+
+"import_wrap<ModName>" to wrap imports inside a module space 
+
+"uses" inside template parameters for when a function uses a template defined by
+    an outside scope
+
+Change component receiver parameters to no longer specify type, type is inferred
+    by function's owning component.

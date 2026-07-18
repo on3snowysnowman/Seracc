@@ -19,11 +19,9 @@ int main(int argc, char **argv)
 
     const char *in_file_path = argv[1];
 
-    // print_parse_results(in_file_path);
-    // exit(0);
-
     Parser parser;
     Program prog = parser.parse(in_file_path);
+
 
     SymbolTBlder sym_t_blder;
     SymbolTable symbol_table = sym_t_blder.build(prog);
