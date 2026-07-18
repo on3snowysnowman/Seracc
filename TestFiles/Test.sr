@@ -1,25 +1,8 @@
 
 
 
-// type component Compony
-// {
-//     pub fn (self: ref Compony) some_func() -> void
-//     {
-//         ret;
-//     }
-
-//     pub t0: int;
-// }
-
-
-
-
-pub fn main() -> int 
+pub fn main() -> int
 {
-    // let t0: Compony;
-    
-    // // t0.some_func();
-    // t0.t0;
 
     ret 0;
 }

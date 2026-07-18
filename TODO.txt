@@ -11,6 +11,9 @@ Make sure component receiver objects are checked when calling comp rec
 
 Function overloading checking in TypeChecker
 
+Inside assignment expressions, if the type is a component, make sure there are 
+    no 
+
 Long Term:
 
     Switch statements
