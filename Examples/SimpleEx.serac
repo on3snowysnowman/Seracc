@@ -1,5 +1,5 @@
+// Simple Serac Example.
 
-// Simple main function.
 pub fn main() -> int
 {
     ret 0;

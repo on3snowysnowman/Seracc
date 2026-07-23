@@ -15,7 +15,16 @@ int main(void)
 
     Lexer_read_file(&l, "Examples/SimpleEx.serac");
 
-    Lexer_get_next_token(&l);
+    Token t = Lexer_get_next_token(&l);
+
+    while(t.id != TOKENID_END_OF_FILE)
+    {
+        stdout_Token(&t);
+        Tundra_print_char('\n');
+        Tundra_print_char('\n');
+
+        t = Lexer_get_next_token(&l);
+    }
 
     return Tundra_shutdown();
 }

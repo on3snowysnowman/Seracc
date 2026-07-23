@@ -18,6 +18,7 @@
 #include "tundra/common/Core.h"
 #include "tundra/utils/MemUtils.h"
 #include "tundra/containers/String.h"
+#include "tundra/utils/ConsoleIO.h"
 
 
 typedef enum TokenID
@@ -123,6 +124,7 @@ typedef struct
     u32 col;
     Tundra_StringView text;
 } Token;
+
 
 // Lookup for readable versions of TokenIDs. Each index corresponds to the value
 // of the id.
@@ -243,6 +245,27 @@ static const char *get_rdbl_tokID(TokenID id)
 }
 
 /**
+ * @brief Constructs a readable version of a Token and outputs it to stdout.
+ * 
+ * @param t Token.
+ */
+static void stdout_Token(const Token *t)
+{
+    Tundra_printf("ID: %s\nLine: %u\nCol: %u",
+        get_rdbl_tokID(t->id),
+        t->line,
+        t->col);
+    
+    if(t->text.view == NULL) return;
+
+    Tundra_print_cstr("\nText: \"");
+    Tundra_print_cstr_w_len(t->text.view, t->text.num_char);
+    Tundra_print_cstr("\"");
+    
+
+}
+
+/**
  * @brief Given a readable keyword, attemps to return the TokenID corresponding 
  * to it or returns TOKENID_ENUM_END if the readable was not a keyword.
  * 
@@ -262,22 +285,22 @@ static TokenID kw_to_token(const char *text, u64 len)
         case 2:
             if (Tundra_cmp_mem(text, "fn", len))
                 return TOKENID_KW_FN;
-            else if (Tundra_cmp_mem(text, "if", len))
+            if (Tundra_cmp_mem(text, "if", len))
                 return TOKENID_KW_IF;
             break;
 
         case 3:
             if (Tundra_cmp_mem(text, "mut", len))
                 return TOKENID_KW_MUT;
-            else if (Tundra_cmp_mem(text, "ref", len))
+            if (Tundra_cmp_mem(text, "ref", len))
                 return TOKENID_KW_REF;
-            else if (Tundra_cmp_mem(text, "ret", len))
+            if (Tundra_cmp_mem(text, "ret", len))
                 return TOKENID_KW_RET;
-            else if (Tundra_cmp_mem(text, "for", len))
+            if (Tundra_cmp_mem(text, "for", len))
                 return TOKENID_KW_FOR;
-            else if (Tundra_cmp_mem(text, "let", len))
+            if (Tundra_cmp_mem(text, "let", len))
                 return TOKENID_KW_LET;
-			else if (Tundra_cmp_mem(text, "pub", len))
+			if (Tundra_cmp_mem(text, "pub", len))
                 return TOKENID_KW_PUB;
 			
             break;
@@ -285,14 +308,14 @@ static TokenID kw_to_token(const char *text, u64 len)
         case 4:
             if (Tundra_cmp_mem(text, "type", len))
                 return TOKENID_KW_TYPE;
-            else if (Tundra_cmp_mem(text, "else", len))
+            if (Tundra_cmp_mem(text, "else", len))
                 return TOKENID_KW_ELSE;
             break;
 
         case 5:
             if (Tundra_cmp_mem(text, "while", len))
                 return TOKENID_KW_WHILE;
-            else if (Tundra_cmp_mem(text, "break", len))
+            if (Tundra_cmp_mem(text, "break", len))
                 return TOKENID_KW_BREAK;
             break;
 
@@ -304,7 +327,7 @@ static TokenID kw_to_token(const char *text, u64 len)
         case 8:
             if (Tundra_cmp_mem(text, "continue", len))
                 return TOKENID_KW_CONTINUE;
-            else if(Tundra_cmp_mem(text, "typename", len))
+            if(Tundra_cmp_mem(text, "typename", len))
                 return TOKENID_KW_TYPENAME;
             break;
 

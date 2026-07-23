@@ -71,6 +71,15 @@ void Lexer_read_file(Lexer *l, const char *path)
 }
 
 /**
+ * @brief Flushes stdout and exits program with -1 error code.
+ */
+static void flush_stdout_exit(void)
+{
+    Tundra_flush_stdout();
+    Tundra_exit(-1);
+}
+
+/**
  * @brief Returns true if the Lexer has reached the end of the read in src 
  * content.
  * 
@@ -92,7 +101,7 @@ static bool at_source_end(Lexer *l)
  */
 static void print_err_loc(Lexer *l)
 {
-    Tundra_printf("%s:%ud:%ud", l->parsed_filepath, l->line, l->col);
+    Tundra_printf("%s:%u:%u", l->parsed_filepath, l->line, l->col);
 }
 
 /**
@@ -106,8 +115,7 @@ static void handle_invalid_char(Lexer *l, char c)
 {
     print_err_loc(l);
     Tundra_printf(" -> Invalid character: \'%c\'.\n", c);
-    Tundra_flush_stdout();
-    Tundra_exit(-1);
+    flush_stdout_exit();
 }
 
 /**
@@ -122,8 +130,7 @@ static void check_unexpected_eos(Lexer *l)
 
     print_err_loc(l);
     Tundra_printf(" -> Reached end of file unexpectedly.\n");
-    Tundra_flush_stdout();
-    Tundra_exit(-1);
+    flush_stdout_exit();
 }
 
 /**
@@ -156,8 +163,7 @@ static char peek(Lexer *l, u32 offset)
     {
         Tundra_printf("Lexer attempted to peek past source's end in file: "
             "\"%s\".\n", l->parsed_filepath);
-        Tundra_flush_stdout();
-        Tundra_exit(-1);
+        flush_stdout_exit();
     }
 
     return *Tundra_Str_at_nocheck(&l->src_str, targ_idx);
@@ -234,7 +240,7 @@ static void skip_trivia(Lexer *l)
  * @param l Lexer.
  * @param t Token to fill. 
  */
-static void parse_ident(Lexer *l, Token *t)
+static void lex_ident(Lexer *l, Token *t)
 {
     // Starting index of the string view this Token will have into the source.
     u64 view_start = l->src_idx;
@@ -263,11 +269,20 @@ static void parse_ident(Lexer *l, Token *t)
     if(try_kw_to_tok != TOKENID_ENUM_END)
     {
         t->id = try_kw_to_tok;
+
+        // Since this is a keyword, we no longer need the identifier text.
+        t->text.view = NULL;
+        t->text.num_char = 0;
     }
 
     else if(Tundra_cmp_mem(t->text.view, "null_ptr", 8))
     {
         t->id = TOKENID_NULLPTR_LITERAL;
+
+        // Since this is a null_ptr literal, we no longer need the identifier 
+        // text.
+        t->text.view = NULL;
+        t->text.num_char = 0;
     }
 
     else if(Tundra_cmp_mem(t->text.view, "true", 4) || 
@@ -282,8 +297,606 @@ static void parse_ident(Lexer *l, Token *t)
     }
 }
 
+/**
+ * @brief Lexes an integer or float literal and fills out the passed Token's ID
+ * and text.
+ * 
+ * @param l Lexer.
+ * @param t Token to fill.
+ * @param is_negative If the number to be parsed is negative.
+ */
+static void lex_int_flt_lit(Lexer *l, Token *t, bool is_negative)
+{
+    // Default to int literal.
+    t->id = TOKENID_INT_LITERAL;
+
+    // If `is_negative` is true, we are on a '-' character and there is 
+    // guaranteed to be a digit ahead by one. If `is_negative` is false, we 
+    // are on a valid digit.
+
+    // Starting index of the string view this Token will have into the source.
+    u64 view_start = l->src_idx;
+
+    if(is_negative) { advance(l); }
+
+    // Wether a dot has been found in the literal.
+    bool dot_found = false;
+
+    char c = peek(l, 0);
+
+    while(true)
+    {
+        if(!Tundra_is_digit(c))
+        {
+            if(c == '.')
+            {
+                if(dot_found) { handle_invalid_char(l, c); } // exits
+                
+                dot_found = true;
+                t->id = TOKENID_FLOAT_LITERAL;
+            }
+
+            // Found a non digit and it's not a dot, done.
+            else { break; }
+        }
+
+        advance(l);
+        if(at_source_end(l)) { break; }
+
+        c = peek(l, 0);
+    }
+
+    const u64 num_ch_parsed = l->src_idx - view_start;
+
+    t->text = Tundra_Str_make_view(&l->src_str, view_start, num_ch_parsed);
+
+    if(dot_found && t->text.view[t->text.num_char - 1] == '.')
+    {
+        print_err_loc(l);
+        Tundra_printf(" -> Trailing dot at end of float literal.\n");
+        flush_stdout_exit();
+    }
+}
+
+/**
+ * @brief Lexes a string literal and fills out the passed Token's ID
+ * and text.
+ * 
+ * @param l Lexer.
+ * @param t Token to fill.
+ */
+static void lex_str_lit(Lexer *l, Token *t)
+{
+    t->id = TOKENID_STR_LITERAL;
+
+    // Starting index of the string view this Token will have into the source.
+    u64 view_start = l->src_idx;
+
+    char c = peek(l, 0);
+
+    bool prev_char_was_bslash = false;
+
+    while(true)
+    {
+        if(c == '"' && !prev_char_was_bslash)
+        {
+            // We have found a double quote that is not escaped, we are done.
+            break;
+        }
+
+        prev_char_was_bslash = c == '\\';
+        advance(l);
+        if(at_source_end(l))
+        {
+            print_err_loc(l);
+            Tundra_printf(" -> Reached end of file while parsing string "
+                "defined here: %s:%u:%u.\n",
+                l->parsed_filepath,
+                t->line,
+                t->col);
+            flush_stdout_exit();
+        }
+
+        c = peek(l, 0);
+    }
+
+    const u64 num_ch_parsed = l->src_idx - view_start;
+
+    t->text = Tundra_Str_make_view(&l->src_str, view_start, num_ch_parsed);
+
+    advance(l); // Consume '"'. We wait till here to do it so it is not 
+        // included in the token's view.
+}
+
+/**
+ * @brief Lexes a char literal and fills out the passed Token's ID
+ * and text.
+ * 
+ * @param l Lexer.
+ * @param t Token to fill.
+ */
+static void lex_char_lit(Lexer *l, Token *t)
+{
+    t->id = TOKENID_CHAR_LITERAL;
+
+    char c = peek(l, 0);
+
+    // Starting index of the string view this Token will have into the source.
+    u64 view_start = l->src_idx;
+
+    // Escaped character.
+    if(c == '\\')
+    {
+        advance(l); // Consume '\'
+        if(at_source_end(l))
+        {
+            print_err_loc(l);
+            Tundra_print_cstr(
+                " -> Reached end of file while parsing character.\n");
+            flush_stdout_exit();
+        }
+        c = peek(l, 0);
+    }
+
+    advance(l); // Consume character.
+
+    if(at_source_end(l))
+    {
+        print_err_loc(l);
+        Tundra_print_cstr(
+            " -> Reached end of file while parsing character.\n");
+        flush_stdout_exit();
+    }
+
+    c = peek(l, 0);
+
+    if(c != '\'')
+    {
+        Tundra_printf("%s:%u:%u -> Either too many characters in char literal "
+            "or missing closing quote.\n",
+            l->parsed_filepath,
+            t->line,
+            t->col);
+        flush_stdout_exit();
+    }
+
+    const u64 num_ch_parsed = l->src_idx - view_start;
+
+    t->text = Tundra_Str_make_view(&l->src_str, view_start, num_ch_parsed);
+
+    advance(l); // Consume '''. We wait till here to do it so it is not 
+        // included in the token's view.
+}
+
+/**
+ * @brief Lexes a non identifier or number and fills the passed Token's ID and
+ * text.
+ * 
+ * @param l Lexer.
+ * @param t Token to fill.
+ */
+static void lex_non_ident_or_num(Lexer *l, Token *t)
+{
+    // These token types do not have any text to them, so NULL out the view.
+    t->text.view = NULL;
+    t->text.num_char = 0;
+
+    char c = advance(l); 
+
+    bool at_eos = at_source_end(l);
+
+    switch(c)
+    {
+        case '-':
+
+            t->id = TOKENID_MINUS;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for "->"
+            if(c == '>')
+            {
+                t->id = TOKENID_ARROW;
+                advance(l);
+                return;
+            }
+
+            // Check for "--"
+            if(c == '-')
+            {
+                t->id = TOKENID_MINUS_MINUS;
+                advance(l);
+                return;
+            }
+
+            // Check for "-="
+            if(c == '=')
+            {
+                t->id = TOKENID_MINUS_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '+':
+
+            t->id = TOKENID_PLUS;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0); 
+
+            // Check for "++"
+            if(c == '+')
+            {
+                t->id = TOKENID_PLUS_PLUS;
+                advance(l);
+                return;
+            }
+
+            // Check for "+="
+            if(c == '=')
+            {
+                t->id = TOKENID_PLUS_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '*':
+
+            t->id = TOKENID_ASTERISK;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for "*="
+            if(c == '=')
+            {
+                t->id = TOKENID_ASTERISK_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '/':
+
+            t->id = TOKENID_FORW_SLASH;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for "/="
+            if(c == '=')
+            {
+                t->id = TOKENID_FORW_SLASH_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '%':
+
+            t->id = TOKENID_MODULO;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for "%="
+            if(c == '=')
+            {
+                t->id = TOKENID_MODULO_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '=':
+
+            t->id = TOKENID_COPY_ASSIGN;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for "=="
+            if(c == '=')
+            {
+                t->id = TOKENID_EQUAL_EQUAL;
+                advance(l);
+                return; 
+            }
+
+            break;
+
+        case '!':
+
+            t->id = TOKENID_EXCLAMATION_POINT;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for "!="
+            if(c == '=')
+            {
+                t->id = TOKENID_NOT_EQUAL;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '^':
+
+            t->id = TOKENID_CARET;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for "^="
+            if(c == '=')
+            {
+                t->id = TOKENID_BIT_OR_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '<':
+
+            t->id = TOKENID_LANGLE_BRACKET;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+            // at_eos = at_source_end(l);
+
+            // Check for "<="
+            if(c == '=')
+            {
+                t->id = TOKENID_LESS_EQUAL;
+                advance(l);
+                return;
+            }
+
+            // Check for "<-"
+            if(c == '-')
+            {
+                t->id = TOKENID_RELOC_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            // Check for "<<"
+            if(c == '<')
+            {
+                advance(l);
+                at_eos = at_source_end(l);
+
+                t->id = TOKENID_SHIFT_LEFT;
+
+                if(at_eos) { return; }
+
+                c = peek(l, 0);
+
+                // Check for "<<="
+                if(c == '=')
+                {
+                    t->id = TOKENID_SHIFT_LEFT_ASSIGN;
+                    advance(l);
+                    return;
+                }
+                
+                break;
+            }
+
+            break;
+
+        case '>':
+
+            t->id = TOKENID_RANGLE_BRACKET;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for ">="
+            if(c == '=')
+            {
+                t->id = TOKENID_GREATER_EQUAL;
+                advance(l);
+                return;
+            }
+
+            // Check for ">>"
+            if(c == '>')
+            {
+                advance(l);
+                at_eos = at_source_end(l);
+
+                t->id = TOKENID_SHIFT_RIGHT;
+
+                if(at_eos) { return; }
+
+                c = peek(l, 0);
+
+                // Check for ">>="
+                if(c == '=')
+                {
+                    t->id = TOKENID_SHIFT_RIGHT_ASSIGN;
+                    advance(l);
+                    return;
+                }
+                
+                break;
+            }
+
+            break;
+
+        case '&':
+
+            t->id = TOKENID_AMPERSAND;
+
+            if(at_eos) { return; }
+            
+            c = peek(l, 0);
+
+            // Check for "&&"
+            if(c == '&')
+            {
+                t->id = TOKENID_LOGIC_AND;
+                advance(l);
+                return;
+            }        
+
+            // Check for "&="
+            if(c == '=')
+            {
+                t->id = TOKENID_BIT_AND_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '|':
+
+            t->id = TOKENID_VERT_BAR;
+
+            if(at_eos) { return; }
+            
+            c = peek(l, 0);
+
+            // Check for "||"
+            if(c == '|')
+            {
+                t->id = TOKENID_LOGIC_OR;
+                advance(l);
+                return;
+            }        
+
+            // Check for "|="
+            if(c == '=')
+            {
+                t->id = TOKENID_BIT_OR_ASSIGN;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case ':':
+
+            t->id = TOKENID_COLON;
+
+            if(at_eos) { return; }
+
+            c = peek(l, 0);
+
+            // Check for "::"
+            if(c == ':')
+            {
+                t->id = TOKENID_SCOPE_RESOLUTION;
+                advance(l);
+                return;
+            }
+
+            break;
+
+        case '@':
+
+            t->id = TOKENID_COMPILE_DIRECTIVE;
+            break;
+        
+        case '(':
+
+            t->id = TOKENID_LPAREN;
+            break;
+
+        case ')':
+
+            t->id = TOKENID_RPAREN;
+            break;
+
+        case '{':
+
+            t->id = TOKENID_LBRACE;
+            break;
+    
+        case '}':
+
+            t->id = TOKENID_RBRACE;
+            break;
+
+        case '[':
+
+            t->id = TOKENID_LBRACKET;
+            break;
+
+        case ']':
+
+            t->id = TOKENID_RBRACKET;
+            break;
+
+        case ',':
+
+            t->id = TOKENID_COMMA;
+            break;
+
+        case ';':
+
+            t->id = TOKENID_SEMICOLON;
+            break;
+
+        case '.':
+
+            t->id = TOKENID_DOT;
+            break;
+
+        case '?':
+
+            t->id = TOKENID_TERNARY;
+            break;
+
+        case '\\':
+
+            t->id = TOKENID_BACK_SLASH;
+            break;
+
+        case '~':
+
+            t->id = TOKENID_TILDE;
+            break;
+
+        case '$':
+
+            t->id = TOKENID_DOLLAR_SIGN;
+            break;
+
+        default:
+
+            handle_invalid_char(l, c); // exits 
+    }
+}
+
+
 Token Lexer_get_next_token(Lexer *l)
 {
+    skip_trivia(l);
+
     Token t;
     t.line = l->line;
     t.col = l->col;
@@ -294,12 +907,59 @@ Token Lexer_get_next_token(Lexer *l)
         return t;
     }
 
-    const char c = peek(l);
+    const char c = peek(l, 0);
 
+    // Identifier or Keyword
     if(Tundra_is_letter(c) || c == '_')
     {
-
+        lex_ident(l, &t);
+        return t;
     }
 
-    TUNDRA_FATAL("Not implemented.\n");
+    // Negative number
+    if(c == '-' && is_peek_in_range(l, 1) && Tundra_is_digit(peek(l, 1)))
+    {
+        lex_int_flt_lit(l, &t, true);
+        return t;
+    }
+
+    // Positive number.
+    if(Tundra_is_digit(c))
+    {
+        lex_int_flt_lit(l, &t, false);
+        return t;
+    }
+
+    // String literal
+    if(c == '"')
+    {
+        advance(l); // Consume "
+        if(at_source_end(l))
+        {
+            print_err_loc(l);
+            Tundra_printf(" -> Reached end of file while parsing string.\n");
+            flush_stdout_exit();
+        }
+        lex_str_lit(l, &t);
+        return t;
+    }
+
+    // Char literal
+    if(c == '\'')
+    {
+        advance(l); // Consume '''
+        if(at_source_end(l))
+        {
+            print_err_loc(l);
+            Tundra_print_cstr(
+                " -> Reached end of file while parsing character.\n");
+            flush_stdout_exit();
+        }
+        lex_char_lit(l, &t);
+        return t;
+    }
+
+    lex_non_ident_or_num(l, &t);
+
+    return t;
 }
