@@ -1,8 +1,2 @@
+// Test.serac 
 
-
-
-pub fn main() -> int
-{
-
-    ret 0;
-}

@@ -1,0 +1,50 @@
+// Sample.serac 
+
+type PODType
+{
+    i: int;
+    mut b: bool;
+}
+
+
+
+type<typename T> DynamicArray
+[
+    @set_flag<byte_copyable_init>(false),
+    @set_flag<byte_copyable_assign>(false),
+    @set_flag<byte_relocatable_assign>(false)
+]
+{
+    pub fn @make<self>() -> void
+    {
+        // ...
+    }
+
+    pub fn @copy_make<self>(src: ref DynamicArray<T>) -> void
+    {
+        // ...
+    }
+
+    // No reloc needed, byte_relocatable_init is true
+    // pub fn @reloc_make<self>(src: ref mut DynamicArray<T>) {}
+
+    pub fn @destroy<self>() -> void
+    {
+        // ...
+    }
+
+    mut data: *mut T;
+    mut num_elem: u64;
+    mut cap: u64;
+}
+
+
+
+pub fn main() -> int
+{
+    let t0: PODType 
+    {
+        .i{=3},
+        .b{=false}
+    }
+}
