@@ -247,7 +247,7 @@ static void lex_ident(Lexer *l, Token *t)
 
     char c = peek(l, 0);
 
-    while(Tundra_is_alphnum(c) || c == '-')
+    while(Tundra_is_alphnum(c) || c == '_')
     {
         advance(l);
         if(at_source_end(l)) break;
@@ -257,13 +257,16 @@ static void lex_ident(Lexer *l, Token *t)
 
     const u64 num_ch_parsed = l->src_idx - view_start;
 
+    TUNDRA_RT_ASSERT(num_ch_parsed > 0, "Lexer expected to parse an identifier,"
+        " but lexed no characters.\n");
+
     // Construct a view into the source string that views the ident we just
     // parsed.
     t->text = Tundra_Str_make_view(&l->src_str, view_start, 
         num_ch_parsed);
 
     // Check if the parsed identifier is a keyword.
-    TokenID try_kw_to_tok = kw_to_token(t->text.view, t->text.num_char);
+    TokenID try_kw_to_tok = tokenID_from_rdbl_kw(t->text.view, t->text.num_char);
 
     // The ident is a keyword.
     if(try_kw_to_tok != TOKENID_ENUM_END)
@@ -891,7 +894,6 @@ static void lex_non_ident_or_num(Lexer *l, Token *t)
             handle_invalid_char(l, c); // exits 
     }
 }
-
 
 Token Lexer_get_next_token(Lexer *l)
 {

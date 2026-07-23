@@ -883,7 +883,7 @@ struct NamedTypeDecl : TypeDecl
     std::vector<std::string> ident_path;
     std::optional<uint64_t> resolved_symbol_idx;
     std::optional<LiteralData> literal_data;
-
+3
     std::unique_ptr<TypeDecl> clone() const final
     {
         return std::make_unique<NamedTypeDecl>(*this);

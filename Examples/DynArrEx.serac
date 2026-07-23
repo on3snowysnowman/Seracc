@@ -1,4 +1,3 @@
-// Sample.serac 
 
 type PODType
 {
@@ -15,12 +14,12 @@ type<typename T> DynamicArray
     @set_flag<byte_relocatable_assign>(false)
 ]
 {
-    pub fn @make<self>() -> void
+    @make<self>()
     {
         // ...
     }
 
-    pub fn @copy_make<self>(src: ref DynamicArray<T>) -> void
+    @copy_make<self>(src: ref DynamicArray<T>)
     {
         // ...
     }
@@ -28,9 +27,19 @@ type<typename T> DynamicArray
     // No reloc needed, byte_relocatable_init is true
     // pub fn @reloc_make<self>(src: ref mut DynamicArray<T>) {}
 
-    pub fn @destroy<self>() -> void
+    @destroy<self>()
     {
         // ...
+    }
+
+    pub fn (self: ref mut) copy_assign() -> void 
+    {
+
+    }
+
+    pub fn (self: ref mut) reloc_assign() -> void
+    {
+
     }
 
     mut data: *mut T;
@@ -42,9 +51,17 @@ type<typename T> DynamicArray
 
 pub fn main() -> int
 {
+    let mut arr1: DynamicArray<int> {@make()};
+    let arr2: DynamicArray<int> {@make()}; 
+
+    let p: fn_ptr(ref mut DynamicArray<int>, ref DynamicArray<int>) -> void
+        {&DynamicArray<int>::reloc_assign};
+
+    p({$arr1}, {$arr2});
+
     let t0: PODType 
     {
         .i{=3},
         .b{=false}
-    }
+    };
 }
