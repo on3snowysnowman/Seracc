@@ -128,7 +128,7 @@ typedef struct
 
 // Lookup for readable versions of TokenIDs. Each index corresponds to the value
 // of the id.
-static const char *const tokID_rdbl_lookup[TOKENID_ENUM_END] =
+static const char *const tokID_rdbl_lookup[] =
 {
     [TOKENID_END_OF_FILE]       = "END_OF_FILE",
     [TOKENID_IDENTIFIER]        = "IDENTIFIER",

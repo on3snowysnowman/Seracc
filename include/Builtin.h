@@ -34,7 +34,7 @@ typedef enum
     BUILTIN_ENUM_END // Invalid sentinel
 } BuiltinType;
 
-static const char *const bt_type_rdbl_lookup[BUILTIN_ENUM_END] = 
+static const char *const bt_type_rdbl_lookup[] = 
 {
     [BUILTIN_U8]        = "U8",
     [BUILTIN_I8]        = "I8",
@@ -50,7 +50,7 @@ static const char *const bt_type_rdbl_lookup[BUILTIN_ENUM_END] =
     [BUILTIN_FLOAT]     = "FLOAT",
     [BUILTIN_OPQ_PTR]   = "OPQ_PTR",
     [BUILTIN_ENUM_END]  = "ENUM_END"
-} BuiltinType;
+};
 
 /**
  * @brief Given a BuiltinType, returns a readable version of it, or errors if
@@ -64,7 +64,7 @@ static const char *get_rdbl_bt_type(BuiltinType type)
 {
     TUNDRA_RT_ASSERT(
         type >= 0 && type < BUILTIN_ENUM_END,
-        "Invalid BuiltinType: \"%d\".\n";
+        "Invalid BuiltinType: \"%d\".\n",
         type
     );
 

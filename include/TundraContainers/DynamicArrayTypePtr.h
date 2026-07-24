@@ -1,6 +1,6 @@
 
-#ifndef TUNDRA_DYNAMICARRAYTDeclPtr_H
-#define TUNDRA_DYNAMICARRAYTDeclPtr_H
+#ifndef TUNDRA_DYNAMICARRAYTypePtr_H
+#define TUNDRA_DYNAMICARRAYTypePtr_H
 
 #include "tundra/internal/MacroHelper.h"
 
@@ -9,8 +9,8 @@
 #define TUNDRA_NEEDS_CUSTOM_FREE 0
 #define TUNDRA_NEEDS_CUSTOM_MOVE 0
 #define TUNDRA_NEEDS_CUSTOM_INIT 0
-#define TUNDRA_TYPE TypeDecl*
-#define TUNDRA_TYPENAME TDeclPtr
+#define TUNDRA_TYPE Type*
+#define TUNDRA_TYPENAME TypePtr
 
 // -----------------------------------------------------------------------------
 
@@ -24,4 +24,4 @@
 #undef TUNDRA_NEEDS_CUSTOM_FREE
 #undef TUNDRA_NEEDS_CUSTOM_MOVE
 #undef TUNDRA_NEEDS_CUSTOM_INIT
-#endif // TUNDRA_DYNAMICARRAYTDeclPtr_H
+#endif // TUNDRA_DYNAMICARRAYTypePtr_H

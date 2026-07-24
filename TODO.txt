@@ -7,7 +7,7 @@
 
  -- Archive --
 
-Find way to detect and delete temp TypeDecl in TypeChecker
+Find way to detect and delete temp Type in TypeChecker
 
 Error when no return statement and expecting one.
 

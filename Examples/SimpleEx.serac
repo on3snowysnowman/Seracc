@@ -1,6 +1,6 @@
 // Simple Serac Example.
 
-pub fn main() -> int
+pub fn main(i: int, b: bool) -> int
 {
     ret 0;
 }
